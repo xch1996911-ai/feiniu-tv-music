@@ -226,7 +226,9 @@ class _BootPage extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: const Color(0xFF3A1216),
-                    border: const Border.all(color: Color(0xFFFF5A5F), width: 2),
+                    // 注意：Border.all 在当前 Flutter 版本不是 const 构造器，
+                    // 加 const 会报 const_with_non_const。
+                    border: Border.all(color: const Color(0xFFFF5A5F), width: 2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
