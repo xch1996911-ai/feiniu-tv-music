@@ -30,19 +30,36 @@ const String kDiagTag =
 /// 因此在「不注册任何插件」的诊断版本里依然可用。
 const MethodChannel _traceChannel = MethodChannel('feiniu/boot');
 
+/// 测试旁路：每次标记都会**同步**回调到这里。
+///
+/// 为什么不靠通道回执做断言：`testWidgets` 体运行在假时钟里，在那里 await
+/// `Future.delayed` / `pumpEventQueue()` 会直接死等（假时钟只由 `pump()` 推进），
+/// 表现为测试挂满超时而不是失败。设备上该字段恒为 null，不产生任何开销。
+///
+/// 命名以 `debug` 开头以示「仅供测试」，不引入 `meta` 依赖。
+void Function(String message)? debugMarkObserver;
+
+Future<void> _send(String message) => _traceChannel
+    .invokeMethod<void>('log', <String, dynamic>{'msg': '[smoke] $message'});
+
 /// 落盘一行启动痕迹。
 ///
 /// 刻意「发完就走」：不 `await`，也不让它有机会抛异常影响渲染 ——
 /// 本入口连日志都不能成为新的失败点，所以异常一律吞掉。
 void _mark(String message) {
+  debugMarkObserver?.call(message);
   try {
-    _traceChannel
-        .invokeMethod<void>('log', <String, dynamic>{'msg': '[smoke] $message'})
-        .catchError((Object _) {});
+    _send(message).catchError((Object _) {});
   } catch (_) {
     // 通道不可用（例如纯 Dart 测试环境）不影响冒烟测试本身。
   }
 }
+
+/// 测试用：走一次真实的 `feiniu/boot` 调用并返回可 await 的 Future。
+///
+/// 原生侧的 `boot.log` 是电视上唯一的判据（电视通常拿不到 adb），
+/// 所以这条通道本身也要有回归保护。命名以 `ForTest` 结尾以示用途。
+Future<void> smokeMarkForTest(String message) => _send(message);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

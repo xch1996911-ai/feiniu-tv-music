@@ -193,8 +193,9 @@ def _write(path: Path, text: str) -> None:
 def _detect_nl(text: str) -> str:
     """探测文件原有换行符。
 
-    本机 `core.autocrlf=true` 且仓库没有 .gitattributes，checkout 之后文件可能是
-    CRLF；CI 上则是 LF。脚本必须对两者都成立，否则锚点会匹配不上。
+    仓库已有 `.gitattributes`（`* text=auto eol=lf`），索引里一律是 LF；
+    但本机 `core.autocrlf=true`，检出后工作区文件仍可能是 CRLF。
+    脚本对两者都必须成立，否则锚点会匹配不上、diff 会变成整文件改写。
     """
     return "\r\n" if "\r\n" in text else "\n"
 

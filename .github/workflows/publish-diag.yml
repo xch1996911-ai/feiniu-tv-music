@@ -1,0 +1,169 @@
+name: Publish diag APKs
+
+# 把「Phase1 CI」已经构建好的 6 个诊断 APK，从该次运行的 Artifacts 取回，
+# 再统一推到独立分支 release，使它们可以**匿名用网址下载**。
+#
+# 为什么不写在 ci.yml 里直接推？
+#   GitHub 的 artifact 下载接口必须鉴权，而 release 分支的 raw/blob 链接不需要；
+#   但 6 个 APK 一起 force push 约 250MB，放在主流程里会拖长构建 job 且一旦推失败
+#   会连带影响质量门。拆成独立 workflow 后，即使发布失败也不影响 APK 已构建成功的事实。
+#
+# 为什么用「push 到 publish-diag 分支」触发而不是 workflow_run？
+#   workflow_run 只认默认分支上的文件；若把本文件提交到 main，会顺带触发一次完整的
+#   Phase1 CI（30 分钟）。用独立的 publish-diag 分支触发，只需要一次几分钟的
+#   下载+推送，不重建任何东西。
+#
+# 用法：
+#   1) 修改本文件后，`git push origin HEAD:publish-diag` 即自动重新发布最近一次成功的构建；
+#   2) 或在本文件已位于默认分支时，手动 Run workflow 并填入 run_id。
+
+on:
+  push:
+    branches: ['publish-diag']
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: '要发布的 Phase1 CI run id（留空则自动取 main 上最近一次成功运行）'
+        required: false
+        default: ''
+
+# 只发布产物，绝不修改 main 上的任何内容
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-diag
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: 取回 6 个 APK 并推送到 release 分支
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析源运行（Phase1 CI 最近一次成功）
+        id: src
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RID="${{ github.event.inputs.run_id }}"
+          if [ -z "$RID" ]; then
+            RID=$(gh run list --repo "$GITHUB_REPOSITORY" \
+                    --workflow ci.yml --branch main --status success \
+                    --limit 1 --json databaseId,headSha \
+                    --jq '.[0].databaseId')
+          fi
+          if [ -z "$RID" ] || [ "$RID" = "null" ]; then
+            echo "!! 没找到成功的 Phase1 CI 运行，拒绝发布"
+            exit 1
+          fi
+          SHA=$(gh run view "$RID" --repo "$GITHUB_REPOSITORY" --json headSha --jq '.headSha')
+          echo "源运行 run_id=$RID sha=$SHA"
+          echo "run_id=$RID" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA"   >> "$GITHUB_OUTPUT"
+
+      - name: 下载该次运行的全部 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download "${{ steps.src.outputs.run_id }}" \
+            --repo "$GITHUB_REPOSITORY" -D dl
+          echo "=== 下载结果 ==="
+          find dl -maxdepth 2 -type f -printf '%s\t%p\n' | sort -k2
+
+      - name: 归集产物（超过 90MB 的压缩入库，规避 Git 单文件 100MB 硬上限）
+        run: |
+          set -euo pipefail
+          mkdir -p release
+
+          # artifact 名与文件名一致，故文件位于 dl/<name>/<name>
+          APKS="app-hisense-no-impeller-debug.apk \
+                app-hisense-impeller-default-debug.apk \
+                app-hisense-impeller-gles-debug.apk \
+                app-hisense-no-impeller-release.apk \
+                app-hisense-engine-smoke.apk \
+                app-hisense-engine-smoke-no-plugins.apk"
+
+          MISSING=0
+          for name in $APKS; do
+            src="dl/$name/$name"
+            if [ ! -f "$src" ]; then
+              echo "!! 缺少产物：$src"
+              MISSING=1
+              continue
+            fi
+            size=$(stat -c%s "$src")
+            if [ "$size" -ge 90000000 ]; then
+              echo "$name = $size 字节 → 压缩入库"
+              # -j 去掉目录层级，压缩包里只有裸文件名
+              zip -9 -q -j "release/$name.zip" "$src"
+            else
+              echo "$name = $size 字节 → 直接入库"
+              cp "$src" "release/$name"
+            fi
+          done
+
+          if [ "$MISSING" -ne 0 ]; then
+            echo "!! 6 个诊断 APK 未全部就绪，拒绝发布不完整的 release 分支"
+            exit 1
+          fi
+
+          # 探针与清单属于附带产物，缺了不阻断
+          if [ -f dl/fnos_api_probe.exe/fnos_api_probe.exe ]; then
+            cp dl/fnos_api_probe.exe/fnos_api_probe.exe release/
+          fi
+          if [ -f dl/android-build-logs/MANIFEST.txt ]; then
+            cp dl/android-build-logs/MANIFEST.txt release/
+          fi
+
+          echo "=== release/ 内容 ==="
+          ls -la release/
+
+      - name: 写入 BUILD_INFO.txt（含每个包的配置与用途）
+        run: |
+          set -euo pipefail
+          cat > release/BUILD_INFO.txt <<EOF
+          built_from_sha: ${{ steps.src.outputs.sha }}
+          source_run_id: ${{ steps.src.outputs.run_id }}
+          published_at: $(date -u +%FT%TZ)
+
+          === 6 个诊断 APK（同一 commit、同一份 Dart 业务代码，只差构建配置）===
+          文件名                                             Renderer                    插件注册 类型
+          app-hisense-no-impeller-debug.apk                  EnableImpeller=false        是       debug
+          app-hisense-impeller-default-debug.apk             Flutter 默认后端            是       debug
+          app-hisense-impeller-gles-debug.apk                ImpellerBackend=opengles    是       debug
+          app-hisense-no-impeller-release.apk                EnableImpeller=false        是       release
+          app-hisense-engine-smoke.apk                        Flutter 默认后端            是       debug
+          app-hisense-engine-smoke-no-plugins.apk             Flutter 默认后端            否       debug
+
+          说明：
+            · 6 个包 applicationId 各不相同，可同时安装，互不覆盖；
+            · 超过 90MB 的包以 .zip 形式入库，下载后解压即可得到 .apk；
+            · E / F 是最小引擎冒烟包（只显示 "FLUTTER ENGINE OK"），
+              不含任何飞牛业务逻辑、不联网、不注册业务插件；
+            · 完整矩阵与判读方法见仓库 docs/tv_renderer_ab_test.md；
+            · MANIFEST.txt 含每个 APK 的大小 / sha256 / 配置 / boot.log 路径。
+
+          === 其余 ===
+          fnos_api_probe.exe   NAS API 探针（Windows 自包含，无需 Dart/Flutter）
+          MANIFEST.txt         本次 6 个 APK 的校验值与配置清单
+          EOF
+
+      - name: 推送到 release 分支
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # 用孤儿分支保证仓库体积恒定：每次发布都覆盖，不留历史
+          git switch --orphan publish-work >/dev/null 2>&1
+          git rm -r -q --cached . >/dev/null 2>&1 || true
+          git add -f release >/dev/null 2>&1
+          git commit -q -m "release: 6 诊断 APK from run ${{ steps.src.outputs.run_id }}"
+          git push --force origin HEAD:release
+          echo "已发布到 release 分支"

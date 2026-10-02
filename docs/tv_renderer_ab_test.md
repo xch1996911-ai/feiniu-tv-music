@@ -89,6 +89,26 @@
 - **只打包 ARM（`android-arm` + `android-arm64`）**：电视都是 ARM，x86_64 只服务
   模拟器；去掉它每个包小约 1/3。该设置对 6 个变体完全一致，不构成混淆变量。
 
+### 3.1 从哪里下载这 6 个 APK
+
+GitHub 的 **Artifacts 下载接口必须登录**，即使仓库是公开的。所以除了当次运行页
+（`Actions → Phase1 CI → 该次运行 → 页面底部 Artifacts`）之外，另有一条
+**匿名可用的网址通道**：
+
+```
+https://github.com/xch1996911-ai/feiniu-tv-music/tree/release/release
+```
+
+该分支由 `.github/workflows/publish-diag.yml` 维护，包含全部 6 个 APK
+（超过 90MB 的以 `.zip` 形式入库，下载后解压即得 `.apk`）以及
+`fnos_api_probe.exe`、`MANIFEST.txt`、`BUILD_INFO.txt`。
+
+发布方式（**不重新构建**，只把已完成的运行里那批产物搬运过去）：
+
+```bash
+git push origin publish-diag        # 触发发布最近一次成功的 Phase1 CI 产物
+```
+
 ---
 
 ## 四、取证边界（这一条最容易搞错）
@@ -205,3 +225,6 @@ python3 tools/diag/make_variant.py --revert        # 还原为默认配置
 CI 里由 `.github/workflows/ci.yml` 顺序构建 6 个变体并分别上传，
 同时产出 `MANIFEST.txt`（每个 APK 的 Renderer / 插件注册 / applicationId /
 字节数 / sha256）。
+
+构建完成后，`.github/workflows/publish-diag.yml` 可把这 6 个产物推到 `release`
+分支，使它们能匿名下载（见 3.1）。
