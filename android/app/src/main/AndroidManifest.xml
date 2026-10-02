@@ -6,6 +6,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Android 14 (API 34) 起，前台服务若声明 foregroundServiceType="mediaPlayback"，
+         必须同时持有 FOREGROUND_SERVICE_MEDIA_PLAYBACK，否则 startForeground() 抛
+         SecurityException。本项目 targetSdk=36，缺这一条会让 audio_service 初始化失败，
+         并在启动路径上表现为「黑屏」。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Android TV 声明：非触屏设备也可安装 -->
@@ -54,6 +59,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- 关闭 Impeller，回退到 Skia / OpenGL ES。
+             部分 Android TV 盒子与电视的 Vulkan 驱动不完整，Impeller 下会出现
+             「进程存活、音频正常，但画面全黑」的典型症状。
+             本项目 Phase 1 为 TV 专用、稳定性优先，因此显式关闭。 -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
 
     <!-- Flutter 3.47.6 官方模板新增：允许引擎查询可处理文本的 Activity

@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 启动窗口（LaunchTheme 的 windowBackground）。
+     原先为 @android:color/black：一旦 Flutter 首帧渲染失败或引擎未起来，
+     屏幕上就是一片纯黑，无法与「Dart 层崩了」区分，电视上又没 adb，等于零信息。
+     改为 @color/launch_background_color（深蓝）后，颜色本身就是诊断信号：
+       深蓝  → 卡在启动窗口，引擎/渲染有问题
+       有内容 → Flutter 已经画出来了，问题在业务代码
+     定义见 values/colors.xml。 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/black" />
+    <item android:drawable="@color/launch_background_color" />
 </layer-list>

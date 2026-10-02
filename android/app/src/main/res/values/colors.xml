@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 启动窗口背景色。
+         刻意不用纯黑：纯黑会让「卡在启动窗口（Flutter 引擎/渲染未起来）」
+         和「Flutter 已渲染但 Dart 层出错」两种情况在电视上完全无法区分。
+         改成明显可辨的深蓝后：
+           深蓝  → 引擎/渲染没起来（或首帧失败）
+           有内容 → 已进入 Dart，问题在业务代码里
+         详见 drawable/launch_background.xml 的说明。 -->
+    <color name="launch_background_color">#FF14213D</color>
+</resources>

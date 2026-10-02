@@ -10,8 +10,14 @@ import 'playback_engine.dart';
 class MediaSessionService {
   MediaSessionService._();
 
-  static Future<PlaybackHandler> init() async {
-    final handler = await AudioService.init(
+  /// 初始化 MediaSession / 后台播放。
+  ///
+  /// ⚠️ **必须自带超时**：部分 Android TV ROM 上 `audio_service` 会一直等待
+  /// `MediaPlaybackService` 绑定成功，既不抛异常也不完成 —— 表现同样是黑屏。
+  /// 超时后由 [BootApp] 捕获并降级为本地播放引擎（App 内仍可播放，
+  /// 只是没有后台播放与遥控媒体键），不让一个可选能力拖死整个启动流程。
+  static Future<PlaybackHandler> init() {
+    return AudioService.init(
       builder: () => PlaybackHandler(),
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'com.feiniu.tv.music.audio',
@@ -19,8 +25,6 @@ class MediaSessionService {
         androidNotificationIcon: 'mipmap/ic_launcher',
         // 电视场景无通知栏，但 MediaSession 仍需常驻以保证后台播放与媒体键。
       ),
-    );
-    // AudioService.init<T> 已按 builder 的返回类型推断出 T，无需再强转
-    return handler;
+    ).timeout(const Duration(seconds: 15));
   }
 }

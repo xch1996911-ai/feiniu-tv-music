@@ -8,6 +8,7 @@ import '../ui/pages/login_page.dart';
 import '../ui/pages/player_page.dart';
 import '../ui/pages/server_status_page.dart';
 import '../ui/pages/song_list_page.dart';
+import 'theme.dart';
 
 /// 应用根：装配 Provider 树 + 线性流程（登录 → 状态 → 列表 → 播放）。
 ///
@@ -36,24 +37,12 @@ class App extends StatelessWidget {
       child: MaterialApp(
         title: '飞牛 TV 音乐',
         debugShowCheckedModeBanner: false,
-        theme: _tvTheme(),
+        // 与启动引导页共用同一套主题，避免引导页 → 主界面切换时样式跳变。
+        theme: buildTvTheme(),
         home: const Phase1Flow(),
       ),
     );
   }
-
-  ThemeData _tvTheme() => ThemeData.dark(useMaterial3: true).copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0B0B0F),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(fontSize: 18),
-          titleMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-          titleLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w600),
-        ),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF4F8CFF),
-          surface: Color(0xFF15151C),
-        ),
-      );
 }
 
 enum Stage { login, status, songs, player }
@@ -68,25 +57,34 @@ class Phase1Flow extends StatefulWidget {
 class _Phase1FlowState extends State<Phase1Flow> {
   Stage _stage = Stage.login;
 
+  /// 提前持有引用：`dispose()` 里再 `context.read` 会向上查 Provider，
+  /// 而此时本节点正在被卸载，属于不安全的用法（可能抛异常）。
+  late final AuthRepository _auth;
+
   @override
   void initState() {
     super.initState();
-    final auth = context.read<AuthRepository>();
-    if (auth.isLoggedIn) _stage = Stage.status;
-    auth.addListener(_onAuthChange);
+    _auth = context.read<AuthRepository>();
+    if (_auth.isLoggedIn) {
+      _stage = Stage.status;
+    }
+    _auth.addListener(_onAuthChange);
   }
 
   void _onAuthChange() {
-    final auth = context.read<AuthRepository>();
     // 登出 / token 失效清理 → 回到登录页。
-    if (!auth.isLoggedIn && _stage != Stage.login) {
+    // 注意：监听回调可能在页面已卸载后才触发，必须先判 mounted。
+    if (!mounted) {
+      return;
+    }
+    if (!_auth.isLoggedIn && _stage != Stage.login) {
       setState(() => _stage = Stage.login);
     }
   }
 
   @override
   void dispose() {
-    context.read<AuthRepository>().removeListener(_onAuthChange);
+    _auth.removeListener(_onAuthChange);
     super.dispose();
   }
 
