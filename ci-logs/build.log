@@ -53,7 +53,7 @@ Downloading packages...
 + flutter_secure_storage_windows 3.1.2 (4.2.2 available)
 + flutter_test 0.0.0 from sdk flutter
 + flutter_web_plugins 0.0.0 from sdk flutter
-+ frontend_server_client 4.0.0
++ frontend_server_client 4.1.0
 + glob 2.2.0
 + hooks 2.2.0
 + http 1.6.0
@@ -131,14 +131,3 @@ Changed 108 dependencies!
 19 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Upgrading analysis_options.yaml to exclude build and platform directories.
-Running Gradle task 'assembleDebug'...                          
-Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
-License for package CMake 3.22.1 accepted.
-Preparing "Install CMake 3.22.1 v.3.22.1".
-"Install CMake 3.22.1 v.3.22.1" ready.
-Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
-"Install CMake 3.22.1 v.3.22.1" complete.
-"Install CMake 3.22.1 v.3.22.1" finished.
-Running Gradle task 'assembleDebug'...                            243.7s
-✓ Built build/app/outputs/flutter-apk/app-debug.apk
-APK_SIZE=162278758
