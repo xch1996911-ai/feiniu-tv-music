@@ -139,6 +139,6 @@ Preparing "Install CMake 3.22.1 v.3.22.1".
 Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
 "Install CMake 3.22.1 v.3.22.1" complete.
 "Install CMake 3.22.1 v.3.22.1" finished.
-Running Gradle task 'assembleDebug'...                            227.6s
+Running Gradle task 'assembleDebug'...                            243.7s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 APK_SIZE=162278758
