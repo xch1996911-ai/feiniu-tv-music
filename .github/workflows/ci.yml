@@ -185,3 +185,47 @@ jobs:
           name: fnos_api_probe.exe
           path: tools/fnos_api_probe/fnos_api_probe.exe
           if-no-files-found: error
+
+  # 把两个产物汇总到独立的 release 分支。
+  # 原因：GitHub 的 artifact 下载接口必须鉴权（公开仓库亦返回 401），
+  # 本地无法匿名取回。推到 git 分支后即可用 SSH 直接 clone 拿走。
+  # 每次 force push，仓库里始终只保留一份产物，不会累积膨胀。
+  release-bundle:
+    name: Bundle artifacts to release branch
+    needs: [android-apk, probe-exe]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载 app-debug.apk
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug.apk
+          path: dl-apk
+
+      - name: 下载 fnos_api_probe.exe
+        uses: actions/download-artifact@v4
+        with:
+          name: fnos_api_probe.exe
+          path: dl-exe
+
+      - name: 打包并推送到 release 分支
+        run: |
+          set -o pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          rm -rf release && mkdir -p release
+          cp dl-apk/app-debug.apk release/
+          cp dl-exe/fnos_api_probe.exe release/
+          printf 'built_from_sha: %s\nrun_id: %s\ntime: %s\n' \
+            "${{ github.sha }}" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > release/BUILD_INFO.txt
+          ls -la release/
+          # orphan 分支只提交 release/ 目录，force push 保证仓库体积恒定
+          git switch --orphan release-work >/dev/null 2>&1
+          git rm -r -q --cached . >/dev/null 2>&1 || true
+          git add -f release >/dev/null 2>&1
+          git commit -q -m "release: app-debug.apk + fnos_api_probe.exe (run ${{ github.run_id }})"
+          git push --force origin HEAD:release
