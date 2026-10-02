@@ -7,6 +7,8 @@ Tools • Dart 3.13.5 • DevTools 2.60.0
 openjdk version "17.0.20.1" 2026-08-18
 OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)
 OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
+=== python ===
+Python 3.12.3
 === gradle wrapper ===
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
@@ -131,14 +133,3 @@ Changed 108 dependencies!
 19 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Upgrading analysis_options.yaml to exclude build and platform directories.
-Running Gradle task 'assembleDebug'...                          
-Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
-License for package CMake 3.22.1 accepted.
-Preparing "Install CMake 3.22.1 v.3.22.1".
-"Install CMake 3.22.1 v.3.22.1" ready.
-Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
-"Install CMake 3.22.1 v.3.22.1" complete.
-"Install CMake 3.22.1 v.3.22.1" finished.
-Running Gradle task 'assembleDebug'...                            231.3s
-✓ Built build/app/outputs/flutter-apk/app-debug.apk
-APK_SIZE=162340338
