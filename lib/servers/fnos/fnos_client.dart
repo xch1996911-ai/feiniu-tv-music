@@ -78,6 +78,13 @@ class FnosClient {
 
   /// 允许注入 [adapter] 以便在无网络的单元测试里断言真实发出的请求
   /// （方法、路径、query、Cookie/authx 头、body）。
+  ///
+  /// ⚠️ **构造函数体里必须写 `this.baseUrl`，不能写 `baseUrl`。**
+  /// 形参 `baseUrl` 在构造函数体内是可见的局部变量，会**遮蔽同名字段** ——
+  /// 写成 `baseUrl: baseUrl` 拿到的是**用户原始输入**（可能没有 scheme），
+  /// 于是归一化白做，`BaseOptions` 里的 `Uri.parse` 直接抛
+  /// `FormatException: Scheme not starting with alphabetic character`。
+  /// 这个坑是测试（`fnos_client_url_test.dart` 的「构造时即归一化」）抓出来的。
   FnosClient({
     required String baseUrl,
     this.trustedHosts = const [],
@@ -87,7 +94,7 @@ class FnosClient {
   })  : baseUrl = normalizeBaseUrl(baseUrl),
         _deviceId = deviceId {
     _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
+      baseUrl: this.baseUrl,
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 30),
       responseType: ResponseType.json,
