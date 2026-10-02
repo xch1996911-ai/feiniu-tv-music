@@ -37,11 +37,14 @@ class AuthRepository extends ChangeNotifier {
 
   /// 启动时恢复会话：若存在持久化 token，则重建 provider 并设为已登录（惰性，不主动联网）。
   Future<void> restore() async {
+    // deviceId 与登录态无关，独立持久化：即使当前无会话也先准备好，
+    // 保证首次登录时能拿到稳定值（契约要求「生成一次后复用」）。
+    final deviceId = await _store.getOrCreateDeviceId();
     final session = await _store.readSession();
     if (session == null) return;
     _host = session.host;
     _username = session.username;
-    final provider = FnosProvider(baseUrl: session.host);
+    final provider = FnosProvider(baseUrl: session.host, deviceId: deviceId);
     provider.setToken(session.token);
     _provider = provider;
     Log.i('恢复会话 host=${Log.redactHost(session.host)} user=${Log.redactUser(session.username)}');
@@ -59,8 +62,10 @@ class AuthRepository extends ChangeNotifier {
     notifyListeners();
 
     final hash = FnosAuth.hashPassword(password);
-    final provider = FnosProvider(baseUrl: host);
-    final res = await provider.login(username, hash);
+    // 契约：deviceId 必须是 32 位 hex 且持久化复用，不允许每次启动重新生成。
+    final deviceId = await _store.getOrCreateDeviceId();
+    final provider = FnosProvider(baseUrl: host, deviceId: deviceId);
+    final res = await provider.login(username, hash, deviceId: deviceId);
     if (res.isErr) {
       _busy = false;
       notifyListeners();
@@ -87,16 +92,21 @@ class AuthRepository extends ChangeNotifier {
     return Result.ok(auth);
   }
 
-  /// token 失效（120001）统一入口。
-  /// 有密码哈希 → 静默自动重登；否则清除会话并上报 tokenExpired（UI 跳登录页）。
+  /// token 失效（Cookie 缺失/过期 → HTTP 401 + code 99999）统一入口。
+  ///
+  /// 注意与 `120001` 的区别：`99999` 是 token Cookie 失效，可用已存密码哈希静默重登；
+  /// `120001` 是凭据错误，必须让用户重新输入（见 [FnosErrorCodes]）。
   Future<Result<bool>> handleTokenExpired() async {
     final session = await _store.readSession();
     if (session == null || !session.canAutoRelogin) {
       await logout();
       return const Result.err(AppError('登录已失效，请重新登录', kind: ErrorKind.tokenExpired));
     }
-    final provider = FnosProvider(baseUrl: session.host);
-    final res = await provider.login(session.username, session.passwordHash!);
+    // 重登必须复用同一个 deviceId（存放在独立 key，登出不会清除）。
+    final deviceId = await _store.getOrCreateDeviceId();
+    final provider = FnosProvider(baseUrl: session.host, deviceId: deviceId);
+    final res =
+        await provider.login(session.username, session.passwordHash!, deviceId: deviceId);
     if (res.isErr) {
       await logout();
       return Result.err(res.error);

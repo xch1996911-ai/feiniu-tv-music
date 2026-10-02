@@ -1,132 +1,143 @@
 # Phase 1 测试报告（phase1_test_report.md）
 
 > 阶段：Phase 1 — 基础播放闭环
-> 报告日期：2026-10-02
-> 关联：[technical_research.md](../technical_research.md)、[fnos_api_verified.md](./fnos_api_verified.md)
+> 报告日期：2026-10-02（真实契约修正版）
+> 关联：[fnOS_API_真实契约.md](./fnOS_API_真实契约.md)、[fnos_api_verified.md](./fnos_api_verified.md)、[technical_research.md](../technical_research.md)
 
-## 0. 关于本报告真实性的说明
+## 0. 报告真实性说明
 
-本报告**不伪造任何测试结果**。
-
-- 本开发沙箱**没有真实飞牛 NAS**，无法执行真实 API 验证、播放验证、遥控验证。
-- 本沙箱**无法访问 pub.dev / dl.google.com / maven.google.com**，且**未安装 Android SDK**，因此无法执行 `flutter pub get` / `flutter analyze` / `flutter test` / `flutter build apk`。
-- 凡因上述环境限制无法执行的项，一律标注：
-  - `BLOCKED_BY_REAL_NAS_TEST` —— 需要真实 NAS（含设备）才能验证；
-  - `BLOCKED_BY_ENVIRONMENT` —— 需要完整 Flutter/Android 工具链与网络才能验证。
-- 代码本身已按 Phase 1 范围完整实现，并在文末给出用户在本机验证所需的确切命令。
+- 本报告**不伪造任何结果**。每一项都标注了它是在哪里被验证的：`CI`（GitHub Actions 实跑）/ `REAL_NAS`（真实 NAS 实测）/ `TV_PENDING`（待电视真机）。
+- 本机（开发用 Windows）**无法构建 Flutter**：Dart/Node 运行时无法创建子进程（`CreateFile failed 231 ERROR_PIPE_BUSY`，机器级硬阻断，已逐项排除沙箱/ConPTY/PATH/Dart 版本因素）。因此所有编译/分析/测试/打包**统一走 GitHub Actions**，产物从 `release` 分支取回。
+- Phase 1 真机**播放**验证需在电视上完成，尚未进行；本文不把它写成已完成。
 
 ---
 
-## 1. 环境信息
+## 1. 环境信息（已实测回填）
 
-| 项 | 沙箱值 | 备注 |
+| 项 | 值 | 来源 |
 |---|---|---|
-| Flutter 版本（沙箱） | 3.0.0 | 内置 Dart 2.17.0，**低于项目下限 3.0.0**；仅为沙箱环境，用户本机建议 Flutter ≥ 3.10 / Dart ≥ 3.0 |
-| Dart SDK（目标） | ≥ 3.2 | 见 `pubspec.yaml` environment |
-| Android SDK | **未安装** | `ANDROID_HOME` 未设置，无 `android.jar` → `BLOCKED_BY_ENVIRONMENT` |
-| pub.dev 可达性 | **不可达** | 无法 `flutter pub get` → `BLOCKED_BY_ENVIRONMENT` |
-| fnOS 版本 | 未知 | 用户真实环境决定，待回填 |
-| 飞牛音乐版本 | 未知 | 用户真实环境决定，待回填 |
-| NAS 连接方式 | 未知 | 用户真实环境决定，待回填 |
-| HTTP / HTTPS | 默认 **HTTP 5666** 局域网 | HTTPS 5667 为自签证书；V1 优先局域网 HTTP 以减少证书问题 |
-| 实际认证模式 | **UNVERIFIED** | 待 `tools/fnos_api_probe` 真机判定（见 fnos_api_verified.md §3） |
+| 构建环境 | Flutter **3.47.6** stable（固定版本）+ Temurin **JDK 17** | CI |
+| Dart | 3.13.5 | CI |
+| Android 构建 | Gradle 9.3.1 + AGP 9.1.0 + Kotlin 2.4.0；compileSdk/targetSdk 36、minSdk 24 | CI |
+| 本地工具链 | ⛔ 不可用（Dart spawn 阻断）；Flutter/JDK/Android SDK 已从本机卸载以释放空间 | 本机 |
+| **NAS 地址** | `http://<NAS>:5666`（**已脱敏**，局域网） | REAL_NAS |
+| **serverVersion** | **1.0.10** | REAL_NAS |
+| **mediasrvVersion** | **0.8.42** | REAL_NAS |
+| serverName / 角色 | `ADMIN` / `admin` | REAL_NAS |
+| capabilities | `{ folderView: false, libraryReconnect: true }` | REAL_NAS |
+| **API 基址** | `http://<NAS>:5666/music/api/v1` | REAL_NAS |
+| **认证方式** | ✅ Cookie `music-token=<token>`（**硬门槛**）；`authx` 为兼容层，该 NAS 未强校验 | REAL_NAS |
+| **deviceId** | ✅ 必需，**32 位小写 hex**，生成一次后持久化复用 | REAL_NAS |
+| **duration 单位** | ✅ **毫秒**（实测 218711ms = 218.7s ≈ 3′39″） | REAL_NAS |
+| **Range 支持** | ✅ `Range: bytes=0-1023` → **HTTP 206**（26322832 字节 FLAC 全量 200 用时 2370ms） | REAL_NAS |
+| 分页参数 | ✅ **`page` + `size`**（`pageSize`/`limit` 被忽略，默认 50） | REAL_NAS |
 
 ---
 
-## 2. 构建 / 分析 / 测试（全部 BLOCKED_BY_ENVIRONMENT）
+## 2. 构建 / 分析 / 测试（CI 实跑，全绿）
 
-| 检查 | 沙箱结果 | 用户本机命令 |
+| 检查 | 结果 | 说明 |
 |---|---|---|
-| `flutter pub get` | ⛔ 无法执行（沙箱 Dart 2.17.0 低于项目下限 3.0.0，且无法访问 pub.dev） | `flutter pub get` |
-| `flutter analyze` 无 error | ⛔ 无法执行 | `flutter analyze` |
-| `flutter test` 通过 | ⛔ 无法执行 | `flutter test`（已编写 5 个不依赖 NAS 的单测） |
-| `flutter build apk` | ⛔ 无法执行（无 Android SDK/Gradle/依赖） | `flutter build apk --debug` / `--release` |
-| Android TV / 模拟器启动 | ⛔ 无法执行 | `flutter run` 选择 TV 设备或 AVD (TV) |
-
-> 已编写的单元测试（`test/`）：模型解析、sha256 密码哈希、Result 代数、分页 hasMore、URL 构造。这些**不依赖真实 NAS**，可在具备工具链的机器上直接运行。
+| `flutter pub get` | ✅ 通过 | 108 个依赖解析成功 |
+| `flutter analyze` | ✅ **No issues found!** | 不允许 ignore / 降低严格度 |
+| `flutter test` | ✅ 全部通过 | 见 §3；契约测试按真实 NAS 样本新增 |
+| `flutter build apk --debug` | ✅ 成功 | `build/app/outputs/flutter-apk/app-debug.apk` |
+| `dart analyze --fatal-infos`（probe） | ✅ 通过 | `tools/fnos_api_probe` 独立包 |
+| `dart compile exe`（probe） | ✅ 成功 | 自包含 `fnos_api_probe.exe`（目标机无需 Dart/Flutter/Git/Node） |
+| CI 失败策略 | ✅ 无 `continue-on-error`、无 analyzer ignore、无删除测试 | 任一失败即整条流水线 FAILED |
 
 ---
 
-## 3. 真实 NAS 验证（全部 BLOCKED_BY_REAL_NAS_TEST）
+## 3. 单元 / 契约测试清单（不依赖 NAS，可在 CI 复跑）
 
-| 项目 | 状态 | 说明 |
+| 测试文件 | 覆盖内容 |
+|---|---|
+| `test/fnos_models_test.dart` | Track/Album/Artist JSON 解析、**duration 毫秒**、`audioSpec.channel`、`album.releaseDate`、`createdAt/updatedAt` Unix 秒、**coverId 保留前缀**、异常类型兜底 |
+| `test/fnos_client_test.dart` | **Cookie `music-token`**、authx 头形状、**分页 page+size**、**歌词 trackGUID**、错误码映射（**99999+401 → tokenExpired**、**120001 → auth**、100001/100005）、登录三字段（含 deviceId 32hex）、token 提取优先级（`data.userToken` → `token` → `result.token`）、URL 构造、端点常量 |
+| `test/fnos_authx_test.dart` | authx 签名器：规范查询串、`decodeURIComponent` 后取 MD5、六段签名串、**黄金向量**（用独立实现算出的期望值）、nonce 范围、免签名白名单 |
+| `test/fnos_ids_test.dart` | deviceId **32 位小写 hex**、唯一性、校验规则 |
+| `test/fnos_auth_test.dart` | **SHA256(明文密码)** 小写 hex（64 位）、幂等性 |
+| `test/fnos_lyric_test.dart` | LRC 逐行解析（小数位/多标签/offset）、`{list,preferred}` 结构、`preferred` 多种形态 |
+| `test/fnos_client_url_test.dart` | 流 URL `guid=`、封面 URL `coverId=`（含前缀，默认 size=200） |
+| `test/result_test.dart`、`test/paged_result_test.dart` | Result 代数、分页 hasMore |
+| `test/support/fake_adapter.dart` | Dio 离线适配器（拦截并记录真实发出的请求），使上述 HTTP 断言无需联网 |
+
+**测试数据脱敏**：`test/fixtures/fnos_samples.dart` 不含真实 NAS IP / 用户名 / token / 音乐文件绝对路径（`audioSpec.path` 已替换为 `/music/test/01.flac`）。
+
+> 本机另提供 `tools/precheck/dart_syntax_precheck.py`（Python）：在无 Dart 工具链时对括号/字符串闭合做推送前预检，不替代 `dart analyze`。
+
+---
+
+## 4. 真实 NAS 验证结果
+
+| 项目 | 状态 | 实测结论 |
 |---|---|---|
-| 连接真实飞牛 NAS | ⛔ BLOCKED_BY_REAL_NAS_TEST | 需要用户局域网中的真实 NAS |
-| 登录（密码 sha256） | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe 真机验证 |
-| 读取歌曲列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe |
-| 读取专辑列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe |
-| 读取歌手列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe |
-| 选择并播放真实 NAS 音乐 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 需真机 + 真曲 |
-| 播放成功格式 | ⛔ BLOCKED_BY_REAL_NAS_TEST | MP3 / FLAC / AAC 待真机确认 |
-| 播放失败格式 | ⛔ BLOCKED_BY_REAL_NAS_TEST | FLAC/DSF 若失败不立即引入 FFmpeg（留 Phase 3） |
-| 平均 API 响应时间 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe 计时 |
-| 首曲播放启动时间 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待真机测量 |
-| 遥控 Play/Pause | ⛔ BLOCKED_BY_REAL_NAS_TEST | MediaSession 已接，真机验证 |
-| 退出播放页不中断 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 后台 MediaSession 已实现，真机验证 |
+| 连接真实飞牛 NAS | ✅ REAL_NAS | `initialization/state` 免鉴权可达，`initialized: true` |
+| 登录（SHA256 密码 + deviceId） | ✅ REAL_NAS | 返回 `code:0`，`data.userToken`（32 位 hex）+ `data.user` |
+| Cookie 认证 | ✅ REAL_NAS | 带 Cookie 可访问 `user/me`；不带 → `401 {"code":99999}` |
+| deviceId 必需性 | ✅ REAL_NAS | 缺失 → `{"code":100001}` |
+| 读取曲目列表 | ✅ REAL_NAS | `track/list?page=1&size=5` 返回 5 条；真实字段已用于修正模型 |
+| 读取专辑 / 歌手列表 | ✅ REAL_NAS | 键集已确认并写入模型 |
+| 歌词接口参数名 | ✅ REAL_NAS | `lyric/list?trackGUID=`；用 `guid` → `100002 InvalidArgs` |
+| 封面接口 | ✅ REAL_NAS | `static/cover?coverId=<含前缀>`，前缀不可拆 |
+| 音频流 + Range | ✅ REAL_NAS | 200 全量 / **206 分段**（1024 字节）|
+| 平均 API 响应时间 | ✅ REAL_NAS | 音频全量 2370ms（26MB FLAC，局域网） |
+| **选择真实 NAS 音乐并在电视播放** | ⏳ **TV_PENDING** | 需把新 APK 装到电视后实测 |
+| 播放成功 / 失败格式 | ⏳ TV_PENDING | 计划覆盖 MP3 / FLAC / AAC |
+| 首曲播放启动时间 | ⏳ TV_PENDING | 待电视实测 |
+| 遥控 Play/Pause | ⏳ TV_PENDING | MediaSession 已接入，待真机 |
+| 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现，待真机 |
 
 ---
 
-## 4. 已验证 / 已落实（代码层面，非运行层面）
+## 5. 真实契约修正（本轮已完成）
 
-以下为**代码已正确实现**的项（逻辑层面，待运行验证）：
-
-- 分层架构：`servers(MusicServerProvider + FnosProvider + FnosClient)` → `repositories` → `ui`，UI 不直接 import `servers/fnos/*`。
-- `MusicServerProvider` 抽象接口仅定义 Phase 1 实际使用的最小方法集。
-- 登录 sha256 密码哈希，明文不离开本机；token 存 `flutter_secure_storage`。
-- 密码默认不保存；开启「记住密码」时仅保存 **sha256 哈希**（非明文）。
-- `code == 120001` token 失效统一处理：有哈希则自动重登，否则回登录页。
-- 局域网自签证书豁免**仅限用户显式配置的主机**（`trustedHosts`），未全局关闭 TLS。
-- 播放引擎 `just_audio`（ExoPlayer 系统解码优先），未引入 media_kit（留 Phase 3）。
-- `audio_service` MediaSession：后台播放 + 遥控媒体键（传输键由系统路由，Flutter 不重复接管）。
-- 临时 TV 验证 UI：登录 → 服务器状态 → 歌曲列表 → 播放页，基本 D-pad 焦点（列表行可聚焦、OK 选曲、返回键路由）。
-- 安全红线：`.gitignore` 已排除凭据/Token/FNID/本地 probe 结果；所有日志强制脱敏（`Log.redactUser` / `redactHost`，Token 仅显示前 6 位）。
-
----
-
-## 5. 发现的问题 / 疑点
-
-1. **duration 单位假设**：模型假设 `duration` 为毫秒；若真机返回秒需修正（fnos_api_verified.md §5）。
-2. **认证机制未定**：Cookie vs authx 签名头未真机判定，App 当前默认 Cookie 方案。
-3. **Phase 0 参考仓库无 LICENSE**：已遵守合规要求，**未复制任何参考源码**，全部自研；API 协议事实来自第三方公开逆向与开源增强服务文档。
-4. **沙箱无法本地验证**：编译/分析/测试/构建需用户在本机具备完整工具链后执行。
-5. **原生工程文件未实机验证**：`android/` 下清单/构建脚本/图标为按 Flutter 3.16 标准手写的；若与用户 Flutter 版本不符，可在项目根执行 `flutter create .` 重新生成原生工程（不会删除 `lib/` 与 `pubspec` 内容）。
+| 优先级 | 修正 | 落地文件 |
+|---|---|---|
+| P0 | 补 `deviceId`（32hex，`flutter_secure_storage` 持久化复用，登出不清除） | `lib/core/ids.dart`、`lib/services/secure_store.dart`、`lib/repositories/auth_repository.dart` |
+| P0 | 补 `authx` MD5 签名（盐值按契约），与 Cookie **解耦**为兼容层 | `lib/servers/fnos/fnos_authx.dart`、`lib/servers/fnos/fnos_client.dart` |
+| P0 | token 提取：`data.userToken` 优先，兼容 `token` / `result.token` | `lib/servers/fnos/fnos_provider.dart` |
+| P1 | `duration` 按毫秒（`Track.durationMs` + `Duration` 视图） | `lib/domain/track.dart` |
+| P1 | 字段重命名/补齐：`guid`、`artists[]`、`album.releaseDate`、`audioSpec.channel`、`isrc`、`isFavorite`、`genres`、`isCue`、`coverId` | `lib/domain/{track,album,artist,user}.dart` |
+| P1 | `createdAt`/`updatedAt` 按 Unix 秒（毫秒自动收敛） | `lib/domain/json_util.dart` |
+| P1 | 封面 URL 用 `static/cover?coverId=<含前缀>`，优先级 track→album | `fnos_client.dart`、`Track.effectiveCoverId` |
+| P1 | 歌词接口与逐行歌词模型 | `fnos_endpoints.dart`、`lib/domain/lyric.dart` |
+| P1 | 错误码映射与 **99999 / 120001 区分** | `lib/servers/fnos/fnos_error_codes.dart` |
+| P2 | 分页统一 `page` + `size` | `fnos_endpoints.dart`、`fnos_provider.dart` |
+| — | 流媒体保持 `just_audio`（服务端已支持 Range），**未引入** FFmpeg / media_kit | `lib/playback/playback_engine.dart`（未改动） |
 
 ---
 
-## 6. 下一步建议（进入 Phase 2 前）
+## 6. 发现的问题 / 遗留疑点
 
-1. **用户在本机执行**（具备 Flutter ≥ 3.16 + Android SDK）：
-   ```bash
-   flutter pub get
-   flutter analyze        # 期望无 error
-   flutter test           # 运行单元/模型解析测试
-   flutter build apk --debug
-   ```
-2. **准备一台真实飞牛 NAS + Android TV/模拟器**，运行 `tools/fnos_api_probe` 完成 API 真机验证，回填 `fnos_api_verified.md`。
-3. 用真机跑通：登录 → 列表 → 选曲 → 播放；确认 MP3/FLAC/AAC 播放与遥控键。
-4. 回填本节 §1 的 fnOS/飞牛音乐版本、连接方式、响应时间、首播启动时间。
-5. 仅当**全部 15 项验收标准**（见 §7）满足后，再进入 Phase 2（真正的 TV 首页 / D-pad Focus 系统 / 专辑页 / 歌手页）。
+1. **歌词响应字段细节未取到样本**：`lyric/list` 的 `{list, preferred}` 外层已确认，但 `list` 内元素字段（`text` 是否承载整段 LRC）尚未实测；解析器对 LRC 与单行两种形态都兼容，待真机样本收敛。
+2. **`hasLyric` / `accessStatus`**：未在实测样本中出现，保留为缺省字段，**不得**据此判断「无歌词」或「不可播」。
+3. **`size` 取值**：官方前端枚举 200/120/60/100；本 App 默认取 200（最大已确认值），未验证的尺寸未使用。
+4. **电视端播放链路未验证**：服务端 Range 已确认，客户端 Seek / 遥控 / 后台播放仍需电视实测。
+5. **自签 HTTPS / `flutter_secure_storage`** 在国产盒子上的行为未验证（本次实测走局域网 HTTP）。
+6. **本机无 Flutter 工具链**：所有验证依赖 CI，本地代码改动推送前无法 `dart analyze`（故附 Python 预检脚本兜底）。
 
 ---
 
-## 7. 验收标准对照（Phase 1 通过条件）
+## 7. 验收标准对照（Phase 1）
 
 | # | 验收项 | 状态 | 说明 |
 |---|---|---|---|
-| 1 | Flutter 工程正常编译 | ⛔ BLOCKED_BY_ENVIRONMENT | 用户本机需 `flutter pub get` + `flutter build` |
-| 2 | `flutter analyze` 无 error | ⛔ BLOCKED_BY_ENVIRONMENT | 用户本机执行 |
-| 3 | `flutter test` 通过 | ⛔ BLOCKED_BY_ENVIRONMENT | 单测已编写，待运行 |
-| 4 | Android TV / 模拟设备可启动 | ⛔ BLOCKED_BY_ENVIRONMENT | 用户本机 `flutter run` |
-| 5 | 连接真实飞牛 NAS | ⛔ BLOCKED_BY_REAL_NAS_TEST | 需真实 NAS |
-| 6 | 可以登录 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待 probe + 真机 |
-| 7 | 读取歌曲列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待真机 |
-| 8 | 读取专辑列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待真机 |
-| 9 | 读取歌手列表 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待真机 |
-| 10 | 选择真实 NAS 音乐并播放 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 待真机 |
-| 11 | Play/Pause 可用 | ⛔ BLOCKED_BY_REAL_NAS_TEST | MediaSession 已接，待真机 |
-| 12 | 退出播放页不中断 | ⛔ BLOCKED_BY_REAL_NAS_TEST | 后台 MediaSession，待真机 |
-| 13 | 凭据无明文泄漏 | ✅ 代码层面已落实 | `flutter_secure_storage` + 仅存哈希 + 日志脱敏 + `.gitignore` |
-| 14 | 完成 fnos_api_verified.md | ✅ 已生成（研究整理版） | 待真机 probe 回填 VERIFIED/FAILED |
-| 15 | 完成 phase1_test_report.md | ✅ 已生成 | 即本文件 |
+| 1 | Flutter 工程正常编译 | ✅ CI | `flutter pub get` + `build apk --debug` 成功 |
+| 2 | `flutter analyze` 无 error | ✅ CI | No issues found! |
+| 3 | `flutter test` 通过 | ✅ CI | 契约测试已按真实 NAS 样本扩写 |
+| 4 | Android TV / 模拟设备可启动 | ⏳ TV_PENDING | 待安装新 APK 到电视 |
+| 5 | 连接真实飞牛 NAS | ✅ REAL_NAS | `initialization/state` |
+| 6 | 可以登录 | ✅ REAL_NAS | SHA256 + deviceId → `data.userToken` |
+| 7 | 读取歌曲列表 | ✅ REAL_NAS | `track/list?page=&size=` |
+| 8 | 读取专辑列表 | ✅ REAL_NAS | `album/list?page=&size=` |
+| 9 | 读取歌手列表 | ✅ REAL_NAS | `artist/list?page=&size=` |
+| 10 | 选择真实 NAS 音乐并播放 | ⏳ TV_PENDING | 待电视实测 |
+| 11 | Play/Pause 可用 | ⏳ TV_PENDING | MediaSession 已接入 |
+| 12 | 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现 |
+| 13 | 凭据无明文泄漏 | ✅ | `flutter_secure_storage` + 仅存 sha256 哈希 + 日志/报告脱敏 + `.gitignore` |
+| 14 | 完成 fnos_api_verified.md | ✅ | 9 个 Phase 1 接口全部 **VERIFIED**，IP 已脱敏 |
+| 15 | 完成 phase1_test_report.md | ✅ | 即本文件 |
 
-> 结论：**第 13–15 项已落实；第 1–4 项受沙箱工具链限制 BLOCKED_BY_ENVIRONMENT；第 5–12 项受无真实 NAS 限制 BLOCKED_BY_REAL_NAS_TEST。** 未达标项均非代码缺失，而是环境/设备缺失，需在用户本机与真实 NAS 上完成验证后方可进入 Phase 2。
+> 结论：**代码、CI、真实 API 契约（1–3、5–9、13–15）已达标**；**4、10–12 需用户把新 APK 装到电视并完成真实播放测试**。
+> **在电视真实播放验证通过之前，不进入 Phase 2。**

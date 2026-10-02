@@ -1,49 +1,106 @@
-/// 专辑。Phase 1 仅使用已验证字段（见 technical_research.md §6）。
+import 'artist.dart';
+import 'json_util.dart';
+
+/// 专辑。
+///
+/// 字段集来自真实 NAS 实测（`fnOS_API_真实契约.md` §5.2）：
+/// `['guid','name','coverId','releaseDate','barcode','createdAt','updatedAt','artists','trackCount']`
+///
+/// ⚠️ 与 Phase 1 早期推测的差异：**没有** `originalReleaseYear`，
+/// 真实年份字段是 `releaseDate`（字符串，如 `"2002"`）。
 class Album {
   final String guid;
   final String name;
+
+  /// 含前缀的完整封面 ID，如 `album_<32hex>`。
   final String? coverId;
+
+  /// 发行日期。实测为**字符串**，可能只有年份（`"2002"`）或完整日期。
+  final String? releaseDate;
+
+  /// 条码（前端用于匹配元数据源），非必填。
+  final String? barcode;
+
+  /// Unix 秒。
+  final DateTime? createdAt;
+
+  /// Unix 秒。
+  final DateTime? updatedAt;
+
+  /// 专辑关联的歌手（实测 `album/list` 会返回，`track.album` 内嵌对象不返回）。
+  final List<ArtistRef> artists;
+
   final int trackCount;
 
   const Album({
     required this.guid,
     required this.name,
     this.coverId,
-    required this.trackCount,
+    this.releaseDate,
+    this.barcode,
+    this.createdAt,
+    this.updatedAt,
+    this.artists = const <ArtistRef>[],
+    this.trackCount = 0,
   });
+
+  /// 年份（从 [releaseDate] 前 4 位提取，取不到返回 null）。
+  int? get releaseYear {
+    final d = releaseDate;
+    if (d == null || d.length < 4) return null;
+    return int.tryParse(d.substring(0, 4));
+  }
 
   /// 从飞牛音乐 `album/list` / `album/detail` 响应的 data 项解析。
   factory Album.fromJson(Map<String, dynamic> json) {
     return Album(
-      guid: (json['guid'] as String?) ?? '',
-      name: (json['name'] as String?) ?? '',
-      coverId: json['coverId'] as String?,
-      trackCount: _asInt(json['trackCount']),
+      guid: jsonString(json['guid']),
+      name: jsonString(json['name']),
+      coverId: jsonStringOrNull(json['coverId']),
+      releaseDate: jsonStringOrNull(json['releaseDate']),
+      barcode: jsonStringOrNull(json['barcode']),
+      createdAt: jsonUnixSeconds(json['createdAt']),
+      updatedAt: jsonUnixSeconds(json['updatedAt']),
+      artists: ArtistRef.listFromJson(json['artists']),
+      trackCount: jsonInt(json['trackCount']),
     );
   }
 }
 
-/// 曲目内嵌的专辑引用（轻量，无 trackCount）。
+/// 曲目内嵌的专辑引用（轻量，无 trackCount / artists）。
 class AlbumRef {
   final String guid;
   final String name;
   final String? coverId;
+  final String? releaseDate;
+  final String? barcode;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  const AlbumRef({required this.guid, required this.name, this.coverId});
+  const AlbumRef({
+    required this.guid,
+    required this.name,
+    this.coverId,
+    this.releaseDate,
+    this.barcode,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  /// 空引用（曲目未内嵌专辑时使用，避免调用方到处判空）。
+  static const AlbumRef empty = AlbumRef(guid: '', name: '');
+
+  bool get isEmpty => guid.isEmpty && name.isEmpty;
 
   factory AlbumRef.fromJson(Map<String, dynamic> json) {
     return AlbumRef(
-      guid: (json['guid'] as String?) ?? '',
-      name: (json['name'] as String?) ?? '',
-      coverId: json['coverId'] as String?,
+      guid: jsonString(json['guid']),
+      name: jsonString(json['name']),
+      coverId: jsonStringOrNull(json['coverId']),
+      releaseDate: jsonStringOrNull(json['releaseDate']),
+      barcode: jsonStringOrNull(json['barcode']),
+      createdAt: jsonUnixSeconds(json['createdAt']),
+      updatedAt: jsonUnixSeconds(json['updatedAt']),
     );
   }
-}
-
-int _asInt(dynamic v) {
-  if (v == null) return 0;
-  if (v is int) return v;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v) ?? 0;
-  return 0;
 }

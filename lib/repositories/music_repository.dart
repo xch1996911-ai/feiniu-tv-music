@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../core/result.dart';
 import '../domain/album.dart';
 import '../domain/artist.dart';
+import '../domain/lyric.dart';
 import '../domain/paged_result.dart';
 import '../domain/track.dart';
 import '../servers/music_server_provider.dart';
@@ -41,8 +42,17 @@ class MusicRepository extends ChangeNotifier {
   Future<Result<PagedResult<Artist>>> getArtists(int page, int size) =>
       _provider.getArtists(page, size);
 
+  /// 歌词（逐行）。实现层使用 `lyric/list?trackGUID=`。
+  Future<Result<LyricDoc>> getLyrics(String trackGuid) =>
+      _provider.getLyrics(trackGuid);
+
   String buildStreamUrl(String trackGuid) => _provider.buildStreamUrl(trackGuid);
 
-  String buildCoverUrl(String coverId, {int size = 800}) =>
+  /// 封面 URL。传入的 coverId 必须是含前缀的完整值
+  /// （优先用 `Track.effectiveCoverId`，其优先级为 track → album）。
+  String buildCoverUrl(
+    String coverId, {
+    int size = MusicServerProvider.defaultCoverSize,
+  }) =>
       _provider.buildCoverUrl(coverId, size: size);
 }

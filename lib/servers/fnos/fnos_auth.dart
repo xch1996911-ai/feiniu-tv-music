@@ -3,8 +3,13 @@ import 'package:crypto/crypto.dart';
 
 /// 飞牛音乐登录认证辅助。
 ///
-/// 协议事实（technical_research.md §2.2）：`POST /user/password-login` 的密码字段
-/// 需提交 `sha256(明文密码)` 的十六进制小写串，而非明文。
+/// 协议事实（`fnOS_API_真实契约.md` §1.2，真实 NAS 实测）：
+/// `POST /user/password-login` 需要三个字段：
+/// - `username`（trim 后）
+/// - `password` = **sha256(明文密码) 小写 hex**
+/// - `deviceId` = 32 位小写 hex（见 `core/ids.dart`，须持久化复用）
+///
+/// 明文密码永不离开本机，也不进入日志。
 class FnosAuth {
   FnosAuth._();
 
