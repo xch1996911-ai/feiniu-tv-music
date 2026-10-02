@@ -215,17 +215,35 @@ jobs:
       - name: 打包并推送到 release 分支
         run: |
           set -o pipefail
+          {
+            echo "=== 下载到的产物 ==="
+            ls -la dl-apk dl-exe
+            echo "=== 原始大小 ==="
+            stat -c '%n = %s bytes' dl-apk/app-debug.apk dl-exe/fnos_api_probe.exe
+            echo "=== 压缩 APK（Git 单文件硬上限 100MB，APK 内含未压缩 native .so）==="
+            rm -rf release && mkdir -p release
+            cp dl-exe/fnos_api_probe.exe release/
+            zip -9 -q release/app-debug.apk.zip dl-apk/app-debug.apk
+            stat -c '%n = %s bytes' release/app-debug.apk.zip release/fnos_api_probe.exe
+            printf 'built_from_sha: %s\nrun_id: %s\ntime: %s\n' \
+              "${{ github.sha }}" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > release/BUILD_INFO.txt
+            echo "=== release/ 内容 ==="
+            ls -la release/
+          } 2>&1 | tee release-bundle.log
+
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          rm -rf release && mkdir -p release
-          cp dl-apk/app-debug.apk release/
-          cp dl-exe/fnos_api_probe.exe release/
-          printf 'built_from_sha: %s\nrun_id: %s\ntime: %s\n' \
-            "${{ github.sha }}" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > release/BUILD_INFO.txt
-          ls -la release/
-          # orphan 分支只提交 release/ 目录，force push 保证仓库体积恒定
+
+          # 1) 先把本 job 日志提交到 main 的 ci-logs/，本地即可读取（该路径已 paths-ignore）
+          mkdir -p ci-logs
+          cp release-bundle.log ci-logs/release-bundle.log
+          git add -f ci-logs
+          git commit -q -m "ci: release-bundle log for run ${{ github.run_id }}" || echo "无日志可提交"
+          git push origin HEAD:main || echo "日志推送失败"
+
+          # 2) 再把 release/ 推到独立分支；force push 保证仓库体积恒定
           git switch --orphan release-work >/dev/null 2>&1
           git rm -r -q --cached . >/dev/null 2>&1 || true
           git add -f release >/dev/null 2>&1
-          git commit -q -m "release: app-debug.apk + fnos_api_probe.exe (run ${{ github.run_id }})"
+          git commit -q -m "release: app-debug.apk.zip + fnos_api_probe.exe (run ${{ github.run_id }})"
           git push --force origin HEAD:release
