@@ -1,5 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' • test/result_test.dart:28:5 • prefer_const_declarations
-
-1 issue found. (ran in 8.6s)
+No issues found! (ran in 7.9s)
