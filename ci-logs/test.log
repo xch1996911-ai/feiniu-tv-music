@@ -6,20 +6,8 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: map 仅作用于成功值
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: getOrElse 失败回退
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson 解析完整字段
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson accessStatus=3 标记失效不可播 (failed)
-type 'Null' is not a subtype of type 'String' in type cast
-package:feiniu_tv_music/domain/album.dart 36:26  new AlbumRef.fromJson
-package:feiniu_tv_music/domain/track.dart 92:22  new Track.fromJson
-test/fnos_models_test.dart 44:23                 main.<fn>.<fn>
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson 缺少可选字段不崩溃 (failed)
-type 'Null' is not a subtype of type 'String' in type cast
-package:feiniu_tv_music/domain/album.dart 36:26  new AlbumRef.fromJson
-package:feiniu_tv_music/domain/track.dart 92:22  new Track.fromJson
-test/fnos_models_test.dart 55:23                 main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson accessStatus=3 标记失效不可播
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson 缺少可选字段不崩溃
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Album / Artist Album.fromJson
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Album / Artist Artist.fromJson
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: buildStreamUrl / buildCoverUrl 纯字符串构造（无需联网）
@@ -28,4 +16,4 @@ test/fnos_models_test.dart 55:23                 main.<fn>.<fn>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 空字符串可计算
 ::endgroup::
 
-::error::12 tests passed, 2 failed.
+🎉 14 tests passed.

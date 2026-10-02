@@ -131,3 +131,36 @@ Changed 108 dependencies!
 19 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Upgrading analysis_options.yaml to exclude build and platform directories.
+Running Gradle task 'assembleDebug'...                          
+e: file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts:44:13: Unresolved reference 'minifyEnabled'.
+e: file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts:45:13: Unresolved reference 'shrinkResources'.
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file '/home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts' line: 22
+
+* What went wrong:
+Script compilation errors:
+
+  Line 22: android {
+           ^ 'fun Project.android(configure: Action<BaseAppModuleExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.ApplicationExtension.
+               This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
+
+  Line 44:             minifyEnabled = false
+                       ^ Unresolved reference 'minifyEnabled'.
+
+  Line 45:             shrinkResources = false
+                       ^ Unresolved reference 'shrinkResources'.
+
+3 errors
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 15s
+Running Gradle task 'assembleDebug'...                             76.4s
+Gradle task assembleDebug failed with exit code 1
