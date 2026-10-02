@@ -1,12 +1,16 @@
 name: Publish diag APKs
 
-# 把「Phase1 CI」已经构建好的 6 个诊断 APK，从该次运行的 Artifacts 取回，
+# 把「Phase1 CI」已经构建好的全部诊断 APK，从该次运行的 Artifacts 取回，
 # 再统一推到独立分支 release，使它们可以**匿名用网址下载**。
 #
 # 为什么不写在 ci.yml 里直接推？
 #   GitHub 的 artifact 下载接口必须鉴权，而 release 分支的 raw/blob 链接不需要；
-#   但 6 个 APK 一起 force push 约 250MB，放在主流程里会拖长构建 job 且一旦推失败
+#   但全部 APK 一起 force push 约 380MB，放在主流程里会拖长构建 job 且一旦推失败
 #   会连带影响质量门。拆成独立 workflow 后，即使发布失败也不影响 APK 已构建成功的事实。
+#
+# ⚠️ 本 workflow 是 release 分支的**唯一写入者**。曾有过第二个 job（ci.yml 里的
+#    release-bundle）也用孤儿分支 force push 覆盖该分支，结果是每跑一次 CI 就把
+#    已发布的 debug 包整批抹掉、用户手里的下载链接集体失效。
 #
 # 为什么用「push 到 publish-diag 分支」触发而不是 workflow_run？
 #   workflow_run 只认默认分支上的文件；若把本文件提交到 main，会顺带触发一次完整的
@@ -38,7 +42,7 @@ concurrency:
 
 jobs:
   publish:
-    name: 取回 6 个 APK 并推送到 release 分支
+    name: 取回全部诊断 APK 并推送到 release 分支
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -141,26 +145,30 @@ jobs:
           source_run_id: ${{ steps.src.outputs.run_id }}
           published_at: $(date -u +%FT%TZ)
 
-          === 6 个诊断 APK（同一 commit、同一份 Dart 业务代码，只差构建配置）===
+          === 诊断 APK（同一 commit、同一份 Dart 业务代码，只差构建配置）===
           文件名                                             Renderer                    插件注册 类型
           app-hisense-no-impeller-debug.apk                  EnableImpeller=false        是       debug
           app-hisense-impeller-default-debug.apk             Flutter 默认后端            是       debug
           app-hisense-impeller-gles-debug.apk                ImpellerBackend=opengles    是       debug
           app-hisense-no-impeller-release.apk                EnableImpeller=false        是       release
-          app-hisense-engine-smoke.apk                        Flutter 默认后端            是       debug
-          app-hisense-engine-smoke-no-plugins.apk             Flutter 默认后端            否       debug
+          app-hisense-engine-smoke.apk                       Flutter 默认后端            是       debug
+          app-hisense-engine-smoke-no-plugins.apk            Flutter 默认后端            否       debug
+          app-hisense-release.apk                            Flutter 默认后端            是       release   ← 正式发布候选
 
           说明：
-            · 6 个包 applicationId 各不相同，可同时安装，互不覆盖；
+            · 各包 applicationId 各不相同，可同时安装，互不覆盖；
             · 超过 90MB 的包以 .zip 形式入库，下载后解压即可得到 .apk；
             · E / F 是最小引擎冒烟包（只显示 "FLUTTER ENGINE OK"），
               不含任何飞牛业务逻辑、不联网、不注册业务插件；
+            · G（app-hisense-release.apk）是「默认后端 + release + 业务代码」，
+              7 个包里唯一适合作为正式发布的组合；
+            · 其余各包仅用于诊断，不建议长期使用；
             · 完整矩阵与判读方法见仓库 docs/tv_renderer_ab_test.md；
             · MANIFEST.txt 含每个 APK 的大小 / sha256 / 配置 / boot.log 路径。
 
           === 其余 ===
           fnos_api_probe.exe   NAS API 探针（Windows 自包含，无需 Dart/Flutter）
-          MANIFEST.txt         本次 6 个 APK 的校验值与配置清单
+          MANIFEST.txt         本次全部 APK 的校验值与配置清单
           EOF
 
       - name: 推送到 release 分支
@@ -173,6 +181,6 @@ jobs:
           git switch --orphan publish-work >/dev/null 2>&1
           git rm -r -q --cached . >/dev/null 2>&1 || true
           git add -f release >/dev/null 2>&1
-          git commit -q -m "release: 6 诊断 APK from run ${{ steps.src.outputs.run_id }}"
+          git commit -q -m "release: diag APKs from run ${{ steps.src.outputs.run_id }}"
           git push --force origin HEAD:release
           echo "已发布到 release 分支"
