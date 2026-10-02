@@ -4,28 +4,28 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Ok 分支', () {
-    final r = Result.ok(42);
+    const r = Result<int>.ok(42);
     expect(r.isOk, isTrue);
     expect(r.isErr, isFalse);
     expect(r.value, 42);
   });
 
   test('Err 分支', () {
-    final r = Result<String>.err(AppError('boom', kind: ErrorKind.network));
+    const r = Result<String>.err(AppError('boom', kind: ErrorKind.network));
     expect(r.isErr, isTrue);
     expect(r.error.kind, ErrorKind.network);
     expect(r.error.message, 'boom');
   });
 
   test('map 仅作用于成功值', () {
-    final r = Result.ok(2).map((v) => v * 3);
+    final r = const Result<int>.ok(2).map((v) => v * 3);
     expect(r.value, 6);
-    final e = Result<int>.err(AppError('x')).map((v) => v * 3);
+    final e = const Result<int>.err(AppError('x')).map((v) => v * 3);
     expect(e.isErr, isTrue);
   });
 
   test('getOrElse 失败回退', () {
-    final e = Result<int>.err(AppError('x'));
+    final e = const Result<int>.err(AppError('x'));
     expect(e.getOrElse((_) => -1), -1);
   });
 }

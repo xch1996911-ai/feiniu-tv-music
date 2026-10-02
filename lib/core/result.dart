@@ -41,11 +41,13 @@ class Result<T> {
 }
 
 class _Ok<T> extends Result<T> {
+  @override
   final T value;
   const _Ok(this.value) : super._();
 }
 
 class _Err<T> extends Result<T> {
+  @override
   final AppError error;
   const _Err(this.error) : super._();
 }

@@ -63,10 +63,11 @@ class _ServerStatusPageState extends State<ServerStatusPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthRepository>();
-    return WillPopScope(
-      onWillPop: () async {
-        widget.onBack();
-        return false;
+    // Flutter 3.47 已废弃 WillPopScope，改用 PopScope。
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onBack();
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('服务器状态')),

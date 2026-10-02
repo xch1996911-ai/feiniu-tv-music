@@ -13,10 +13,11 @@ class PlayerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        onBack();
-        return false;
+    // Flutter 3.47 已废弃 WillPopScope（且不兼容 Android 预测式返回），改用 PopScope。
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onBack();
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('正在播放')),

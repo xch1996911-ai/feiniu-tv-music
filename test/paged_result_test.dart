@@ -4,15 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('hasMore 判断', () {
     expect(
-      PagedResult(items: const [], total: 100, page: 1, size: 10).hasMore,
+      const PagedResult<int>(items: [], total: 100, page: 1, size: 10).hasMore,
       isTrue,
     );
     expect(
-      PagedResult(items: const [], total: 10, page: 1, size: 10).hasMore,
+      const PagedResult<int>(items: [], total: 10, page: 1, size: 10).hasMore,
       isFalse,
     );
     expect(
-      PagedResult(items: const [], total: 5, page: 1, size: 10).hasMore,
+      const PagedResult<int>(items: [], total: 5, page: 1, size: 10).hasMore,
       isFalse,
     );
   });

@@ -69,10 +69,11 @@ class _SongListPageState extends State<SongListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        widget.onBack();
-        return false;
+    // Flutter 3.47 已废弃 WillPopScope，改用 PopScope。
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.onBack();
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('歌曲列表')),
