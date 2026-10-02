@@ -71,9 +71,9 @@ class FnosClient {
       );
       return _unwrap(resp);
     } on DioException catch (e) {
-      return Err(_toAppError(e));
+      return Result.err(_toAppError(e));
     } catch (e, st) {
-      return Err(AppError('未知请求错误', kind: ErrorKind.unknown, cause: e, stack: st));
+      return Result.err(AppError('未知请求错误', kind: ErrorKind.unknown, cause: e, stack: st));
     }
   }
 
@@ -89,33 +89,33 @@ class FnosClient {
       );
       return _unwrap(resp);
     } on DioException catch (e) {
-      return Err(_toAppError(e));
+      return Result.err(_toAppError(e));
     } catch (e, st) {
-      return Err(AppError('未知请求错误', kind: ErrorKind.unknown, cause: e, stack: st));
+      return Result.err(AppError('未知请求错误', kind: ErrorKind.unknown, cause: e, stack: st));
     }
   }
 
   Result<Map<String, dynamic>> _unwrap(Response resp) {
     final data = resp.data;
     if (data is! Map) {
-      return const Err(AppError('响应不是合法 JSON 对象', kind: ErrorKind.parse));
+      return const Result.err(AppError('响应不是合法 JSON 对象', kind: ErrorKind.parse));
     }
     final code = data['code'] as int? ?? -1;
     final msg = (data['msg'] as String?) ?? '';
     if (code == FnosEndpoints.codeTokenExpired) {
-      return const Err(AppError('登录已失效，请重新登录', kind: ErrorKind.tokenExpired));
+      return const Result.err(AppError('登录已失效，请重新登录', kind: ErrorKind.tokenExpired));
     }
     if (code != FnosEndpoints.codeOk) {
-      return Err(AppError(
+      return Result.err(AppError(
         msg.isNotEmpty ? msg : '服务端错误($code)',
         kind: ErrorKind.server,
       ));
     }
     final payload = data['data'];
     if (payload is! Map) {
-      return const Err(AppError('响应 data 缺失', kind: ErrorKind.parse));
+      return const Result.err(AppError('响应 data 缺失', kind: ErrorKind.parse));
     }
-    return Ok(payload as Map<String, dynamic>);
+    return Result.ok(payload as Map<String, dynamic>);
   }
 
   AppError _toAppError(DioException e) {

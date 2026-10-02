@@ -43,47 +43,47 @@ class FnosProvider implements MusicServerProvider {
       'username': username,
       'password': passwordSha256,
     });
-    if (res.isErr) return Err(res.error);
+    if (res.isErr) return Result.err(res.error);
 
     final data = res.value;
     final token = (data['userToken'] as String?) ?? (data['token'] as String?);
     if (token == null || token.isEmpty) {
-      return const Err(AppError('登录响应缺少 token 字段', kind: ErrorKind.parse));
+      return const Result.err(AppError('登录响应缺少 token 字段', kind: ErrorKind.parse));
     }
     final userJson =
         (data['user'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-    return Ok(AuthResult(token: token, user: User.fromJson(userJson)));
+    return Result.ok(AuthResult(token: token, user: User.fromJson(userJson)));
   }
 
   @override
   Future<Result<User>> getMe() async {
     final res = await _client.getRaw(FnosEndpoints.userMe);
-    if (res.isErr) return Err(res.error);
-    return Ok(User.fromJson(res.value));
+    if (res.isErr) return Result.err(res.error);
+    return Result.ok(User.fromJson(res.value));
   }
 
   @override
   Future<Result<PagedResult<Track>>> getTracks(int page, int size) async {
     final res = await _client.getRaw(FnosEndpoints.trackList,
         query: {'page': page, 'size': size});
-    if (res.isErr) return Err(res.error);
-    return Ok(_toPaged(res.value, page, size, Track.fromJson));
+    if (res.isErr) return Result.err(res.error);
+    return Result.ok(_toPaged(res.value, page, size, Track.fromJson));
   }
 
   @override
   Future<Result<PagedResult<Album>>> getAlbums(int page, int size) async {
     final res = await _client.getRaw(FnosEndpoints.albumList,
         query: {'page': page, 'size': size});
-    if (res.isErr) return Err(res.error);
-    return Ok(_toPaged(res.value, page, size, Album.fromJson));
+    if (res.isErr) return Result.err(res.error);
+    return Result.ok(_toPaged(res.value, page, size, Album.fromJson));
   }
 
   @override
   Future<Result<PagedResult<Artist>>> getArtists(int page, int size) async {
     final res = await _client.getRaw(FnosEndpoints.artistList,
         query: {'page': page, 'size': size});
-    if (res.isErr) return Err(res.error);
-    return Ok(_toPaged(res.value, page, size, Artist.fromJson));
+    if (res.isErr) return Result.err(res.error);
+    return Result.ok(_toPaged(res.value, page, size, Artist.fromJson));
   }
 
   @override

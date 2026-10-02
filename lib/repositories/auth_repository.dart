@@ -64,7 +64,7 @@ class AuthRepository extends ChangeNotifier {
     if (res.isErr) {
       _busy = false;
       notifyListeners();
-      return Err(res.error);
+      return Result.err(res.error);
     }
 
     final auth = res.value;
@@ -84,7 +84,7 @@ class AuthRepository extends ChangeNotifier {
     Log.i('登录成功 user=${Log.redactUser(username)} remember=$rememberPassword');
     _busy = false;
     notifyListeners();
-    return Ok(auth);
+    return Result.ok(auth);
   }
 
   /// token 失效（120001）统一入口。
@@ -93,13 +93,13 @@ class AuthRepository extends ChangeNotifier {
     final session = await _store.readSession();
     if (session == null || !session.canAutoRelogin) {
       await logout();
-      return const Err(AppError('登录已失效，请重新登录', kind: ErrorKind.tokenExpired));
+      return const Result.err(AppError('登录已失效，请重新登录', kind: ErrorKind.tokenExpired));
     }
     final provider = FnosProvider(baseUrl: session.host);
     final res = await provider.login(session.username, session.passwordHash!);
     if (res.isErr) {
       await logout();
-      return Err(res.error);
+      return Result.err(res.error);
     }
     provider.setToken(res.value.token);
     _provider = provider;
@@ -112,7 +112,7 @@ class AuthRepository extends ChangeNotifier {
     ));
     Log.i('token 失效已自动重登 user=${Log.redactUser(session.username)}');
     notifyListeners();
-    return const Ok(true);
+    return const Result.ok(true);
   }
 
   Future<void> logout() async {
