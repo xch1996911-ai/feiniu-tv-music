@@ -25,7 +25,7 @@ void main() {
   });
 
   test('getOrElse 失败回退', () {
-    final e = const Result<int>.err(AppError('x'));
+    const e = Result<int>.err(AppError('x'));
     expect(e.getOrElse((_) => -1), -1);
   });
 }
