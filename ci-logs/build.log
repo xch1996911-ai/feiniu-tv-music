@@ -143,17 +143,17 @@ Preparing "Install CMake 3.22.1 v.3.22.1".
 Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
 "Install CMake 3.22.1 v.3.22.1" complete.
 "Install CMake 3.22.1 v.3.22.1" finished.
-Running Gradle task 'assembleDebug'...                            253.5s
+Running Gradle task 'assembleDebug'...                            233.8s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-no-impeller-debug.apk = 122244648 bytes
 
 ==================== 变体 B ====================
-Running Gradle task 'assembleDebug'...                              6.6s
+Running Gradle task 'assembleDebug'...                              5.5s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-impeller-default-debug.apk = 122244628 bytes
 
 ==================== 变体 C ====================
-Running Gradle task 'assembleDebug'...                              4.2s
+Running Gradle task 'assembleDebug'...                              3.2s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-impeller-gles-debug.apk = 122244668 bytes
 
@@ -161,26 +161,26 @@ dist/app-hisense-impeller-gles-debug.apk = 122244668 bytes
 Running Gradle task 'assembleRelease'...                        
 Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 1584 bytes (99.9% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
 Caught exception: Already watching path: /home/runner/work/feiniu-tv-music/feiniu-tv-music/android
-Running Gradle task 'assembleRelease'...                          120.6s
+Running Gradle task 'assembleRelease'...                          105.6s
 ✓ Built build/app/outputs/flutter-apk/app-release.apk (34.1MB)
 dist/app-hisense-no-impeller-release.apk = 34103743 bytes
 
 ==================== 变体 E ====================
-Running Gradle task 'assembleDebug'...                             21.6s
+Running Gradle task 'assembleDebug'...                             18.7s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-engine-smoke.apk = 120438408 bytes
 
 ==================== 变体 F ====================
-Running Gradle task 'assembleDebug'...                             18.3s
+Running Gradle task 'assembleDebug'...                             16.3s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-engine-smoke-no-plugins.apk = 120438392 bytes
 total 626708
-drwxr-xr-x  2 runner runner      4096 Oct  2 17:44 .
-drwxr-xr-x 13 runner runner      4096 Oct  2 17:37 ..
--rw-r--r--  1 runner runner      4765 Oct  2 17:44 MANIFEST.txt
--rw-r--r--  1 runner runner 120438392 Oct  2 17:44 app-hisense-engine-smoke-no-plugins.apk
--rw-r--r--  1 runner runner 120438408 Oct  2 17:44 app-hisense-engine-smoke.apk
--rw-r--r--  1 runner runner 122244628 Oct  2 17:41 app-hisense-impeller-default-debug.apk
--rw-r--r--  1 runner runner 122244668 Oct  2 17:41 app-hisense-impeller-gles-debug.apk
--rw-r--r--  1 runner runner 122244648 Oct  2 17:41 app-hisense-no-impeller-debug.apk
--rw-r--r--  1 runner runner  34103743 Oct  2 17:43 app-hisense-no-impeller-release.apk
+drwxr-xr-x  2 runner runner      4096 Oct  2 17:53 .
+drwxr-xr-x 13 runner runner      4096 Oct  2 17:47 ..
+-rw-r--r--  1 runner runner      4765 Oct  2 17:53 MANIFEST.txt
+-rw-r--r--  1 runner runner 120438392 Oct  2 17:53 app-hisense-engine-smoke-no-plugins.apk
+-rw-r--r--  1 runner runner 120438408 Oct  2 17:53 app-hisense-engine-smoke.apk
+-rw-r--r--  1 runner runner 122244628 Oct  2 17:51 app-hisense-impeller-default-debug.apk
+-rw-r--r--  1 runner runner 122244668 Oct  2 17:51 app-hisense-impeller-gles-debug.apk
+-rw-r--r--  1 runner runner 122244648 Oct  2 17:51 app-hisense-no-impeller-debug.apk
+-rw-r--r--  1 runner runner  34103743 Oct  2 17:53 app-hisense-no-impeller-release.apk
