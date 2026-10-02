@@ -8,12 +8,17 @@
   3. 字符串插值 `$` 后必须跟标识符或 `{`（`$/` 这类会直接
      `Expected an identifier` 编译失败 —— 2026-10-02 CI 真实踩过）
   4. 同类引号嵌套（如 '...${x ?? 'a'}'）
+  5. ⚠️ 构造函数体里以**裸名**引用了「同名的形参」——
+     形参在构造函数体内可见并**遮蔽同名字段**，于是「初始化列表里的归一化」
+     看起来生效、实际构造体内拿到的还是原始值。analyzer 与以上 4 项都查不出来，
+     只能靠测试抓（2026-10-03 CI 真实白烧一轮）。本项是 WARN 级提醒，不改变退出码。
 
-这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合、`$/` 插值）。
+这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合、`$/` 插值、形参遮蔽）。
 不替代 dart analyze，只用于在推送 CI 前拦掉最蠢的错误。
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -174,6 +179,125 @@ def check_balance(structure: str, path: Path) -> list[str]:
     return errors
 
 
+def _match_pair(text: str, start: int, open_ch: str, close_ch: str) -> int:
+    """返回 text[start]（应为 open_ch）之后与它配对的 close_ch 的下标。
+
+    找不到配对时返回 len(text)。不做字符串/注释跳过 —— 形参与初始化列表里
+    出现裸括号字面量的概率极低，宁可漏报也不要误判。
+    """
+    depth = 0
+    for i in range(start, len(text)):
+        c = text[i]
+        if c == open_ch:
+            depth += 1
+        elif c == close_ch:
+            depth -= 1
+            if depth == 0:
+                return i
+    return len(text)
+
+
+def _split_top_level(text: str) -> list[str]:
+    """按顶层逗号切分（忽略括号内的逗号）。"""
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    for c in text:
+        if c in '([{<':
+            depth += 1
+        elif c in ')]}>':
+            depth -= 1
+        if c == ',' and depth <= 0:
+            parts.append(''.join(buf))
+            buf = []
+            continue
+        buf.append(c)
+    if buf:
+        parts.append(''.join(buf))
+    return parts
+
+
+def _param_names(params: str) -> set[str]:
+    """从形参文本里取出「普通形参」的名字（跳过 this.x / super.x 这类初始化形参）。
+
+    ⚠️ 必须先剥掉具名参数的外层 `{}`（或可选位置参数的 `[]`）再按逗号切分 ——
+    否则整串 `{ a, b }` 会被当成**一个**参数，只取到最后一个名字。
+    """
+    inner = params.strip()
+    if len(inner) >= 2 and inner[0] in '{[' and inner[-1] in '}]':
+        inner = inner[1:-1]
+
+    names: set[str] = set()
+    for raw in _split_top_level(inner):
+        part = raw.strip()
+        if not part or part.startswith('this.') or part.startswith('super.'):
+            continue
+        part = part.split('=')[0]  # 去掉默认值
+        ids = re.findall(r'[A-Za-z_$][\w$]*', part)
+        if ids:
+            names.add(ids[-1])
+    return names
+
+
+def check_ctor_param_shadowing(text: str, path: Path) -> list[str]:
+    """构造函数体里的裸名若与形参同名，极可能是遮蔽笔误。
+
+    真实案例（2026-10-03，CI 白烧一轮，analyze 全绿但 1 条测试失败）：
+
+        FnosClient({required String baseUrl, ...})
+            : baseUrl = normalizeBaseUrl(baseUrl),   // 归一化确实写进了字段
+              _deviceId = deviceId {
+          _dio = Dio(BaseOptions(baseUrl: baseUrl, ...));  // ← 拿到的是形参！
+        }
+
+    启发式规则：**既在初始化列表里被赋值、又在构造函数体里以裸名出现**的形参，
+    几乎一定是想写 `this.x`。只报 WARN，交给人判断。
+    """
+    warnings: list[str] = []
+    for m in re.finditer(r'(?m)^([ \t]*)([A-Z]\w*)\(', text):
+        name = m.group(2)
+        open_paren = m.end() - 1
+        close_paren = _match_pair(text, open_paren, '(', ')')
+        if close_paren >= len(text):
+            continue
+
+        # 构造函数的标志：形参之后（可能隔着初始化列表）紧跟 `{` 体。
+        cursor = close_paren + 1
+        while cursor < len(text) and text[cursor] in ' \t\r\n':
+            cursor += 1
+        init_text = ''
+        if cursor < len(text) and text[cursor] == ':':
+            brace = text.find('{', cursor)
+            if brace == -1:
+                continue
+            init_text = text[cursor + 1:brace]
+            cursor = brace
+        if cursor >= len(text) or text[cursor] != '{':
+            continue  # 是抽象/getter 声明或方法调用，不是带体的构造函数
+
+        body_start = cursor + 1
+        body_end = _match_pair(text, cursor, '{', '}')
+        body = text[body_start:body_end]
+
+        params = _param_names(text[open_paren + 1:close_paren])
+        assigned = set(re.findall(r'([A-Za-z_$][\w$]*)\s*=', init_text))
+        for shared in sorted(params & assigned):
+            # 体内以裸名出现（排除 this.x / obj.x / 更长标识符）
+            pat = re.compile(rf'(?<![\w$.]){re.escape(shared)}(?![\w$])')
+            for hit in pat.finditer(body):
+                # 紧邻 `:` 的是**具名实参的标签 / map 键**，不是变量读取
+                # （正确写法 `baseUrl: this.baseUrl` 就属于这种，别误报）。
+                if body[hit.end():hit.end() + 1] == ':':
+                    continue
+                line = text.count('\n', 0, body_start + hit.start()) + 1
+                warnings.append(
+                    f'L{line}: 构造函数体里的 `{shared}` 是**形参**（会遮蔽同名字段），'
+                    f'而初始化列表已把字段 `{shared}` 赋过值；'
+                    f'想用字段请写 `this.{shared}`（{name} 的构造函数）')
+                break
+    return warnings
+
+
 def main() -> int:
     if len(sys.argv) == 1:
         targets = [ROOT]
@@ -188,6 +312,7 @@ def main() -> int:
             files.append(t)
 
     total_errors = 0
+    total_warnings = 0
     checked = 0
     for f in files:
         posix = f.as_posix()
@@ -197,6 +322,7 @@ def main() -> int:
         text = f.read_text(encoding='utf-8')
         structure, errs = strip_code(text)
         errs += check_balance(structure, f)
+        warns = check_ctor_param_shadowing(text, f)
         if errs:
             total_errors += len(errs)
             print(f'[FAIL] {f}')
@@ -204,8 +330,14 @@ def main() -> int:
                 print(f'       {e}')
         else:
             print(f'[ OK ] {f}')
+        if warns:
+            total_warnings += len(warns)
+            for w in warns:
+                print(f'       [WARN] {w}')
     print()
-    print(f'扫描 {checked} 个文件，问题 {total_errors} 处')
+    suffix = f'，另有 {total_warnings} 条提醒（不阻断）' if total_warnings else ''
+    print(f'扫描 {checked} 个文件，问题 {total_errors} 处{suffix}')
+    # 提醒级问题不改变退出码：这是启发式判断，需要人来确认。
     return 1 if total_errors else 0
 
 

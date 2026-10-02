@@ -37,6 +37,36 @@
 - 去掉尾斜杠，否则端点路径自带的前导 `/` 会拼成 `//music/api/v1`。
 - 归一化做在**构造函数里**，因此登录、恢复会话、探针三条入口全部覆盖。
 
+### 二之补：归一化差点「白做」—— 形参遮蔽同名字段
+
+第一版实现写成了：
+
+```dart
+FnosClient({required String baseUrl, ...})
+    : baseUrl = normalizeBaseUrl(baseUrl),   // ← 归一化确实写进了字段
+      _deviceId = deviceId {
+  _dio = Dio(BaseOptions(baseUrl: baseUrl, ...));  // ← 这里拿到的是**形参**！
+}
+```
+
+Dart 里**形参在构造函数体内可见**，会**遮蔽同名字段**。所以构造函数体里的
+`baseUrl` 是用户原始输入 `192.168.3.250:5666`，`BaseOptions` 内部
+`Uri.parse` 直接抛：
+
+```
+FormatException: Scheme not starting with alphabetic character (at character 1)
+```
+
+而且它是**构造期同步抛出**的，连 `Result` 都来不及包装。
+
+这个坑很难发现：`flutter analyze` 全绿、语法预检 0 问题，代码看着也「干净」——
+只有断言「实际发出的请求 URI」的测试才能抓到（见 §六）。修法是
+构造函数体里写 `this.baseUrl`。
+
+现在 `tools/precheck/dart_syntax_precheck.py` 会以 **WARN** 形式提醒这类写法：
+「既在初始化列表里被赋值、又在构造函数体里以裸名出现」的形参。
+（提醒不阻断退出码 —— 它是启发式判断。）
+
 ## 三、根因二：「不返回也不抛异常」的三个挂起点
 
 这条路径上有一类失败是 `try/catch` 抓不住的 —— **Future 永不完成**。
@@ -69,7 +99,6 @@
 「漏写 http:// 也没关系，会自动补上」，避免继续误导用户。
 
 ## 五、屏幕判读表
-
 按下「连接并登录」后，
 
 | 屏幕显示 | 结论 |
@@ -88,3 +117,18 @@
 - `test/auth_repository_probe_test.dart`：断言探针发出的是**带 scheme 的绝对 URL**
   （`scheme=http`、`host=192.168.3.250`、`port=5666`、路径正确）——
   这条测试就是为了钉死本轮这个 bug，防止以后有人把归一化删掉。
+
+> 教训：**只断言「能登录」是不够的**。本轮那个形参遮蔽的 bug 不会被
+> 「登录成功」这类断言抓到（它只在真正构造客户端时才炸），
+> 必须断言**客户端实际发出的请求**（URL 的 scheme / host / port / path）。
+> 同理，`analyze` 全绿 + 语法预检 0 问题 + 代码看起来正确，都不能替代这类断言。
+
+## 七、离线预检
+
+```bash
+python tools/precheck/dart_syntax_precheck.py lib test tools/fnos_api_probe
+```
+
+除括号/字符串/插值检查外，新增一条 **WARN**：构造函数体里的裸名与形参同名
+（形参遮蔽字段）。规则已用「带 bug 的样本 + 修复后的真实文件」双向验证：
+前者能报出、后者零误报。
