@@ -25,6 +25,16 @@ import '../../repositories/auth_repository.dart';
 ///
 /// 另配 `textInputAction` + `onSubmitted`：遥控器 OK 键在输入态会走 IME 的
 /// 「下一个 / 完成」，对电视用户比方向键更顺手 —— 两条路都留着。
+///
+/// ## 为什么把「阶段 / 耗时 / 实际地址 / 原始错误」画在屏幕上
+///
+/// 真实故障：登录时界面停在「连接中」，既不成功也不报错，而电视上没有 adb、
+/// 也拿不到 `boot.log`。此时**屏幕上能读到的东西就是唯一的证据**，所以本页
+/// 刻意显示：
+/// - 当前阶段（读取设备标识 / 请求登录 / 保存会话）—— 直接指出卡在哪一步；
+/// - 已等待秒数 —— 区分「慢」与「死等」；
+/// - 实际请求地址（已补 `http://`）—— 地址写错时一眼可见；
+/// - 错误的 `kind` 与原始 `cause` —— 不用猜是网络、凭据还是解析问题。
 class LoginPage extends StatefulWidget {
   final VoidCallback onLoggedIn;
 
@@ -49,8 +59,26 @@ class _LoginPageState extends State<LoginPage> {
   bool _busy = false;
   String? _error;
 
+  /// 错误的原始信息（`AppError.kind` + `cause`），只在排错时看，故用弱化样式。
+  String? _detail;
+
+  /// 免登录探测的结果（成功时的提示）。
+  String? _notice;
+
+  /// 当前阶段文案（由 `AuthRepository.login` 的 `onStage` 回调更新）。
+  String? _stage;
+
+  /// 阶段内已等待秒数。用于区分「网络慢」与「永久挂起」。
+  int _elapsed = 0;
+
+  Timer? _ticker;
+
+  /// 实际将要请求的地址（归一化后的 baseUrl）。
+  String? _target;
+
   @override
   void dispose() {
+    _ticker?.cancel();
     _host.dispose();
     _user.dispose();
     _pass.dispose();
@@ -60,35 +88,111 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _startTicker() {
+    _ticker?.cancel();
+    _elapsed = 0;
+    _ticker = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() => _elapsed++);
+    });
+  }
+
+  void _stopTicker() {
+    _ticker?.cancel();
+    _ticker = null;
+  }
+
   Future<void> _submit() async {
     final host = _host.text.trim();
     final username = _user.text.trim();
     final password = _pass.text;
     if (host.isEmpty || username.isEmpty || password.isEmpty) {
-      setState(() => _error = '请填写 NAS 地址、用户名与密码');
+      setState(() {
+        _error = '请填写 NAS 地址、用户名与密码';
+        _detail = null;
+      });
       return;
     }
+    // context 相关的东西必须在 await 之前取完（use_build_context_synchronously）。
+    final auth = context.read<AuthRepository>();
     setState(() {
       _busy = true;
       _error = null;
+      _detail = null;
+      _notice = null;
+      _stage = '准备中…';
+      _target = auth.normalizeHost(host);
     });
-    final auth = context.read<AuthRepository>();
+    _startTicker();
+
     final res = await auth.login(
       host: host,
       username: username,
       password: password,
       rememberPassword: _remember,
+      onStage: (String stage) {
+        if (mounted) setState(() => _stage = stage);
+      },
     );
     if (!mounted) return;
+    _stopTicker();
     if (res.isErr) {
       setState(() {
         _busy = false;
+        _stage = null;
         _error = res.error.message;
+        _detail = 'kind=${res.error.kind.name}'
+            '${res.error.cause == null ? '' : '\n${res.error.cause}'}';
       });
       return;
     }
-    setState(() => _busy = false);
+    setState(() {
+      _busy = false;
+      _stage = null;
+    });
     widget.onLoggedIn();
+  }
+
+  /// 免登录连通性探测：判断「地址 / 网络」是否通，与凭据无关。
+  ///
+  /// 这是电视端唯一能在**屏幕上**直接读出网络结论的手段。
+  Future<void> _probe() async {
+    final host = _host.text.trim();
+    if (host.isEmpty) {
+      setState(() {
+        _error = '请先填写 NAS 地址';
+        _detail = null;
+      });
+      return;
+    }
+    final auth = context.read<AuthRepository>();
+    setState(() {
+      _busy = true;
+      _error = null;
+      _detail = null;
+      _notice = null;
+      _stage = '测试连通性…';
+      _target = auth.normalizeHost(host);
+    });
+    _startTicker();
+
+    final res = await auth.probe(host);
+    if (!mounted) return;
+    _stopTicker();
+    setState(() {
+      _busy = false;
+      _stage = null;
+      if (res.isErr) {
+        _error = res.error.message;
+        _detail = 'kind=${res.error.kind.name}'
+            '${res.error.cause == null ? '' : '\n${res.error.cause}'}';
+      } else {
+        _notice = res.value;
+      }
+    });
   }
 
   @override
@@ -109,74 +213,122 @@ class _LoginPageState extends State<LoginPage> {
           ),
         },
         child: Center(
-          child: SizedBox(
-            width: 600,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('飞牛 TV 音乐 · Phase 1',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _host,
-                  focusNode: _hostFocus,
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _userFocus.requestFocus(),
-                  decoration: const InputDecoration(
-                    labelText: 'NAS 地址（含端口）',
-                    hintText: 'http://192.168.1.10:5666',
-                    border: OutlineInputBorder(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: SizedBox(
+              width: 600,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('飞牛 TV 音乐 · Phase 1',
+                      style:
+                          TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _host,
+                    focusNode: _hostFocus,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _userFocus.requestFocus(),
+                    decoration: const InputDecoration(
+                      labelText: 'NAS 地址（含端口）',
+                      // hint 里的 scheme 只是示范；即使漏写也会自动补 http://。
+                      hintText: '192.168.1.10:5666',
+                      helperText: '漏写 http:// 也没关系，会自动补上',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _user,
-                  focusNode: _userFocus,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _passFocus.requestFocus(),
-                  decoration: const InputDecoration(
-                    labelText: '用户名',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _user,
+                    focusNode: _userFocus,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _passFocus.requestFocus(),
+                    decoration: const InputDecoration(
+                      labelText: '用户名',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _pass,
-                  focusNode: _passFocus,
-                  obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) {
-                    unawaited(_submit());
-                  },
-                  decoration: const InputDecoration(
-                    labelText: '密码',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _pass,
+                    focusNode: _passFocus,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      unawaited(_submit());
+                    },
+                    decoration: const InputDecoration(
+                      labelText: '密码',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                CheckboxListTile(
-                  value: _remember,
-                  onChanged: (v) => setState(() => _remember = v ?? false),
-                  title: const Text('记住密码并自动重新登录（仅保存 sha256 哈希）'),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                if (_error != null) ...[
                   const SizedBox(height: 8),
-                  Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                ],
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _busy ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  CheckboxListTile(
+                    value: _remember,
+                    onChanged: (v) => setState(() => _remember = v ?? false),
+                    title: const Text('记住密码并自动重新登录（仅保存 sha256 哈希）'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  child: Text(_busy ? '连接中…' : '连接并登录',
-                      style: const TextStyle(fontSize: 20)),
-                ),
-              ],
+                  if (_stage != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '$_stage 已等待 $_elapsed 秒',
+                      style: const TextStyle(
+                          fontSize: 17, color: Color(0xFF8AB4F8)),
+                    ),
+                  ],
+                  if (_target != null && _target!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('实际请求地址：$_target',
+                        style: const TextStyle(
+                            fontSize: 15, color: Colors.white54)),
+                  ],
+                  if (_notice != null) ...[
+                    const SizedBox(height: 8),
+                    Text(_notice!,
+                        style: const TextStyle(
+                            fontSize: 18, color: Color(0xFF54D68A))),
+                  ],
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(_error!,
+                        style: const TextStyle(
+                            fontSize: 20, color: Colors.redAccent)),
+                  ],
+                  if (_detail != null) ...[
+                    const SizedBox(height: 6),
+                    // 原始错误：电视上没有 adb，这一块是唯一能带回来的证据。
+                    // 用等宽字体 + 弱化颜色，避免吓到普通用户。
+                    SelectableText(
+                      _detail!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        fontFamily: 'monospace',
+                        color: Color(0xFFFFB4AB),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _busy ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: Text(_busy ? '连接中…' : '连接并登录',
+                        style: const TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _busy ? null : _probe,
+                    child: const Text('只测试连接（不需账号和密码）',
+                        style: TextStyle(fontSize: 18)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

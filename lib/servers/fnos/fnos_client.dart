@@ -24,6 +24,9 @@ import 'fnos_error_codes.dart';
 /// 实测依据：`fnOS_API_真实契约.md` §1。
 class FnosClient {
   /// 含 scheme + host + port，如 `http://192.168.1.10:5666`。
+  ///
+  /// 构造时一律经 [normalizeBaseUrl] 归一化 —— 用户漏写 `http://` 也能用，
+  /// 不要指望遥控器输入会照抄 hint 里的写法。
   final String baseUrl;
 
   final List<String> trustedHosts;
@@ -41,15 +44,48 @@ class FnosClient {
   /// 避免传入服务端未验证的尺寸导致取图失败。
   static const int defaultCoverSize = 200;
 
+  /// scheme 判定：必须以字母开头，后跟字母/数字/`+`/`-`/`.`，再跟 `://`。
+  ///
+  /// 刻意写成「字母开头」而不是更宽松的 `^[^/]+://`：`192.168.3.250:5666`
+  /// 这类输入里也有冒号，宽松规则会把 IP 误判成 scheme。
+  static final RegExp _schemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://');
+
+  /// 归一化 NAS 地址。
+  ///
+  /// 真实故障（2026-10-03，海信 E7N Pro 实机）：用户在电视上用遥控器输入
+  /// `192.168.3.250:5666`（**漏掉 `http://`**）。地址栏 hint 里是带 scheme 的
+  /// 完整写法，但遥控器输入不会照抄 hint。这个字符串若原样交给 Dio，
+  /// 请求 URL 就没有 scheme，请求根本发不出去（或被判为相对地址），
+  /// 界面表现是「一直显示连接中」，且不会给出任何有意义的错误。
+  ///
+  /// 所以容错必须做在这一层：所有入口（登录 / 恢复会话 / 探针）都经过它。
+  static String normalizeBaseUrl(String raw) {
+    var v = raw.trim();
+    if (v.isEmpty) return v;
+
+    // 无 scheme → 默认补 http。局域网直连（HTTP 5666）是绝对主流；
+    // HTTPS 5667 的场景用户一定会带上 `https://`（否则自签证书本就无法校验）。
+    if (!_schemeRe.hasMatch(v)) {
+      v = 'http://$v';
+    }
+
+    // 去掉尾部 `/`：端点路径自带前导 `/`，否则会拼出 `//music/api/v1/...`。
+    final stripped = v.replaceFirst(RegExp(r'/+$'), '');
+    // 输入形如 `http://` 时上面会把 scheme 也削掉；此时保留原值，
+    // 让请求按原样失败（用户输入本身是错的，不该被悄悄改写）。
+    return stripped.contains('://') ? stripped : v;
+  }
+
   /// 允许注入 [adapter] 以便在无网络的单元测试里断言真实发出的请求
   /// （方法、路径、query、Cookie/authx 头、body）。
   FnosClient({
-    required this.baseUrl,
+    required String baseUrl,
     this.trustedHosts = const [],
     String? deviceId,
     this.apiKey = '',
     HttpClientAdapter? adapter,
-  }) : _deviceId = deviceId {
+  })  : baseUrl = normalizeBaseUrl(baseUrl),
+        _deviceId = deviceId {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 8),

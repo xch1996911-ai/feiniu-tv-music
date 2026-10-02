@@ -106,9 +106,16 @@ class BootLog {
   /// `EncryptedSharedPreferences` 会在**原生层直接崩溃**（Keystore 不可用），
   /// Dart 的 `try/catch` 根本拦不住。而 deviceId 是随机标识、非机密，
   /// 不值得为它冒崩溃风险。
+  ///
+  /// ⚠️ **必须带超时**：`invokeMethod` 在通道对端不返回时**永不完成**，
+  /// 既不抛异常也不回调。而本方法是 `SecureStore.getOrCreateDeviceId()` 的第一步，
+  /// 也就挂在**登录路径**上 —— 一旦通道卡住，界面会永远停在「连接中」，
+  /// 且没有任何错误可看。超时后退回安全存储，让上层能继续走下去。
   static Future<String?> nativeDeviceId() async {
     try {
-      return await _channel.invokeMethod<String>('deviceId');
+      return await _channel
+          .invokeMethod<String>('deviceId')
+          .timeout(const Duration(seconds: 5));
     } catch (_) {
       return null;
     }
