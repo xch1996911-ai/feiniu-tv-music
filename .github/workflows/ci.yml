@@ -11,12 +11,18 @@ name: Phase1 CI
 on:
   push:
     branches: ['main']
+    # ci-logs/ 由本 workflow 自己提交，若不过滤会无限自我触发
+    paths-ignore:
+      - 'ci-logs/**'
   workflow_dispatch:
 
 jobs:
   android-apk:
     name: Android TV Debug APK
     runs-on: ubuntu-latest
+    permissions:
+      # 必需：用于把诊断日志提交回仓库（否则 GITHUB_TOKEN 只读，git push 会失败）
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -109,9 +115,9 @@ jobs:
             test.log
           if-no-files-found: warn
 
-      # 把日志提交到 ci-logs 分支：本地可直接 `git fetch origin ci-logs` 读取，
-      # 无需下载 artifact（artifact 下载需要鉴权，公开仓库亦然）。
-      - name: 推送诊断日志到 ci-logs 分支
+      # 把日志提交到仓库的 ci-logs/ 目录：本地 git fetch 即可读取，
+      # 无需下载 artifact（artifact 与 job 日志下载均需鉴权，公开仓库亦然）。
+      - name: 提交诊断日志（ci-logs/）
         if: always()
         run: |
           set -o pipefail
@@ -121,15 +127,12 @@ jobs:
           done
           printf 'run_id: %s\nsha: %s\ntime: %s\n' \
             "${{ github.run_id }}" "${{ github.sha }}" "$(date -u +%FT%TZ)" > ci-logs/meta.txt
-          # 只把 ci-logs/ 目录提交到独立分支，不改动 main，也不删除工作区文件
-          git switch --orphan ci-logs-work >/dev/null 2>&1
-          git rm -r -q --cached . >/dev/null 2>&1 || true
-          git add -f ci-logs >/dev/null 2>&1
+          # .gitignore 里有 *.log，需 -f 强制添加；该路径已配 paths-ignore，不会再触发本 workflow
+          git add -f ci-logs
           git -c user.name='github-actions[bot]' \
               -c user.email='github-actions[bot]@users.noreply.github.com' \
               commit -q -m "ci: diagnostics for run ${{ github.run_id }}" || echo "无日志可提交"
-          git push --force origin HEAD:ci-logs
-          git switch -q main 2>/dev/null || true
+          git push origin HEAD:main
 
   probe-exe:
     name: fnOS API Probe (Windows EXE)
