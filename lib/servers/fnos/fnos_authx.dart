@@ -37,6 +37,11 @@ class FnosAuthx {
   static const String salt = 'NDzZTVxnRKP8Z0jXg1VAMonaG8akvh';
 
   /// 官方前端列出的免签名路径（前缀匹配）。
+  ///
+  /// ⚠️ 这些是**官方 Web 客户端自身的前端路由**（如 `/login`、`/init`），
+  /// 不是 `/music/api/v1/...` 下的业务接口。本项目的业务请求路径全部以
+  /// `/music/api/v1` 开头，因此**不会被命中**，即所有 API 请求都会带签名 ——
+  /// 这与官方客户端对 API 请求的行为一致。
   static const List<String> signExemptPathPrefixes = <String>[
     '/client-login',
     '/app-auth-pick-file',

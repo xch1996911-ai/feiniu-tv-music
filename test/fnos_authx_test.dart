@@ -16,10 +16,23 @@ void main() {
       expect(FnosAuthx.md5Hex(''), 'd41d8cd98f00b204e9800998ecf8427e');
     });
 
-    test('免签名白名单按前缀匹配', () {
-      expect(FnosAuthx.isSignExempt('/music/api/v1/login'), isTrue);
-      expect(FnosAuthx.isSignExempt('/init'), isTrue);
+    test('免签名白名单按前缀匹配（是前端自身路由，不是 /music/api/v1 下的接口）', () {
+      for (final path in <String>[
+        '/login',
+        '/init',
+        '/welcome',
+        '/oauth/result',
+        '/client-login',
+        '/app-auth-pick-file',
+      ]) {
+        expect(FnosAuthx.isSignExempt(path), isTrue, reason: path);
+      }
+      // 业务接口一律需要签名：它们不以白名单前缀开头
       expect(FnosAuthx.isSignExempt('/music/api/v1/track/list'), isFalse);
+      expect(
+        FnosAuthx.isSignExempt('/music/api/v1/user/password-login'),
+        isFalse,
+      );
     });
 
     test('urlencoded 序列化：空格 → +，非 ASCII → 大写百分号转义', () {
