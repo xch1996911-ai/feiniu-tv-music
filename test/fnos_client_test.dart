@@ -159,38 +159,38 @@ void main() {
   });
 
   group('业务错误码映射', () {
-    final errFor = (FnosClient client, String path) async {
-      final res = await client.getRaw(path);
-      expect(res.isErr, isTrue);
-      return res.error;
-    };
-
     test('HTTP 401 + 99999 → tokenExpired（Cookie 缺失/失效）', () async {
       final fake = FakeAdapter()
         ..on('GET', FnosEndpoints.trackList,
             status: 401, body: invalidTokenResponse());
-      final e = await errFor(_client(fake), FnosEndpoints.trackList);
-      expect(e.kind, ErrorKind.tokenExpired);
-      expect(e.message, contains('登录已失效'));
+      final res = await _client(fake).getRaw(FnosEndpoints.trackList);
+
+      expect(res.isErr, isTrue);
+      expect(res.error.kind, ErrorKind.tokenExpired);
+      expect(res.error.message, contains('登录已失效'));
     });
 
     test('120001 → auth（登录/授权失败），与 99999 明确区分', () async {
       final fake = FakeAdapter()
         ..on('GET', FnosEndpoints.userMe,
             status: 200, body: unauthorizedResponse());
-      final e = await errFor(_client(fake), FnosEndpoints.userMe);
-      expect(e.kind, ErrorKind.auth);
-      expect(e.kind, isNot(ErrorKind.tokenExpired));
-      expect(e.message, contains('登录失败'));
+      final res = await _client(fake).getRaw(FnosEndpoints.userMe);
+
+      expect(res.isErr, isTrue);
+      expect(res.error.kind, ErrorKind.auth);
+      expect(res.error.kind, isNot(ErrorKind.tokenExpired));
+      expect(res.error.message, contains('登录失败'));
     });
 
     test('100001 → server（含参数缺失，如缺 deviceId）', () async {
       final fake = FakeAdapter()
         ..on('GET', FnosEndpoints.userMe,
             status: 200, body: unknownErrorResponse());
-      final e = await errFor(_client(fake), FnosEndpoints.userMe);
-      expect(e.kind, ErrorKind.server);
-      expect(e.kind, isNot(ErrorKind.auth));
+      final res = await _client(fake).getRaw(FnosEndpoints.userMe);
+
+      expect(res.isErr, isTrue);
+      expect(res.error.kind, ErrorKind.server);
+      expect(res.error.kind, isNot(ErrorKind.auth));
     });
 
     test('100005 → notFound', () async {
@@ -198,8 +198,10 @@ void main() {
         ..on('GET', FnosEndpoints.albumDetail,
             status: 200,
             body: <String, dynamic>{'code': 100005, 'msg': 'NotFound'});
-      final e = await errFor(_client(fake), FnosEndpoints.albumDetail);
-      expect(e.kind, ErrorKind.notFound);
+      final res = await _client(fake).getRaw(FnosEndpoints.albumDetail);
+
+      expect(res.isErr, isTrue);
+      expect(res.error.kind, ErrorKind.notFound);
     });
 
     test('错误码常量与真实契约一致', () {
@@ -218,8 +220,10 @@ void main() {
       final fake = FakeAdapter()
         ..on('GET', FnosEndpoints.userMe,
             status: 500, body: <String, dynamic>{'oops': true});
-      final e = await errFor(_client(fake), FnosEndpoints.userMe);
-      expect(e.kind, ErrorKind.server);
+      final res = await _client(fake).getRaw(FnosEndpoints.userMe);
+
+      expect(res.isErr, isTrue);
+      expect(res.error.kind, ErrorKind.server);
     });
   });
 

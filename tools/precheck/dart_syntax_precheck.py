@@ -5,10 +5,11 @@
 检查项：
   1. 括号/方括号/花括号配对（跳过字符串与注释）
   2. 字符串字面量是否闭合（含三引号、raw 字符串、插值陷阱）
-  3. 行尾是否残留中文字符紧贴的非法引号嵌套（如 '...${x ?? 'a'}'）
-  4. 顶层 import 是否指向不存在的文件
+  3. 字符串插值 `$` 后必须跟标识符或 `{`（`$/` 这类会直接
+     `Expected an identifier` 编译失败 —— 2026-10-02 CI 真实踩过）
+  4. 同类引号嵌套（如 '...${x ?? 'a'}'）
 
-这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合导致级联报错）。
+这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合、`$/` 插值）。
 不替代 dart analyze，只用于在推送 CI 前拦掉最蠢的错误。
 """
 from __future__ import annotations
@@ -17,6 +18,20 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+
+_IDENT_START = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$')
+
+
+def _is_raw_prefix(text: str, quote_index: int) -> bool:
+    """判断 quote_index 处的引号是否带 r/R 前缀（raw 字符串不解析转义与插值）。"""
+    if quote_index == 0:
+        return False
+    prev = text[quote_index - 1]
+    if prev not in 'rR':
+        return False
+    if quote_index >= 2 and (text[quote_index - 2].isalnum() or text[quote_index - 2] in '_$'):
+        return False
+    return True
 
 
 def strip_code(text: str) -> tuple[str, list[str]]:
@@ -65,6 +80,7 @@ def strip_code(text: str) -> tuple[str, list[str]]:
         if c == "'" or c == '"':
             quote = c
             triple = text[i:i + 3] == quote * 3
+            raw = _is_raw_prefix(text, i)
             start_line = line
             i += 3 if triple else 1
             closed = False
@@ -74,29 +90,41 @@ def strip_code(text: str) -> tuple[str, list[str]]:
                     line += 1
                     if not triple:
                         break  # 单引号字符串里出现裸换行 → 未闭合
-                if ch == '\\':
+                if not raw and ch == '\\':
                     # 转义下一个字符（三引号里的 \ 换行续行会少记一行，可接受）
                     i += 2
                     continue
-                if ch == '$' and i + 1 < n and text[i + 1] == '{':
-                    # 跳过插值表达式（内部可能含字符串/花括号）
-                    depth = 1
-                    i += 2
-                    while i < n and depth > 0:
-                        c2 = text[i]
-                        if c2 == '\n':
-                            line += 1
-                        elif c2 == '{':
-                            depth += 1
-                        elif c2 == '}':
-                            depth -= 1
-                        elif c2 in '\'"':
-                            q2 = c2
-                            i += 1
-                            while i < n and text[i] != q2:
-                                if text[i] == '\n':
-                                    line += 1
+                if not raw and ch == '$':
+                    nxt = text[i + 1] if i + 1 < n else ''
+                    if nxt == '{':
+                        # 跳过插值表达式（内部可能含字符串/花括号）
+                        depth = 1
+                        i += 2
+                        while i < n and depth > 0:
+                            c2 = text[i]
+                            if c2 == '\n':
+                                line += 1
+                            elif c2 == '{':
+                                depth += 1
+                            elif c2 == '}':
+                                depth -= 1
+                            elif c2 in '\'"':
+                                q2 = c2
                                 i += 1
+                                while i < n and text[i] != q2:
+                                    if text[i] == '\n':
+                                        line += 1
+                                    i += 1
+                            i += 1
+                        continue
+                    if nxt not in _IDENT_START:
+                        errors.append(
+                            f'L{line}: 字符串插值 "$" 后缺少标识符或 "{{"'
+                            f'（得到 "{nxt}"；需写成 \\$ 或 ${{...}}）')
+                        i += 1
+                        continue
+                    # 普通 $identifier 插值：整段跳过
+                    while i < n and (text[i].isalnum() or text[i] in '_$'):
                         i += 1
                     continue
                 if triple:

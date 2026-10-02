@@ -47,9 +47,9 @@ class FnosClient {
     required this.baseUrl,
     this.trustedHosts = const [],
     String? deviceId,
-    String apiKey = '',
+    this.apiKey = '',
     HttpClientAdapter? adapter,
-  }) : apiKey = apiKey, _deviceId = deviceId {
+  }) : _deviceId = deviceId {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 8),
@@ -186,7 +186,7 @@ class FnosClient {
             return Result.ok(Map<String, dynamic>.from(payload));
           }
           // 少数接口成功时 data 为空/缺省（如登出），视为空对象而非解析失败。
-          if (payload == null) return Result.ok(<String, dynamic>{});
+          if (payload == null) return const Result.ok(<String, dynamic>{});
           return const Result.err(
               AppError('响应 data 结构异常', kind: ErrorKind.parse));
         }

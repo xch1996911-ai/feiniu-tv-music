@@ -12,7 +12,7 @@ void main() {
         final id = Ids.generateDeviceId();
         expect(id.length, 32);
         expect(RegExp(r'^[a-f0-9]{32}$').hasMatch(id), isTrue,
-            reason: '不符合 /^[a-f0-9]{32}$/：$id');
+            reason: '不符合 32 位小写 hex 契约，实际值：$id');
       }
     });
 
