@@ -99,15 +99,24 @@ GitHub 的 **Artifacts 下载接口必须登录**，即使仓库是公开的。�
 https://github.com/xch1996911-ai/feiniu-tv-music/tree/release/release
 ```
 
-该分支由 `.github/workflows/publish-diag.yml` 维护，包含全部 6 个 APK
-（超过 90MB 的以 `.zip` 形式入库，下载后解压即得 `.apk`）以及
-`fnos_api_probe.exe`、`MANIFEST.txt`、`BUILD_INFO.txt`。
+该分支由 `.github/workflows/publish-diag.yml` **独占**维护，包含全部 6 个 APK
+以及 `fnos_api_probe.exe`、`MANIFEST.txt`、`BUILD_INFO.txt`。
 
-发布方式（**不重新构建**，只把已完成的运行里那批产物搬运过去）：
+- **超过 90MB 的包以 `.zip` 形式入库**（Git 单文件硬上限 100MB）：解压即得 `.apk`。
+  本轮 6 个包里只有 D（release，约 34MB）是裸 `.apk`，其余 5 个 debug 包都是 `.zip`。
+- 发布方式（**不重新构建**，只把已完成的运行里那批产物搬运过去）：
 
 ```bash
-git push origin publish-diag        # 触发发布最近一次成功的 Phase1 CI 产物
+git push --force origin main:publish-diag        # 用最近一次成功的 Phase1 CI 产物发布
 ```
+
+> 触发时机很重要：**必须等本轮 CI 成功之后**再推这个分支。
+> 脚本只认「最近一次**成功**的 Phase1 CI 运行」，若在源运行成功前推，
+> 它会挑到更早的那次运行、产物名对不上，于是拒绝发布（`exit 1`）——这是刻意的保护。
+>
+> `release` 分支**只允许这一个 job 写**。曾经 `ci.yml` 里还有一个
+> `release-bundle` job 也往这个分支 force push，会把 5 个 debug 包整批抹掉，
+> 让用户手里的链接在每次 CI 之后失效；该 job 已删除。
 
 ---
 
