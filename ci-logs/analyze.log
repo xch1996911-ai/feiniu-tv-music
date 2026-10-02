@@ -1,2 +1,5 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 8.9s)
+
+  error • The constructor being called isn't a const constructor. Try removing 'const' from the constructor invocation • lib/boot/boot_screen.dart:229:29 • const_with_non_const
+
+1 issue found. (ran in 15.6s)
