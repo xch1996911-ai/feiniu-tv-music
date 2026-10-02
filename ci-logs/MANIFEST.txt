@@ -5,7 +5,7 @@
 
 [A] app-hisense-no-impeller-debug.apk
     字节数          : 122,244,648
-    sha256          : fe40f279fbc865324d02bfa3da5d772b4d699c6482c6c59b103a2970af51181c
+    sha256          : 8bff9974047d17df5dd6b168a78ee7a9d31e914ac706a265c62464e75a4b6a49
     applicationId   : com.feiniu.tv.music.diaga
     桌面显示名      : 飞牛A·关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -17,7 +17,7 @@
 
 [B] app-hisense-impeller-default-debug.apk
     字节数          : 122,244,628
-    sha256          : 8d677d6dfa76bccd8d47fcf772b70c5ded8054f269e1b70f96f51ff21fb57f90
+    sha256          : 5ac8f81e3086d157360f65b845c4ffb86b725ff6f065d45aa9f08ad57fa23337
     applicationId   : com.feiniu.tv.music.diagb
     桌面显示名      : 飞牛B·默认后端
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -29,7 +29,7 @@
 
 [C] app-hisense-impeller-gles-debug.apk
     字节数          : 122,244,668
-    sha256          : cb12cd0f594be0001d7404cf79ba5ac453a01ef14dd115697525e47b408bc795
+    sha256          : 863e705841acc564ee094bccde0cca0900812a641272e34590f32f1855c9992a
     applicationId   : com.feiniu.tv.music.diagc
     桌面显示名      : 飞牛C·GLES后端
     Renderer        : ImpellerBackend=opengles
@@ -41,7 +41,7 @@
 
 [D] app-hisense-no-impeller-release.apk
     字节数          : 34,103,743
-    sha256          : a4a5e973282f62ba36135dbedc907a095d55dd97d5d077964d394fc050937553
+    sha256          : 5264580d94b48c7c020432bbe942234344a55062856f790e822a59e7af84cb24
     applicationId   : com.feiniu.tv.music.diagd
     桌面显示名      : 飞牛D·Rel关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -53,7 +53,7 @@
 
 [E] app-hisense-engine-smoke.apk
     字节数          : 120,438,408
-    sha256          : c6a3ae2290f695317a9488f64643bdcad18e8b019b57e92d5bffdbf24a64e3ed
+    sha256          : 7d715261c404444475b83f118acd3237eada0a26179989f653612b20ffe8ac17
     applicationId   : com.feiniu.tv.music.smoke
     桌面显示名      : Smoke·插件版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -65,7 +65,7 @@
 
 [F] app-hisense-engine-smoke-no-plugins.apk
     字节数          : 120,438,392
-    sha256          : b0ebaa74b26aed90e90b023aa30c6fac0ca23b7d673d650ef5243edb8bd013b3
+    sha256          : 4acdd8f4a90500b65dd2dc5591fc6bb7433ac8981a661c0733a122e7127178fa
     applicationId   : com.feiniu.tv.music.smokenp
     桌面显示名      : Smoke·无插件
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
