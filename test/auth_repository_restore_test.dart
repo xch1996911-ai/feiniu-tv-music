@@ -46,13 +46,19 @@ void main() {
 
 /// 模拟「原生通道 / 安全存储对端不回应」：对应方法返回一个**永不完成**的 Future。
 ///
-/// 只覆写需要挂住的那一个方法，其余继承真实实现（本测试不触碰它们）。
+/// 只覆写需要挂住的那一个方法；其余覆写成**不依赖插件**的即时返回，
+/// 否则测试环境里 `super.getOrCreateDeviceId()` 会因 MethodChannel 无对端而抛
+/// `MissingPluginException`，`restore()` 会提前 return —— 后面的 `readSession`
+/// 挂起路径根本走不到，测试就变成「假通过」。
 class _HangingStore extends SecureStore {
   _HangingStore({
     this.hangDeviceId = false,
     this.hangReadSession = false,
     this.hangClearSession = false,
   });
+
+  /// 一个合法形态的 deviceId（契约要求 32 位小写 hex）。
+  static const String _validDeviceId = '0123456789abcdef0123456789abcdef';
 
   final bool hangDeviceId;
   final bool hangReadSession;
@@ -61,7 +67,8 @@ class _HangingStore extends SecureStore {
   @override
   Future<String> getOrCreateDeviceId() {
     if (hangDeviceId) return Completer<String>().future;
-    return super.getOrCreateDeviceId();
+    // 立刻返回合法值，让 restore() 能真正走到 readSession 那一步。
+    return Future<String>.value(_validDeviceId);
   }
 
   @override
