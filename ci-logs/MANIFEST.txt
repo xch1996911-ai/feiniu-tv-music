@@ -1,11 +1,11 @@
-海信 E7N Pro / VIDDA 渲染后端 × 插件注册 诊断包
+海信 E7N Pro / VIDDA 诊断包（渲染后端 × 插件注册）+ 正式发布候选
 ================================================================================================
 
 所有 APK 来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。
 
 [A] app-hisense-no-impeller-debug.apk
-    字节数          : 122,244,648
-    sha256          : f654900c3b66650b0caa90d59a7312ec945fe779d51dadd489dacdd6d37ef6b8
+    字节数          : 122,250,436
+    sha256          : 88b5a3f601c6f38526a73ee08a2763f1013663945a2a7027ee2e4be5ec7c6441
     applicationId   : com.feiniu.tv.music.diaga
     桌面显示名      : 飞牛A·关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -16,8 +16,8 @@
     DIAG_TAG        : (无)
 
 [B] app-hisense-impeller-default-debug.apk
-    字节数          : 122,244,628
-    sha256          : b32ca3b13309575b87df8d6697965c7d79b24c5eb51900971ccf1c7b2fb06db9
+    字节数          : 122,250,416
+    sha256          : f9210a9d87d9519820810c3a224c8a89fc64c9448abf5631e5f5aa32a9699ccc
     applicationId   : com.feiniu.tv.music.diagb
     桌面显示名      : 飞牛B·默认后端
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -28,8 +28,8 @@
     DIAG_TAG        : (无)
 
 [C] app-hisense-impeller-gles-debug.apk
-    字节数          : 122,244,668
-    sha256          : cb34325c340aa459db957d9618073f281b5601cfa2897cafa04085be6042a9a9
+    字节数          : 122,250,452
+    sha256          : f578a684d0bce42dcc4d9a23ac71acb5d8656a941c6a49b35e4d1cf42457c7db
     applicationId   : com.feiniu.tv.music.diagc
     桌面显示名      : 飞牛C·GLES后端
     Renderer        : ImpellerBackend=opengles
@@ -41,7 +41,7 @@
 
 [D] app-hisense-no-impeller-release.apk
     字节数          : 34,103,743
-    sha256          : 2472fc31ed249ca3678df97eaaa639506e0c28d52f4b49bf50d8af6b055c3729
+    sha256          : 2cb554684864e05d7648f7a76ced891a0e5e23c65149e85a1c2b655f59cfeff4
     applicationId   : com.feiniu.tv.music.diagd
     桌面显示名      : 飞牛D·Rel关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -53,7 +53,7 @@
 
 [E] app-hisense-engine-smoke.apk
     字节数          : 120,438,408
-    sha256          : 8ada04184bafac73f3f691b23b2fe48bb883895e5fbc030d67a7f8628b8da7a8
+    sha256          : 97b64e2730a0ca83883bde2f486ec826c4c11228d6fb0a71ff9c070bd74d8ed6
     applicationId   : com.feiniu.tv.music.smoke
     桌面显示名      : Smoke·插件版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -65,7 +65,7 @@
 
 [F] app-hisense-engine-smoke-no-plugins.apk
     字节数          : 120,438,392
-    sha256          : 578492f82655b4bb11dea5d0c74f53214db6387465590e4143c54babee1ba5ac
+    sha256          : 1070ef16f8c16433a07392c2808b810340c5b39abb0d121d99301c19f844b012
     applicationId   : com.feiniu.tv.music.smokenp
     桌面显示名      : Smoke·无插件
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -75,6 +75,18 @@
     ABI             : android-arm,android-arm64
     DIAG_TAG        : smoke-no-plugins
 
+[G] app-hisense-release.apk
+    字节数          : 34,103,711
+    sha256          : 6a820a044d34627f168f31463848bc26087b607ccbf39c17d2e5bf765118def9
+    applicationId   : com.feiniu.tv.music.rel
+    桌面显示名      : 飞牛·正式版
+    Renderer        : 无任何后端 meta-data（Flutter 默认后端）
+    插件自动注册    : 是（MainActivity）
+    构建类型        : release
+    Dart 入口       : lib/main.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : (无)
+
 boot.log 路径（每个包独立）
 ------------------------------------------------------------------------------------------------
   com.feiniu.tv.music.diaga          /storage/emulated/0/Android/data/com.feiniu.tv.music.diaga/files/bootlog/boot.log
@@ -83,6 +95,7 @@ boot.log 路径（每个包独立）
   com.feiniu.tv.music.diagd          /storage/emulated/0/Android/data/com.feiniu.tv.music.diagd/files/bootlog/boot.log
   com.feiniu.tv.music.smoke          /storage/emulated/0/Android/data/com.feiniu.tv.music.smoke/files/bootlog/boot.log
   com.feiniu.tv.music.smokenp        /storage/emulated/0/Android/data/com.feiniu.tv.music.smokenp/files/bootlog/boot.log
+  com.feiniu.tv.music.rel            /storage/emulated/0/Android/data/com.feiniu.tv.music.rel/files/bootlog/boot.log
 
 判读要点
 ------------------------------------------------------------------------------------------------
