@@ -4,9 +4,9 @@ Framework • revision 5fc346839b (2 days ago) • 2026-09-30 15:02:49 -0700
 Engine • hash b8c8d3d8d5d0095127057f8a29ca8cc53da2167c (revision 692136cb65) (2 days ago) • 2026-09-30 00:56:59.000Z
 Tools • Dart 3.13.5 • DevTools 2.60.0
 === java ===
-openjdk version "17.0.20.1" 2026-08-18
-OpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)
-OpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)
+openjdk version "<IP-REDACTED>" 2026-08-18
+OpenJDK Runtime Environment Temurin-<IP-REDACTED>+1 (build <IP-REDACTED>+1)
+OpenJDK 64-Bit Server VM Temurin-<IP-REDACTED>+1 (build <IP-REDACTED>+1, mixed mode, sharing)
 === gradle wrapper ===
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
@@ -132,35 +132,13 @@ Changed 108 dependencies!
 Try `flutter pub outdated` for more information.
 Upgrading analysis_options.yaml to exclude build and platform directories.
 Running Gradle task 'assembleDebug'...                          
-e: file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts:44:13: Unresolved reference 'minifyEnabled'.
-e: file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts:45:13: Unresolved reference 'shrinkResources'.
-
-FAILURE: Build failed with an exception.
-
-* Where:
-Build file '/home/runner/work/feiniu-tv-music/feiniu-tv-music/android/app/build.gradle.kts' line: 22
-
-* What went wrong:
-Script compilation errors:
-
-  Line 22: android {
-           ^ 'fun Project.android(configure: Action<BaseAppModuleExtension>): Unit' is deprecated. Replaced by com.android.build.api.dsl.ApplicationExtension.
-               This class is not used for the public extensions in AGP when android.newDsl=true, which is the default in AGP 9.0, and will be removed in AGP 10.0.
-
-  Line 44:             minifyEnabled = false
-                       ^ Unresolved reference 'minifyEnabled'.
-
-  Line 45:             shrinkResources = false
-                       ^ Unresolved reference 'shrinkResources'.
-
-3 errors
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 1m 15s
-Running Gradle task 'assembleDebug'...                             76.4s
-Gradle task assembleDebug failed with exit code 1
+Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
+License for package CMake 3.22.1 accepted.
+Preparing "Install CMake 3.22.1 v.3.22.1".
+"Install CMake 3.22.1 v.3.22.1" ready.
+Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+"Install CMake 3.22.1 v.3.22.1" complete.
+"Install CMake 3.22.1 v.3.22.1" finished.
+Running Gradle task 'assembleDebug'...                            265.0s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+APK_SIZE=162278758
