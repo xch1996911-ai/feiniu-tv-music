@@ -111,7 +111,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [A] app-hisense-no-impeller-debug.apk
     字节数          : 122,244,648
-    sha256          : 95330c759c1bc305454faa6a2c5a8bd69eca34c25d164de962618357db7e80c9
+    sha256          : fe40f279fbc865324d02bfa3da5d772b4d699c6482c6c59b103a2970af51181c
     applicationId   : com.feiniu.tv.music.diaga
     桌面显示名      : 飞牛A·关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -123,7 +123,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [B] app-hisense-impeller-default-debug.apk
     字节数          : 122,244,628
-    sha256          : b0ad9f48331c79bf0fe3e60990473f33f076e75981003aa1e65986b192d9a864
+    sha256          : 8d677d6dfa76bccd8d47fcf772b70c5ded8054f269e1b70f96f51ff21fb57f90
     applicationId   : com.feiniu.tv.music.diagb
     桌面显示名      : 飞牛B·默认后端
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -135,7 +135,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [C] app-hisense-impeller-gles-debug.apk
     字节数          : 122,244,668
-    sha256          : a2987abe9d94ef880858e2ab447c7375749045c13f889a883fdf02e80e483471
+    sha256          : cb12cd0f594be0001d7404cf79ba5ac453a01ef14dd115697525e47b408bc795
     applicationId   : com.feiniu.tv.music.diagc
     桌面显示名      : 飞牛C·GLES后端
     Renderer        : ImpellerBackend=opengles
@@ -147,7 +147,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [D] app-hisense-no-impeller-release.apk
     字节数          : 34,103,743
-    sha256          : 0daf5723f4cc3986a0c0d547a8a1e87a7cb1c5a025208c12ebbf9fc3161eed00
+    sha256          : a4a5e973282f62ba36135dbedc907a095d55dd97d5d077964d394fc050937553
     applicationId   : com.feiniu.tv.music.diagd
     桌面显示名      : 飞牛D·Rel关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -159,7 +159,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [E] app-hisense-engine-smoke.apk
     字节数          : 120,438,408
-    sha256          : 09264fab1892b4995d408d9c3853bd2ba4d6b9b7293b7367958c6d28bd22b950
+    sha256          : c6a3ae2290f695317a9488f64643bdcad18e8b019b57e92d5bffdbf24a64e3ed
     applicationId   : com.feiniu.tv.music.smoke
     桌面显示名      : Smoke·插件版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -171,7 +171,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [F] app-hisense-engine-smoke-no-plugins.apk
     字节数          : 120,438,392
-    sha256          : 414ed339c8177d4aad774b60d86d5ead1cb8d8b603634b7f5554da49642dc9d0
+    sha256          : b0ebaa74b26aed90e90b023aa30c6fac0ca23b7d673d650ef5243edb8bd013b3
     applicationId   : com.feiniu.tv.music.smokenp
     桌面显示名      : Smoke·无插件
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -197,11 +197,5 @@ boot.log 路径（每个包独立）
   · boot.log 没有异常堆栈 ≠ 没有 native crash
     （UncaughtExceptionHandler 只抓 Java/Kotlin 异常，抓不到 SIGSEGV/libflutter.so/GPU 驱动崩溃）
 
-=== git status --porcelain ===
- M analysis_options.yaml
-?? android/app/src/main/java/
-?? android/gradle/wrapper/gradle-wrapper.jar
-?? android/gradlew
-?? android/gradlew.bat
-?? dist/
-?? pubspec.lock
+=== 诊断脚本涉及的两个文件 · git diff --stat ===
+=== 诊断脚本涉及的两个文件 · git status --porcelain ===
