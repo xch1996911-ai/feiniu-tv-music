@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/boot_log.dart';
 import '../core/ids.dart';
 import '../core/log.dart';
 
@@ -138,6 +139,16 @@ class SecureStore {
   /// `localStorage` 缓存 + `/^[a-f0-9]{32}$/i` 校验，命中即复用；
   /// 且「不允许每次启动重新生成」。
   Future<String> getOrCreateDeviceId() async {
+    // 首选原生 SharedPreferences（`MainActivity.deviceId()`）：
+    // 部分 Android TV ROM 上 EncryptedSharedPreferences 会在**原生层直接崩溃**
+    // （Keystore 不可用），Dart 的 try/catch 拦不住 —— 表现为「黑屏后闪退」。
+    // deviceId 只是随机标识、非机密，不值得为它冒 native crash 的风险。
+    final fromNative = await BootLog.nativeDeviceId();
+    if (Ids.isValidDeviceId(fromNative)) {
+      return fromNative!;
+    }
+
+    // 原生通道不可用时（例如单元测试）退回安全存储。
     final cached = await readDeviceId();
     if (cached != null) {
       return cached;
