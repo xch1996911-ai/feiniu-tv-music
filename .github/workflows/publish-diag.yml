@@ -74,14 +74,24 @@ jobs:
           gh run download "${{ steps.src.outputs.run_id }}" \
             --repo "$GITHUB_REPOSITORY" -D dl
           echo "=== 下载结果 ==="
-          find dl -maxdepth 2 -type f -printf '%s\t%p\n' | sort -k2
+          find dl -type f -printf '%s\t%p\n' | sort -k2
 
       - name: 归集产物（超过 90MB 的压缩入库，规避 Git 单文件 100MB 硬上限）
         run: |
           set -euo pipefail
           mkdir -p release
 
-          # artifact 名与文件名一致，故文件位于 dl/<name>/<name>
+          # artifact 名与文件名一致，故文件位于 dl/<name>/<name>。
+          # 但上层的 artifact 是「整包下载」会带一层目录，这里用 find 兜底定位，
+          # 避免因为 upload-artifact 的公共前缀规则变化而静默漏掉文件
+          # （真实踩过：release-bundle 里写死 dl-logs/MANIFEST.txt，
+          #   实际路径是 dl-logs/dist/MANIFEST.txt，于是清单被静默跳过）。
+          locate() {
+            # `|| true`：set -o pipefail 下 find 若因 head 提前退出收到 SIGPIPE
+            # 会返回 141，在 `x=$(locate ...)` 里会被 set -e 当成致命错误。
+            find dl -type f -name "$1" 2>/dev/null | head -1 || true
+          }
+
           APKS="app-hisense-no-impeller-debug.apk \
                 app-hisense-impeller-default-debug.apk \
                 app-hisense-impeller-gles-debug.apk \
@@ -91,9 +101,9 @@ jobs:
 
           MISSING=0
           for name in $APKS; do
-            src="dl/$name/$name"
-            if [ ! -f "$src" ]; then
-              echo "!! 缺少产物：$src"
+            src=$(locate "$name")
+            if [ -z "$src" ]; then
+              echo "!! 缺少产物：$name"
               MISSING=1
               continue
             fi
@@ -113,13 +123,11 @@ jobs:
             exit 1
           fi
 
-          # 探针与清单属于附带产物，缺了不阻断
-          if [ -f dl/fnos_api_probe.exe/fnos_api_probe.exe ]; then
-            cp dl/fnos_api_probe.exe/fnos_api_probe.exe release/
-          fi
-          if [ -f dl/android-build-logs/MANIFEST.txt ]; then
-            cp dl/android-build-logs/MANIFEST.txt release/
-          fi
+          # 探针与清单属于附带产物，缺了不阻断，但要打印出来便于发现路径问题
+          probe=$(locate fnos_api_probe.exe || true)
+          if [ -n "$probe" ]; then cp "$probe" release/; else echo "::warning::未找到 fnos_api_probe.exe"; fi
+          manifest=$(locate MANIFEST.txt || true)
+          if [ -n "$manifest" ]; then cp "$manifest" release/; else echo "::warning::未找到 MANIFEST.txt"; fi
 
           echo "=== release/ 内容 ==="
           ls -la release/

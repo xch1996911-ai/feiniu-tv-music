@@ -13,6 +13,7 @@ name: Phase1 CI
 #   - 不允许忽略 analyze / test 的失败，不使用 continue-on-error
 #   - 6 个诊断 APK 来自**同一 commit、同一份 Dart 业务代码**，
 #     只允许构建配置（Renderer / 插件注册 / 构建类型）不同
+#   - 本 workflow **不写 release 分支**：那由 publish-diag.yml 独占，见文件末尾说明
 
 on:
   push:
@@ -317,93 +318,17 @@ jobs:
           if-no-files-found: error
           retention-days: 5
 
-  # 只把「最小必要」的一组产物推到独立 release 分支：
-  #   D（no-impeller release APK，带正式签名的替代品）+ probe EXE。
-  # 原因：GitHub 的 artifact 下载接口必须鉴权，本地无法匿名取回；
-  # 推到分支后即可直接 clone / 点 raw 链接拿走。
+  # ⚠️ 这里**刻意没有**「把产物推到 release 分支」的 job。
   #
-  # 刻意**不**把 5 个 debug 包也推进来：每个 100MB+（Git 单文件硬上限 100MB，
-  # 必须压缩），6 个包一次 force push 约 300MB，会让仓库迅速膨胀。
-  # 6 个包统一走当次运行页的 artifact。
-  release-bundle:
-    name: Bundle to release branch
-    needs: [android, probe-exe]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 下载 no-impeller release APK
-        uses: actions/download-artifact@v4
-        with:
-          name: app-hisense-no-impeller-release.apk
-          path: dl-apk
-
-      - name: 下载 fnos_api_probe.exe
-        uses: actions/download-artifact@v4
-        with:
-          name: fnos_api_probe.exe
-          path: dl-exe
-
-      - name: 下载产物清单
-        uses: actions/download-artifact@v4
-        with:
-          name: android-build-logs
-          path: dl-logs
-
-      - name: 打包并推送到 release 分支
-        run: |
-          set -o pipefail
-          {
-            echo "=== 下载到的产物 ==="
-            ls -la dl-apk dl-exe dl-logs
-            echo "=== 原始大小 ==="
-            stat -c '%n = %s bytes' dl-apk/app-hisense-no-impeller-release.apk dl-exe/fnos_api_probe.exe
-            rm -rf release && mkdir -p release
-            cp dl-exe/fnos_api_probe.exe release/
-            [ -f dl-logs/MANIFEST.txt ] && cp dl-logs/MANIFEST.txt release/ || true
-
-            APK_SIZE=$(stat -c%s dl-apk/app-hisense-no-impeller-release.apk)
-            echo "=== APK 大小 = $APK_SIZE 字节 ==="
-            if [ "$APK_SIZE" -ge 90000000 ]; then
-              echo "=== 超过 90MB，压缩后入库（Git 单文件硬上限 100MB）==="
-              zip -9 -q release/app-hisense-no-impeller-release.apk.zip dl-apk/app-hisense-no-impeller-release.apk
-            else
-              echo "=== 未超过 90MB，直接入库（省去解压）==="
-              cp dl-apk/app-hisense-no-impeller-release.apk release/
-            fi
-
-            stat -c '%n = %s bytes' release/* || true
-            printf 'built_from_sha: %s\nrun_id: %s\ntime: %s\n' \
-              "${{ github.sha }}" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > release/BUILD_INFO.txt
-            {
-              echo ""
-              echo "=== release 分支内容说明 ==="
-              echo "app-hisense-no-impeller-release.apk(.zip)  Renderer=EnableImpeller=false, 插件注册=是, release"
-              echo "fnos_api_probe.exe                         NAS API 探针（Windows 自包含）"
-              echo "MANIFEST.txt / BUILD_INFO.txt              本次 6 个诊断 APK 的全部配置与校验值"
-              echo "其余 5 个诊断 APK 请到当次运行页的 Artifacts 区下载。"
-            } >> release/BUILD_INFO.txt
-            echo "=== release/ 内容 ==="
-            ls -la release/
-          } 2>&1 | tee release-bundle.log
-
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-
-          # 1) 先把本 job 日志提交到 main 的 ci-logs/，本地即可读取（该路径已 paths-ignore）
-          mkdir -p ci-logs
-          cp release-bundle.log ci-logs/release-bundle.log
-          git add -f ci-logs
-          git commit -q -m "ci: release-bundle log for run ${{ github.run_id }}" || echo "无日志可提交"
-          git push origin HEAD:main || echo "日志推送失败"
-
-          # 2) 再把 release/ 推到独立分支；force push 保证仓库体积恒定
-          git switch --orphan release-work >/dev/null 2>&1
-          git rm -r -q --cached . >/dev/null 2>&1 || true
-          git add -f release >/dev/null 2>&1
-          git commit -q -m "release: no-impeller release APK + fnos_api_probe.exe (run ${{ github.run_id }})"
-          git push --force origin HEAD:release
+  # 曾经有一个 `release-bundle` job：只把 D（release APK）+ probe EXE 推到 release
+  # 分支。它有两个问题，已经删掉：
+  #   1) 它用孤儿分支 force push，会**整批覆盖** release 分支 ——
+  #      也就是会把 publish-diag 放上去的 5 个 debug 包全部抹掉，
+  #      用户手里的下载网址会在下一次 CI 之后集体失效；
+  #   2) 它写死 `dl-logs/MANIFEST.txt`，而 upload-artifact 保存的是
+  #      `dist/MANIFEST.txt` → 路径对不上，清单被静默跳过。
+  #
+  # 现在 release 分支由 `.github/workflows/publish-diag.yml` **独占**：
+  # 它把 6 个 APK + probe EXE + MANIFEST 一次性放上去，
+  # 单一写入者因此不存在互相 force push 的竞态。
+  # 触发方式：`git push --force origin main:publish-diag`（等本轮 CI 成功之后再推）。
