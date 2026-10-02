@@ -6,12 +6,12 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: deviceId 校验 接受合法值（含大写，兼容官方 /i 校验）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: deviceId 校验 拒绝长度错误 / 非 hex / 空 / null
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: toHex 逐字节补零
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 不依赖任何插件即可渲染出 FLUTTER ENGINE OK
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 帧计数随首帧回调递增，并在 maxFrames 处停止
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: first frame callback 一定会被标记出来（电视端唯一判据）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 标记会经 feiniu/boot 通道发得出去（原生落盘通道必须可用）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: DIAG_TAG 有默认值，未注入 dart-define 时也不会是空串
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
@@ -57,44 +57,44 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） authHeaders（供播放器/图片组件用）只含 Cookie，不含 authx
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） API 请求自动附带 authx 头，且形状为 nonce/timestamp/sign
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） 查询值含空格与中文时，authx 与 Cookie 均正常
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size track/list 发出的 query 恰好是 page 与 size
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size album/list 与 artist/list 同样使用 page + size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） 主键是 guid，标题/封面取自真实字段
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size 解析 list/total，并保留请求的 page/size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） duration 单位是毫秒（218711ms ≈ 218.7s ≈ 3分39秒）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） audioSpec.duration 与顶层一致（同为毫秒）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） audiospec 声道字段是 channel（单数）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID getLyrics 发出 trackGUID，而不是 guid
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size track/list 发出的 query 恰好是 page 与 size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） 规格串可读
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） 歌手来自 artists 数组（不是 artistNames 字符串）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID 服务端因参数错误返回 100002 时映射为服务端错误
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size album/list 与 artist/list 同样使用 page + size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） album 内嵌引用：name / releaseDate / barcode / 时间戳
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） releaseYear 取 album.releaseDate 前四位（顶层 year 实测为 null）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 HTTP 401 + 99999 → tokenExpired（Cookie 缺失/失效）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size 解析 list/total，并保留请求的 page/size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） createdAt / updatedAt 是 Unix 秒（不是毫秒）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） 新增字段：isrc / isFavorite / isCue / genres
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 120001 → auth（登录/授权失败），与 99999 明确区分
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: coverId 必须保留前缀 track.coverId 存在时优先使用它
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100001 → server（含参数缺失，如缺 deviceId）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: coverId 必须保留前缀 track.coverId 缺失时回退到 album.coverId
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: coverId 必须保留前缀 两者都缺失时为 null，且不伪造前缀
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100005 → notFound
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID getLyrics 发出 trackGUID，而不是 guid
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: coverId 必须保留前缀 artist / track 前缀原样保留（不做任何拆分）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 错误码常量与真实契约一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: 容错 缺可选字段不崩溃
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 没有业务码时按 HTTP 状态兜底：500 → server
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID 服务端因参数错误返回 100002 时映射为服务端错误
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: 容错 accessStatus=3 标记失效不可播
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 HTTP 401 + 99999 → tokenExpired（Cookie 缺失/失效）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: 容错 异常类型（数字/字符串/非 Map）一律兜底
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Album.fromJson（真实样本） 字段完整
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 120001 → auth（登录/授权失败），与 99999 明确区分
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Album.fromJson（真实样本） releaseDate 解析出年份；缺失时为 null
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 提交 username / password(sha256) / deviceId(32hex)，token 取 data.userToken
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Album.fromJson（真实样本） 时间戳为 Unix 秒
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100001 → server（含参数缺失，如缺 deviceId）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Artist.fromJson（真实样本） 字段完整
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 token 提取兼容 result.token（桌面桥接层形状），但 userToken 优先
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Artist.fromJson（真实样本） artist/list-all 的轻量形态也能解析
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100005 → notFound
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: jsonUnixSeconds 秒 → DateTime；疑似毫秒自动收敛
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 缺少 userToken 时回退 result.token
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 错误码常量与真实契约一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: jsonUnixSeconds 0 / 负数 / null / 非数字返回 null
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 没有业务码时按 HTTP 状态兜底：500 → server
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 提交 username / password(sha256) / deviceId(32hex)，token 取 data.userToken
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 token 提取兼容 result.token（桌面桥接层形状），但 userToken 优先
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 缺少 userToken 时回退 result.token
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 缺少平铺 token 时回退 data.token
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 响应里完全没有 token → parse 错误
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 登录协议 凭据错误 120001 → auth
