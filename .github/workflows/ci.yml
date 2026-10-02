@@ -10,7 +10,7 @@ name: Phase1 CI
 
 on:
   push:
-    branches: ['**']
+    branches: ['main']
   workflow_dispatch:
 
 jobs:
@@ -108,6 +108,28 @@ jobs:
             analyze.log
             test.log
           if-no-files-found: warn
+
+      # 把日志提交到 ci-logs 分支：本地可直接 `git fetch origin ci-logs` 读取，
+      # 无需下载 artifact（artifact 下载需要鉴权，公开仓库亦然）。
+      - name: 推送诊断日志到 ci-logs 分支
+        if: always()
+        run: |
+          set -o pipefail
+          mkdir -p ci-logs
+          for f in build.log analyze.log test.log; do
+            [ -f "$f" ] && cp "$f" ci-logs/ || true
+          done
+          printf 'run_id: %s\nsha: %s\ntime: %s\n' \
+            "${{ github.run_id }}" "${{ github.sha }}" "$(date -u +%FT%TZ)" > ci-logs/meta.txt
+          # 只把 ci-logs/ 目录提交到独立分支，不改动 main，也不删除工作区文件
+          git switch --orphan ci-logs-work >/dev/null 2>&1
+          git rm -r -q --cached . >/dev/null 2>&1 || true
+          git add -f ci-logs >/dev/null 2>&1
+          git -c user.name='github-actions[bot]' \
+              -c user.email='github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "ci: diagnostics for run ${{ github.run_id }}" || echo "无日志可提交"
+          git push --force origin HEAD:ci-logs
+          git switch -q main 2>/dev/null || true
 
   probe-exe:
     name: fnOS API Probe (Windows EXE)
