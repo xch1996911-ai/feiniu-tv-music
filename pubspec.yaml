@@ -1,0 +1,43 @@
+name: feiniu_tv_music
+description: 飞牛 fnOS NAS 专用 Android TV 客厅音乐播放器 (Phase 1 — 基础播放闭环)
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  # 目标运行环境：用户本机现代 Flutter（Flutter >= 3.10 / Dart >= 3.0 即可）。
+  # 沙箱内置 Flutter 3.0.0 / Dart 2.17.0 低于本下限，且无法访问 pub.dev，故沙箱内无法构建；
+  # 编译/构建请在具备完整工具链与网络的机器上进行。
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP 客户端
+  dio: ^5.4.3+1
+
+  # 系统解码播放引擎（ExoPlayer / AVPlayer）
+  just_audio: ^0.9.38
+
+  # 后台播放 + Android MediaSession + 遥控媒体键
+  audio_service: ^0.18.15
+  audio_session: ^0.1.19
+
+  # 敏感凭据安全存储（Android Keystore / iOS Keychain）
+  flutter_secure_storage: ^9.0.0
+
+  # sha256 密码哈希（登录使用）
+  crypto: ^3.0.3
+
+  # 轻量依赖注入 / 状态（不引入重型框架，见 technical_research.md 决策 D2）
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  test: ^1.24.0
+
+flutter:
+  uses-material-design: true

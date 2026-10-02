@@ -1,0 +1,10 @@
+# 探针包（fnos_api_probe）的独立分析配置。
+#
+# 关键：必须存在本文件，否则 `dart analyze` 会向上找到项目根的
+# analysis_options.yaml，其中 `include: package:flutter_lints/flutter_lints.yaml`
+# 无法在探针包（纯 Dart、无 Flutter 依赖）中解析，导致分析直接报错。
+#
+# 探针是可独立编译为 EXE 的纯 Dart 工具，不使用 Flutter 相关 lint。
+analyzer:
+  errors:
+    todo: ignore

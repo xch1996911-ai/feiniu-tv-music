@@ -1,0 +1,10 @@
+include: package:flutter_lints/flutter_lints.yaml
+
+linter:
+  rules:
+    # 可读性优先于样板
+    avoid_print: true
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    # TV 项目里我们大量手动控制 Focus，关闭过度严格的警告
+    avoid_redundant_argument_values: false

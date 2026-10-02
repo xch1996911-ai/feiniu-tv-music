@@ -1,0 +1,50 @@
+# ============================================================
+# 安全红线：凭据 / Token / 真实 NAS 信息 永远禁止提交
+# ============================================================
+# 真实登录凭据、Token、FNID 等（即便以文件形式存在）
+*.env
+.env.*
+.env.local
+config/secrets.*
+**/credentials*.json
+**/nas_config*.json
+**/*_secret.*
+# probe 工具可能生成的本地结果（含真实主机/用户名脱敏后的记录）
+tools/fnos_api_probe/.probe_results/
+
+# ============================================================
+# Flutter / Dart 标准忽略项
+# ============================================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+flutter_*.log
+
+# 编辑器 / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# 本地构建产物
+*.apk
+*.aab
+*.ipa
+# probe 编译出的 Windows 可执行文件（由 CI 生成并作为 artifact 发布，不入库）
+*.exe
+
+# Android 本机路径（含 flutter.sdk / sdk.dir，CI 与本机不同）
+android/local.properties
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# CI 与本地日志
+*.log
+.probe_results/
+# probe 生成的脱敏报告（含本机路径信息，默认不入库）
+probe_report_redacted.md
