@@ -39,13 +39,26 @@ void main() {
       // 这样即使后续崩在引擎/插件层，日志里也已经有 Dart 启动的痕迹。
       BootLog.start();
 
+      // 启动路径必须留下逐点痕迹，否则在无 adb 的电视上无法区分
+      // 「Dart 没跑起来」「runApp 没执行」「第一帧没画出来」这三种完全不同的故障。
+      BootLog.mark('Dart main() entered');
+
       // 把框架内部错误也接出来，避免「界面白了/黑了但控制台什么都没有」。
       FlutterError.onError = (FlutterErrorDetails details) {
         BootLog.mark('FlutterError: ${details.exceptionAsString()}');
         FlutterError.presentError(details);
       };
 
+      BootLog.mark('runApp before');
       runApp(const BootApp());
+      BootLog.mark('runApp after');
+
+      // 「runApp 被调用」≠「第一帧已经交出去」。首帧回调才是渲染真正开始的证据：
+      // 日志里有 `runApp after` 却没有 `first frame callback`
+      // ⇒ 卡在引擎 / 渲染层，与业务代码无关。
+      WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+        BootLog.mark('first frame callback');
+      });
     },
     (Object error, StackTrace stack) {
       BootLog.mark('未捕获异常: $error\n$stack');

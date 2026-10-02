@@ -1,0 +1,24 @@
+# 统一换行符：仓库内一律 LF。
+#
+# 原因：开发机是 Windows，本地 `core.autocrlf=true` 会把 checkout 出来的文件
+# 转成 CRLF，而 CI（Linux）是 LF。两边行尾不一致曾经让「按行匹配」的构建脚本
+# 差点失效（tools/diag/make_variant.py 要靠锚点定位渲染配置）。
+# 脚本本身已对两种行尾免疫，但把行尾固定住更省事。
+#
+# 索引里现有文件已经全部是 LF，所以本文件不会引起内容重写。
+* text=auto eol=lf
+
+# 二进制文件不做任何转换
+*.apk     binary
+*.aab     binary
+*.exe     binary
+*.zip     binary
+*.jar     binary
+*.so      binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.ttf     binary
+*.otf     binary
+*.keystore binary

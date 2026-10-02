@@ -15,10 +15,21 @@ import 'package:flutter/services.dart';
 ///
 /// 所以启动路径上的每一步都通过本类**落盘**到原生文件：
 /// - Dart 侧写 `[dart] xxx`（本类）；
-/// - 原生侧在 `MainActivity` 装 `UncaughtExceptionHandler`，崩溃堆栈直接写同一文件。
+/// - 原生侧（`MainActivity` / `DiagSmokeActivity` → `BootTrace`）记录
+///   `onCreate` / `super.onCreate` / `configureFlutterEngine` / 通道注册等节点。
 ///
 /// 只要进程还活着过一瞬间，日志文件里就会留下「最后走到哪一步」。
-/// 若连一行 `[dart]` 都没有，则说明问题在 Flutter 引擎/渲染层（Dart 尚未执行）。
+/// 若连一行 `[dart]` 都没有，则说明 Dart **根本没有执行**——
+/// 问题在 Flutter 引擎 / 渲染 / 插件注册层。
+///
+/// ## ⚠️ 它不是 native crash 收集器
+///
+/// 原生侧装的是 `Thread.setDefaultUncaughtExceptionHandler`，**只能可靠捕获
+/// Java/Kotlin 未捕获异常**。SIGSEGV / SIGABRT / `libflutter.so` 崩溃 /
+/// GPU 驱动崩溃**不会**经过它，也不会在 boot.log 里留下堆栈。
+/// 因此：**没有异常堆栈 ≠ 没有 native crash**；native crash 只能靠
+/// `adb logcat` 与 `/data/tombstones/` 判定。
+/// boot.log 的作用是回答「执行到了哪一步」，不是提供 native 堆栈。
 ///
 /// ## 启动计数 → 自动安全模式
 ///

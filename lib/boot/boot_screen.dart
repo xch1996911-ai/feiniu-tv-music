@@ -27,8 +27,11 @@ import '../repositories/playback_repository.dart';
 /// 所以本页现在的职责是「**取证**」，而不只是「降级」：
 /// 1. 每个步骤前后都经 [BootLog] 落盘（原生文件 + 屏幕），
 ///    崩溃后回看文件即可知道卡在哪一步；
-/// 2. 原生 `MainActivity` 装了 `UncaughtExceptionHandler`，native 崩溃堆栈
-///    与 Dart 日志写在同一个文件里；
+/// 2. 原生侧（`BootTrace`）记录的节点与 Dart 日志写在**同一个文件**里。
+///    ⚠️ 但原生装的是 `Thread.setDefaultUncaughtExceptionHandler`，
+///    它**只能捕获 Java/Kotlin 异常，不是 native crash 捕获器**：
+///    SIGSEGV / SIGABRT / `libflutter.so` / GPU 驱动崩溃不会留下堆栈。
+///    因此「日志里没有堆栈」不代表「没有 native crash」；
 /// 3. **自动安全模式**：原生记录「连续启动未走完」的次数，达到 2 次时
 ///    本次跳过 audio_service 与安全存储 —— 优先保证「能看到界面」。
 class BootApp extends StatefulWidget {

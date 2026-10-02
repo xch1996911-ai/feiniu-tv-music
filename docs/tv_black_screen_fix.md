@@ -3,9 +3,20 @@
 > 现象演进：
 > - **第一轮**：APK 在电视上安装成功，点开**纯黑屏，什么都不显示**，无报错、无界面。
 > - **第二轮**（修复第一轮之后）：变成**黑屏然后闪退**，进程直接消失。
+> - **第三轮**（海信 E7N Pro / VIDDA 实机）：只看到 `launch_background` 的深蓝
+>   `#14213D`，**从未出现 BootApp 的「三步初始化」文字**，然后闪退。
+>   判定：**Flutter 第一帧之前就失败了**。
 >
-> 本文按时间顺序记录两轮的根因、修复方案，以及后续排错必须遵守的
+> 本文按时间顺序记录三轮的根因、修复方案，以及后续排错必须遵守的
 > 「颜色即信号」+「日志落盘」两条约定。
+>
+> 第三轮另起一份**渲染后端 × 插件注册诊断矩阵**（6 个诊断 APK）：
+> 见 [tv_renderer_ab_test.md](./tv_renderer_ab_test.md)。
+>
+> ⚠️ 本文第二轮里的两个结论（「3.47 无法关闭 Impeller」、
+> 「`ImpellerBackend=opengles` 是修复」）与一个说法
+> （「`UncaughtExceptionHandler` 能捕获 native crash」）**都已被证明是错的**，
+> 见第三之二节与 4.1.1 节。
 
 ---
 
@@ -95,24 +106,43 @@ API 34 起这是硬性要求，缺了会在 `startForeground()` 抛 `SecurityExc
 关键点：**native crash（原生崩溃）不是 Dart 异常，`try/catch` 拦不住。**
 所以第一轮加的降级逻辑根本没机会生效，进程就没了。
 
-同时还有一个「伪修复」被清掉：
+## 三之二、第二轮里三个错误的结论（已在第三轮撤回）
+
+> ⚠️ 下面三条当时被当成定论写进文档，实际都是错的。保留在这里是为了避免重犯。
+
+### ① 「Flutter 3.47 已无法关闭 Impeller」—— 错
+
+当时的说法是：Android 10+ 的 Skia 后端已被上游移除，所以
+`EnableImpeller=false` 无效。这个结论**来自搜索，没有实机验证**。
+
+实际上 Flutter 3.47 仍然支持清单里的：
 
 ```xml
-<!-- 第一轮加的，无效 -->
 <meta-data android:name="io.flutter.embedding.android.EnableImpeller"
            android:value="false" />
 ```
 
-Flutter 的渲染后端演进（上游）：
+**是否存在可用的非 Impeller 路径，由 A/B 实测判定**，不再靠推测。
 
-| 版本 | Android 侧状态 |
-|---|---|
-| 3.27 | API 29+ 默认 Impeller |
-| 3.38 | 手动 opt-out 被 **deprecate**（用会打运行时警告） |
-| 3.41 / 3.44 | **Android 10+ 的 Skia 后端被移除**，Impeller 是唯一路径 |
+### ② 写死 `ImpellerBackend=opengles` —— 错得更严重
 
-本项目用 **Flutter 3.47.6**，所以「关掉 Impeller 回退 Skia」既无效、又让
-黑屏的归因变得模糊 —— 已删除。
+第二轮把它当作「修复」写进了清单：
+
+```xml
+<meta-data android:name="io.flutter.embedding.android.ImpellerBackend"
+           android:value="opengles" />
+```
+
+后果不只是「可能选错后端」，而是**「Impeller 默认后端」这个对照组被直接消灭了**：
+测试退化成只能验证一个后端，根本无法 A/B。而 Debug APK 又会强制执行它。
+
+**第三轮已从清单中删除**，改为默认不带任何渲染 meta-data（= Flutter 默认后端），
+需要哪个后端由诊断构建脚本按变体插入。详见
+[tv_renderer_ab_test.md](./tv_renderer_ab_test.md)。
+
+### ③ 「`UncaughtExceptionHandler` 能捕获 native crash」—— 错
+
+见下文第四节 4.1 的修正说明。
 
 ## 四、第二轮修复
 
@@ -122,9 +152,27 @@ Flutter 的渲染后端演进（上游）：
 
 | 位置 | 内容 |
 |---|---|
-| `MainActivity.installCrashHandler()` | 在 `super.onCreate` **之前**装 `Thread.setDefaultUncaughtExceptionHandler`，任何未捕获的原生异常（含 Flutter 引擎启动阶段的崩溃）连同完整堆栈写入日志文件 |
-| `MainActivity.note()` | 记录原生关键节点：`MainActivity.onCreate 开始` / `super.onCreate 返回` / `MethodChannel 已注册` |
+| `BootTrace.installCrashHandler()` | 在 `super.onCreate` **之前**装 `Thread.setDefaultUncaughtExceptionHandler`，把 **Java/Kotlin 未捕获异常**的堆栈写入日志文件。⚠️ **它只能捕获 Java/Kotlin 异常，不是 native crash 捕获器** —— SIGSEGV / SIGABRT / `libflutter.so` / GPU 驱动崩溃都不会经过它（详见 4.1.1） |
+| `BootTrace.note()` | 记录原生关键节点：`MainActivity.onCreate 开始` / `super.onCreate 之前` / `super.onCreate 返回` / `configureFlutterEngine 开始` / `super.configureFlutterEngine 返回（插件注册完成）` / `MethodChannel 注册完成` |
 | `lib/core/boot_log.dart`（新增） | Dart 侧每个启动节点写 `[dart] xxx`，**同一个文件** |
+
+#### 4.1.1 ⚠️ 修正：`UncaughtExceptionHandler` **不是** native crash 捕获器
+
+第二轮的文档里写过「任何未捕获的原生异常（含 Flutter 引擎启动阶段的崩溃）
+连同完整堆栈写入日志文件」，**这是错的**。
+
+`Thread.setDefaultUncaughtExceptionHandler` 只能拦到「Java/Kotlin 层抛出的
+未捕获异常」。下面这些**不会**经过它，也不会在 `boot.log` 里留下堆栈：
+
+- `SIGSEGV` / `SIGABRT` 等信号导致的崩溃
+- `libflutter.so` 内部崩溃
+- `libGLESv2.so` / Vulkan 驱动崩溃
+- 任何 native abort
+
+这些只能靠 **`adb logcat`** 与 **`/data/tombstones/`** 判定。
+
+> 所以：**`boot.log` 里没有异常堆栈 ≠ 没有 native crash。**
+> `boot.log` 的用途是回答「程序执行到了哪一步」，不是提供 native 堆栈。
 
 日志文件路径：
 
@@ -158,24 +206,35 @@ Keystore 不可用会让这一读写**在原生层直接崩溃**。
 `BootLog.nativeDeviceId()` 读取。`flutter_secure_storage` 仍保留用于
 token 会话，但**读会话失败只会降级，不会崩**。
 
-### 4.4 渲染后端改钉 OpenGL ES
+### 4.4 ~~渲染后端改钉 OpenGL ES~~ —— 已撤回
+
+第二轮曾把下面这条当作「修复」写进清单：
 
 ```xml
+<!-- 已删除，见 4.4 说明 -->
 <meta-data android:name="io.flutter.embedding.android.ImpellerBackend"
            android:value="opengles" />
 ```
 
-不再试图关闭 Impeller（已无 Skia 可退），而是把 Impeller 后端固定在
-**OpenGL ES**，绕开部分电视盒子有缺陷的 Vulkan 驱动
-（典型症状正是「进程活着、画面全黑」）。
+**第三轮已删除。** 原因：它不只「可能选错后端」，还**直接消灭了
+「Impeller 默认后端」这个对照组**，使 A/B 测试无法进行；而 Debug APK
+又会强制执行它。
+
+现在清单里**默认不带任何渲染 meta-data**，即让 Flutter 自行选择默认后端；
+需要对比时由 `tools/diag/make_variant.py` 按变体插入。完整矩阵见
+[tv_renderer_ab_test.md](./tv_renderer_ab_test.md)。
 
 ### 4.5 其余
 
 | 文件 | 改动 |
 |---|---|
 | `lib/boot/boot_screen.dart` | 步骤之间加短延迟，让引导页先画出来；每步前后写日志；新增诊断块（系统版本 / 启动次数 / 日志路径 / **最近 14 行日志直接显示在屏幕上**） |
-| `android/.../MainActivity.kt` | 崩溃处理器 + 日志落盘 + `deviceId` + 启动计数 |
-| `android/.../AndroidManifest.xml` | 删除无效的 `EnableImpeller=false`；新增 `ImpellerBackend=opengles` |
+| `android/.../MainActivity.kt` | 崩溃处理器 + 日志落盘 + `deviceId` + 启动计数（第三轮抽出到 `BootTrace.kt`，并补齐逐步节点） |
+| `android/.../AndroidManifest.xml` | 第二轮：删除 `EnableImpeller=false`、新增 `ImpellerBackend=opengles`；**第三轮：连 `ImpellerBackend=opengles` 一并删除**，改为不写死任何后端（见 4.4） |
+| `lib/main.dart` | 第三轮：补 `Dart main() entered` / `runApp before` / `runApp after` / `first frame callback` 四个节点 |
+| `lib/main_engine_smoke.dart`（新增） | 第三轮：最小引擎冒烟入口，只依赖 Flutter SDK |
+| `android/.../DiagSmokeActivity.kt`（新增） | 第三轮：**不注册任何插件**的诊断 Activity |
+| `tools/diag/make_variant.py`（新增） | 第三轮：生成 6 个诊断变体的构建配置 |
 
 ### 降级策略（不因为一个可选能力拖死启动）
 
@@ -208,9 +267,11 @@ token 会话，但**读会话失败只会降级，不会崩**。
 
 | 日志里的特征 | 结论 |
 |---|---|
-| **完全没有 `[dart]` 行** | Dart 根本没跑起来 ⇒ 问题在引擎/渲染层（Impeller 后端、ABI、Vulkan 驱动） |
+| **完全没有 `[dart]` 行** | Dart 根本没跑起来 ⇒ 问题在引擎/渲染/插件注册层 |
 | 有 `[dart] 步骤N/3 开始` 但**没有对应的完成行** | 崩/卡在这一步 |
-| 末尾有 `!!! 未捕获异常 !!!` + 堆栈 | native 崩溃，堆栈直接给出崩溃点 |
+| 有 `[dart] runApp after` 但没有 `[dart] first frame callback` | 引擎起来了但**第一帧画不出来** ⇒ Renderer / GPU 驱动 |
+| 末尾有 `!!! Java 未捕获异常 !!!` + 堆栈 | **Java/Kotlin 层**异常，堆栈可用 |
+| 以上异常行一个都没有 | ⚠️ **不能断定没有崩溃** —— 仍可能是 native crash（SIGSEGV / `libflutter.so` / GPU 驱动），需 `adb logcat` 或 `/data/tombstones/` |
 | 有 `启动尝试次数 = N（N≥2）` 且本次打印了安全模式 | 说明前一次确实没走完 |
 
 日志文件在 `/storage/emulated/0/Android/data/com.feiniu.tv.music/files/bootlog/boot.log`：

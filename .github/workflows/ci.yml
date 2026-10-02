@@ -1,12 +1,18 @@
 name: Phase1 CI
 
 # Phase 1 验证流水线（不进入 Phase 2）
+#
 # 目标：
-#   1) Android TV Debug APK：pub get -> analyze -> test -> build apk，任一步失败即 FAILED
-#   2) Windows 独立 EXE：fnos_api_probe.exe（目标机无需 Flutter/Dart/Git/Node）
+#   1) 质量门：flutter pub get -> analyze -> test，任一步失败即 FAILED
+#   2) 诊断产物：6 个「渲染后端 × 插件注册」诊断 APK
+#      （海信 E7N Pro / VIDDA：Flutter 第一帧之前就失败，需要分离变量定位）
+#   3) Windows 独立 EXE：fnos_api_probe.exe（目标机无需 Flutter/Dart/Git/Node）
+#
 # 约束：
 #   - Flutter 版本固定 3.47.6，不使用会漂移的 latest
-#   - 不允许忽略 analyze / test 的失败
+#   - 不允许忽略 analyze / test 的失败，不使用 continue-on-error
+#   - 6 个诊断 APK 来自**同一 commit、同一份 Dart 业务代码**，
+#     只允许构建配置（Renderer / 插件注册 / 构建类型）不同
 
 on:
   push:
@@ -17,9 +23,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-apk:
-    name: Android TV Debug APK
+  android:
+    name: 质量门 + 6 个诊断 APK
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       # 必需：用于把诊断日志提交回仓库（否则 GITHUB_TOKEN 只读，git push 会失败）
       contents: write
@@ -45,6 +52,7 @@ jobs:
           {
             echo "=== flutter ==="; flutter --version
             echo "=== java ===";    java -version
+            echo "=== python ===";  python3 --version
             echo "=== gradle wrapper ==="; cat android/gradle/wrapper/gradle-wrapper.properties
           } 2>&1 | tee build.log
 
@@ -71,6 +79,8 @@ jobs:
           set -o pipefail
           flutter pub get 2>&1 | tee -a build.log
 
+      # ── 质量门：以下两步失败即整体 FAILED，不允许跳过、不允许降级 ──────────
+
       - name: flutter analyze  (失败即终止，不允许跳过)
         run: |
           set -o pipefail
@@ -81,43 +91,132 @@ jobs:
           set -o pipefail
           flutter test 2>&1 | tee -a test.log
 
-      - name: flutter build apk --debug
-        run: |
-          set -o pipefail
-          flutter build apk --debug 2>&1 | tee -a build.log
+      # ── 诊断 APK：6 个变体，只差构建配置 ────────────────────────────────
 
-      - name: 校验 APK 产物存在
+      - name: 打印诊断变体矩阵
         run: |
           set -o pipefail
-          APK="build/app/outputs/flutter-apk/app-debug.apk"
-          if [ ! -f "$APK" ]; then
-            echo "!! 未找到 APK: $APK"
-            ls -R build/app/outputs 2>/dev/null || true
+          python3 tools/diag/make_variant.py --list 2>&1 | tee diag-matrix.log
+
+      - name: 构建 6 个诊断 APK（Renderer × 插件注册）
+        run: |
+          set -o pipefail
+          mkdir -p dist
+          python3 tools/diag/make_variant.py --list 2>&1 | tee -a diag-matrix.log
+
+          for V in A B C D E F; do
+            echo "" | tee -a build.log
+            echo "==================== 变体 $V ====================" | tee -a build.log
+
+            # 应用该变体的构建配置（只改 AndroidManifest.xml 与 build.gradle.kts）
+            eval "$(python3 tools/diag/make_variant.py "$V" --emit shell)"
+            python3 tools/diag/make_variant.py "$V" 2>&1 | tee -a diag-matrix.log
+
+            # 只打包 ARM：Android TV 都是 ARM，x86_64 只服务模拟器。
+            # 6 个变体一致使用该设置，因此不会成为混淆变量。
+            if [ "$BUILD_TYPE" = "release" ]; then
+              flutter build apk --release --target-platform "$PLATFORMS" -t "$ENTRY" $DART_DEFINES 2>&1 | tee -a build.log
+              OUT="build/app/outputs/flutter-apk/app-release.apk"
+            else
+              flutter build apk --debug --target-platform "$PLATFORMS" -t "$ENTRY" $DART_DEFINES 2>&1 | tee -a build.log
+              OUT="build/app/outputs/flutter-apk/app-debug.apk"
+            fi
+
+            if [ ! -f "$OUT" ]; then
+              echo "!! 变体 $V 未生成 APK：$OUT"
+              ls -R build/app/outputs 2>/dev/null || true
+              exit 1
+            fi
+
+            cp "$OUT" "dist/$ARTIFACT"
+            stat -c '%n = %s bytes' "dist/$ARTIFACT" | tee -a build.log
+
+            # 还原构建配置，保证下一个变体从同一份基线出发
+            python3 tools/diag/make_variant.py --revert 2>&1 | tee -a diag-matrix.log
+          done
+
+      - name: 校验 6 个产物并生成 MANIFEST.txt
+        run: |
+          set -o pipefail
+          python3 tools/diag/make_variant.py --write-manifest dist 2>&1 | tee -a diag-matrix.log
+          ls -la dist | tee -a build.log
+
+      - name: 确认构建配置已还原干净
+        run: |
+          set -o pipefail
+          git checkout -- android/
+          echo "=== git status --porcelain ===" | tee -a diag-matrix.log
+          git status --porcelain | tee -a diag-matrix.log
+          if git status --porcelain --untracked-files=no | grep -q .; then
+            echo "!! 仍存在已跟踪文件被修改：诊断构建的临时改动没有还原干净"
+            git diff --stat
             exit 1
           fi
-          ls -la "$APK"
-          echo "APK_SIZE=$(stat -c%s "$APK")" | tee -a build.log
+          echo "OK：无跟踪文件被修改，工作区与检出状态一致"
 
       # 日志脱敏：CI 本身不接触 NAS 凭据，这里做二次兜底。
       # IP 规则只匹配私有/回环网段，避免把 "17.0.20.1"、"3.13.5" 这类版本号误判成 IP。
       - name: 日志脱敏
         run: |
           set -o pipefail
-          for f in build.log analyze.log test.log; do
+          for f in build.log analyze.log test.log diag-matrix.log; do
             [ -f "$f" ] || continue
             sed -E -i 's/((token|password|passwd|pwd|cookie|authorization|authx|fnid)[[:space:]]*[:=][[:space:]]*)[^[:space:],;]+/\1<REDACTED>/gI' "$f"
             sed -E -i 's/\b(10\.|127\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)[0-9]{1,3}\.[0-9]{1,3}\b/<IP-REDACTED>/g' "$f"
           done
           echo "脱敏完成"
 
-      - name: 上传 app-debug.apk
+      # ── 6 个 APK 各自上传为独立 artifact，便于在电视上逐个安装验证 ────────
+
+      - name: 上传 A · no-impeller debug
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug.apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-hisense-no-impeller-debug.apk
+          path: dist/app-hisense-no-impeller-debug.apk
           if-no-files-found: error
+          retention-days: 5
 
-      - name: 上传构建日志（已脱敏）
+      - name: 上传 B · impeller 默认 debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-impeller-default-debug.apk
+          path: dist/app-hisense-impeller-default-debug.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传 C · impeller GLES debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-impeller-gles-debug.apk
+          path: dist/app-hisense-impeller-gles-debug.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传 D · no-impeller release
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-no-impeller-release.apk
+          path: dist/app-hisense-no-impeller-release.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传 E · engine smoke（含插件注册）
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-engine-smoke.apk
+          path: dist/app-hisense-engine-smoke.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传 F · engine smoke（不注册插件）
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-engine-smoke-no-plugins.apk
+          path: dist/app-hisense-engine-smoke-no-plugins.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传构建日志与产物清单（已脱敏）
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -126,7 +225,10 @@ jobs:
             build.log
             analyze.log
             test.log
+            diag-matrix.log
+            dist/MANIFEST.txt
           if-no-files-found: warn
+          retention-days: 5
 
       # 把日志提交到仓库的 ci-logs/ 目录：本地 git fetch 即可读取，
       # 无需下载 artifact（artifact 与 job 日志下载均需鉴权，公开仓库亦然）。
@@ -135,9 +237,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p ci-logs
-          for f in build.log analyze.log test.log; do
+          for f in build.log analyze.log test.log diag-matrix.log; do
             [ -f "$f" ] && cp "$f" ci-logs/ || true
           done
+          [ -f dist/MANIFEST.txt ] && cp dist/MANIFEST.txt ci-logs/MANIFEST.txt || true
           printf 'run_id: %s\nsha: %s\ntime: %s\n' \
             "${{ github.run_id }}" "${{ github.sha }}" "$(date -u +%FT%TZ)" > ci-logs/meta.txt
           # .gitignore 里有 *.log，需 -f 强制添加；该路径已配 paths-ignore，不会再触发本 workflow
@@ -185,25 +288,31 @@ jobs:
           name: fnos_api_probe.exe
           path: tools/fnos_api_probe/fnos_api_probe.exe
           if-no-files-found: error
+          retention-days: 5
 
-  # 把两个产物汇总到独立的 release 分支。
-  # 原因：GitHub 的 artifact 下载接口必须鉴权（公开仓库亦返回 401），
-  # 本地无法匿名取回。推到 git 分支后即可用 SSH 直接 clone 拿走。
-  # 每次 force push，仓库里始终只保留一份产物，不会累积膨胀。
+  # 只把「最小必要」的一组产物推到独立 release 分支：
+  #   D（no-impeller release APK，带正式签名的替代品）+ probe EXE。
+  # 原因：GitHub 的 artifact 下载接口必须鉴权，本地无法匿名取回；
+  # 推到分支后即可直接 clone / 点 raw 链接拿走。
+  #
+  # 刻意**不**把 5 个 debug 包也推进来：每个 100MB+（Git 单文件硬上限 100MB，
+  # 必须压缩），6 个包一次 force push 约 300MB，会让仓库迅速膨胀。
+  # 6 个包统一走当次运行页的 artifact。
   release-bundle:
-    name: Bundle artifacts to release branch
-    needs: [android-apk, probe-exe]
+    name: Bundle to release branch
+    needs: [android, probe-exe]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: 下载 app-debug.apk
+      - name: 下载 no-impeller release APK
         uses: actions/download-artifact@v4
         with:
-          name: app-debug.apk
+          name: app-hisense-no-impeller-release.apk
           path: dl-apk
 
       - name: 下载 fnos_api_probe.exe
@@ -212,21 +321,45 @@ jobs:
           name: fnos_api_probe.exe
           path: dl-exe
 
+      - name: 下载产物清单
+        uses: actions/download-artifact@v4
+        with:
+          name: android-build-logs
+          path: dl-logs
+
       - name: 打包并推送到 release 分支
         run: |
           set -o pipefail
           {
             echo "=== 下载到的产物 ==="
-            ls -la dl-apk dl-exe
+            ls -la dl-apk dl-exe dl-logs
             echo "=== 原始大小 ==="
-            stat -c '%n = %s bytes' dl-apk/app-debug.apk dl-exe/fnos_api_probe.exe
-            echo "=== 压缩 APK（Git 单文件硬上限 100MB，APK 内含未压缩 native .so）==="
+            stat -c '%n = %s bytes' dl-apk/app-hisense-no-impeller-release.apk dl-exe/fnos_api_probe.exe
             rm -rf release && mkdir -p release
             cp dl-exe/fnos_api_probe.exe release/
-            zip -9 -q release/app-debug.apk.zip dl-apk/app-debug.apk
-            stat -c '%n = %s bytes' release/app-debug.apk.zip release/fnos_api_probe.exe
+            [ -f dl-logs/MANIFEST.txt ] && cp dl-logs/MANIFEST.txt release/ || true
+
+            APK_SIZE=$(stat -c%s dl-apk/app-hisense-no-impeller-release.apk)
+            echo "=== APK 大小 = $APK_SIZE 字节 ==="
+            if [ "$APK_SIZE" -ge 90000000 ]; then
+              echo "=== 超过 90MB，压缩后入库（Git 单文件硬上限 100MB）==="
+              zip -9 -q release/app-hisense-no-impeller-release.apk.zip dl-apk/app-hisense-no-impeller-release.apk
+            else
+              echo "=== 未超过 90MB，直接入库（省去解压）==="
+              cp dl-apk/app-hisense-no-impeller-release.apk release/
+            fi
+
+            stat -c '%n = %s bytes' release/* || true
             printf 'built_from_sha: %s\nrun_id: %s\ntime: %s\n' \
               "${{ github.sha }}" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > release/BUILD_INFO.txt
+            {
+              echo ""
+              echo "=== release 分支内容说明 ==="
+              echo "app-hisense-no-impeller-release.apk(.zip)  Renderer=EnableImpeller=false, 插件注册=是, release"
+              echo "fnos_api_probe.exe                         NAS API 探针（Windows 自包含）"
+              echo "MANIFEST.txt / BUILD_INFO.txt              本次 6 个诊断 APK 的全部配置与校验值"
+              echo "其余 5 个诊断 APK 请到当次运行页的 Artifacts 区下载。"
+            } >> release/BUILD_INFO.txt
             echo "=== release/ 内容 ==="
             ls -la release/
           } 2>&1 | tee release-bundle.log
@@ -245,5 +378,5 @@ jobs:
           git switch --orphan release-work >/dev/null 2>&1
           git rm -r -q --cached . >/dev/null 2>&1 || true
           git add -f release >/dev/null 2>&1
-          git commit -q -m "release: app-debug.apk.zip + fnos_api_probe.exe (run ${{ github.run_id }})"
+          git commit -q -m "release: no-impeller release APK + fnos_api_probe.exe (run ${{ github.run_id }})"
           git push --force origin HEAD:release

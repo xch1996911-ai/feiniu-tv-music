@@ -4,41 +4,35 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.security.SecureRandom
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 /**
- * 主 Activity。
+ * 正式主 Activity。
  *
- * ## 为什么这里塞了「崩溃日志落盘」和「deviceId」
+ * 这里塞了两件「非常规」的事，都是为了在没有 adb 的 Android TV 上排错：
  *
- * Android TV 盒子普遍没有 adb，App 黑屏/闪退时拿不到 logcat，只能靠落盘日志
- * 定位。所以：
+ * 1. **启动痕迹落盘**（[BootTrace]）：写到
+ *    `getExternalFilesDir(null)/bootlog/boot.log`，Dart 侧经同一渠道写 `[dart] xxx`。
+ *    原生侧的节点按「能否定位到卡在哪一步」来设计，逐步记录：
+ *    `onCreate 开始` → `super.onCreate 之前` → `super.onCreate 返回` →
+ *    `configureFlutterEngine 开始` → `super.configureFlutterEngine 返回（插件注册完成）` →
+ *    `MethodChannel 注册完成`。
+ * 2. **`deviceId` 走原生 SharedPreferences**（[deviceId]），**不经过 Keystore** ——
+ *    部分电视 ROM 上 `EncryptedSharedPreferences` 会在原生层直接崩溃，
+ *    Dart 侧 `try/catch` 拦不住；而 deviceId 只是随机标识、非机密。
+ * 3. `boot_attempts` 计数供 Dart 侧的「自动安全模式」使用。
  *
- * 1. [installCrashHandler] 在**任何 Flutter 代码之前**装上默认未捕获异常处理器，
- *    把崩溃堆栈写进 `getExternalFilesDir(null)/bootlog/boot.log`。
- *    这样即使是 Flutter 引擎启动阶段的 native 崩溃，也能留下最后一步的痕迹。
- * 2. [note] 把原生关键节点（onCreate / super.onCreate 返回 / 通道注册）也写进
- *    同一个文件。判定规则很简单：
- *    - 日志里一行 `[dart]` 都没有 ⇒ 问题在引擎/渲染层，Dart 还没跑起来；
- *    - 有 `[dart] 步骤N 开始` 但没有对应的「完成」⇒ 卡/崩在这一步。
- * 3. `deviceId` 走原生 `SharedPreferences`（[deviceId]），**不经过 Keystore**。
- *    部分电视 ROM 上 `EncryptedSharedPreferences` 会在原生层直接崩溃，Dart 侧
- *    try/catch 拦不住；而 deviceId 只是随机标识、非机密，不值得冒险。
- * 4. `boot_attempts` 计数用于**自动安全模式**：连续两次启动没走完，
- *    下一次 Dart 侧会跳过 audio_service 与安全存储，优先保证能看到界面。
- *
- * manifest 里 `android:name="${applicationName}"`（Flutter 模板默认）保持不变，
- * 未引入自定义 Application，尽量缩小改动面。
+ * ⚠️ **关于崩溃取证的边界（重要，别搞错）**：
+ * [BootTrace.installCrashHandler] 装的是 `Thread.setDefaultUncaughtExceptionHandler`，
+ * **只能可靠捕获 Java/Kotlin 未捕获异常**。它**不是** native crash 捕获器：
+ * SIGSEGV / SIGABRT / `libflutter.so` 崩溃 / `libGLESv2.so` / Vulkan 驱动崩溃
+ * 都不会经过它，只出现在 `adb logcat` 与 `/data/tombstones/`。
+ * 所以 **boot.log 里没有异常堆栈 ≠ 没有 native crash**；
+ * boot.log 的用途是回答「执行到了哪一步」，不是提供 native 堆栈。
  */
 class MainActivity : FlutterActivity() {
 
@@ -47,10 +41,7 @@ class MainActivity : FlutterActivity() {
         private const val PREFS = "feiniu_boot"
         private const val KEY_ATTEMPTS = "boot_attempts"
         private const val KEY_DEVICE_ID = "device_id"
-        private const val TAG = "FeiNiuTV"
         private const val DEVICE_ID_RE = "^[a-f0-9]{32}$"
-        private const val LOG_DIR = "bootlog"
-        private const val LOG_NAME = "boot.log"
     }
 
     private val prefs: SharedPreferences
@@ -58,33 +49,40 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 必须早于 super.onCreate：Flutter 引擎就是在 super.onCreate 里启动的。
-        installCrashHandler()
-        note(
+        BootTrace.installCrashHandler(applicationContext)
+        BootTrace.note(
+            this,
             "MainActivity.onCreate 开始 · Android ${Build.VERSION.RELEASE}" +
                 " (API ${Build.VERSION.SDK_INT}) · ABI ${Build.SUPPORTED_ABIS.joinToString(",")}"
         )
         bumpBootAttempt()
+        BootTrace.note(this, "super.onCreate 之前")
 
         super.onCreate(savedInstanceState)
 
-        note("super.onCreate 返回（Flutter 引擎已启动）")
+        BootTrace.note(this, "super.onCreate 返回（Flutter 引擎已启动）")
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        BootTrace.note(this, "configureFlutterEngine 开始")
+
+        // 这一步内部会经 GeneratedPluginRegistrant 注册所有第三方插件。
         super.configureFlutterEngine(flutterEngine)
+
+        BootTrace.note(this, "super.configureFlutterEngine 返回（插件注册完成）")
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "log" -> {
-                        note("[dart] ${call.argument<String>("msg") ?: ""}")
+                        BootTrace.note(this, "[dart] ${call.argument<String>("msg") ?: ""}")
                         result.success(null)
                     }
-                    "logPath" -> result.success(logFile().absolutePath)
+                    "logPath" -> result.success(BootTrace.logFile(this).absolutePath)
                     "bootAttempts" -> result.success(prefs.getInt(KEY_ATTEMPTS, 0))
                     "markBootOk" -> {
                         prefs.edit().putInt(KEY_ATTEMPTS, 0).apply()
-                        note("[dart] 启动完成，崩溃计数已清零")
+                        BootTrace.note(this, "[dart] 启动完成，崩溃计数已清零")
                         result.success(null)
                     }
                     "deviceId" -> result.success(deviceId())
@@ -92,49 +90,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        note("MethodChannel($CHANNEL) 已注册")
-    }
-
-    // ── 崩溃取证 ─────────────────────────────────────────────────────────
-
-    private fun installCrashHandler() {
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            try {
-                val sw = StringWriter()
-                throwable.printStackTrace(PrintWriter(sw))
-                note("!!! 未捕获异常 · thread=${thread.name} !!!\n$sw")
-            } catch (_: Throwable) {
-                // 崩溃处理器自身绝对不能抛，否则会掩盖真实崩溃。
-            }
-            previous?.uncaughtException(thread, throwable)
-        }
-    }
-
-    @Synchronized
-    private fun note(message: String) {
-        try {
-            logFile().appendText("${stamp()}  $message\n")
-        } catch (_: Throwable) {
-            // 落盘失败不影响运行。
-        }
-        try {
-            Log.i(TAG, message)
-        } catch (_: Throwable) {
-            // 忽略。
-        }
-    }
-
-    private fun stamp(): String =
-        SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
-
-    private fun logFile(): File {
-        val base = getExternalFilesDir(null) ?: filesDir
-        val dir = File(base, LOG_DIR)
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
-        return File(dir, LOG_NAME)
+        BootTrace.note(this, "MethodChannel($CHANNEL) 注册完成")
     }
 
     // ── 启动计数（自动安全模式的依据） ────────────────────────────────────
@@ -142,7 +98,7 @@ class MainActivity : FlutterActivity() {
     private fun bumpBootAttempt() {
         val n = prefs.getInt(KEY_ATTEMPTS, 0) + 1
         prefs.edit().putInt(KEY_ATTEMPTS, n).apply()
-        note("启动尝试次数 = $n（连续 2 次未走完则自动进入安全模式）")
+        BootTrace.note(this, "启动尝试次数 = $n（连续 2 次未走完则自动进入安全模式）")
     }
 
     // ── deviceId（不经过 Keystore） ───────────────────────────────────────
@@ -150,7 +106,7 @@ class MainActivity : FlutterActivity() {
     private fun deviceId(): String {
         val cached = prefs.getString(KEY_DEVICE_ID, null)
         if (cached != null && Regex(DEVICE_ID_RE).matches(cached)) {
-            note("复用已持久化 deviceId ${cached.take(8)}…")
+            BootTrace.note(this, "复用已持久化 deviceId ${cached.take(8)}…")
             return cached
         }
 
@@ -160,7 +116,7 @@ class MainActivity : FlutterActivity() {
             String.format(Locale.US, "%02x", it.toInt() and 0xff)
         }
         prefs.edit().putString(KEY_DEVICE_ID, id).apply()
-        note("生成新 deviceId ${id.take(8)}…（写入 SharedPreferences，不走 Keystore）")
+        BootTrace.note(this, "生成新 deviceId ${id.take(8)}…（SharedPreferences，不走 Keystore）")
         return id
     }
 }

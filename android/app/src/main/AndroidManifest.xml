@@ -60,19 +60,27 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- 渲染后端选择。
-             ⚠️ 这里曾经写的是 EnableImpeller=false（想回退到 Skia），在 Flutter
-             3.47.6 上**已经过时且无效**：Android 10+ 的 Skia 后端已被上游移除
-             （3.38 deprecate → 3.41/3.44 removed），Impeller 是唯一渲染路径。
-             继续留着那条 meta-data 只会让「黑屏」的归因变得模糊。
+        <!-- ══ 渲染后端：这里**刻意不写死任何值** ══
 
-             真正的问题在 Vulkan：部分 Android TV / 电视盒子的 Vulkan 驱动不完整，
-             Impeller 默认 Vulkan 后端会出现「进程存活、音频正常、画面全黑」。
-             因此改成显式把 Impeller 后端钉在 OpenGL ES（官方支持的后端切换，
-             见 ImpellerBackend 说明），绕开有缺陷的 Vulkan 驱动。 -->
-        <meta-data
-            android:name="io.flutter.embedding.android.ImpellerBackend"
-            android:value="opengles" />
+             ⚠️ 历史结论已撤回。本工程曾经：
+               1) 先写 EnableImpeller=false（想回退 Skia），
+               2) 又断言「Flutter 3.47 已移除 Android 10+ 的 Skia 后端，无法关闭
+                  Impeller」，据此改成写死 ImpellerBackend=opengles。
+             这两个结论一个是推测、一个基于未经验证的搜索结论，都没有实机证据。
+             更严重的是：**写死 ImpellerBackend=opengles 会直接消灭「Impeller 默认
+             后端」这个对照组** —— 测试退化成只能验证一个后端，无法 A/B。
+
+             现在改为：默认**不带任何渲染 meta-data**，即让 Flutter 自行选择默认后端。
+             需要做 A/B 对比时，由 tools/diag/make_variant.py 在下面两个锚点之间插入
+             对应的 meta-data，生成多个诊断 APK：
+
+               EnableImpeller=false            → 关闭 Impeller（A / D）
+               ImpellerBackend=opengles        → 钉在 OpenGL ES（C）
+               （不插入）                       → Flutter 默认后端（B / E / F）
+
+             锚点不要删：诊断构建脚本依赖它定位。 -->
+        <!-- ▼ DIAG_RENDERER_ANCHOR -->
+        <!-- ▲ DIAG_RENDERER_ANCHOR_END -->
     </application>
 
     <!-- Flutter 3.47.6 官方模板新增：允许引擎查询可处理文本的 Activity
