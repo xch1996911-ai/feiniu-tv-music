@@ -1,0 +1,92 @@
+海信 E7N Pro / VIDDA 渲染后端 × 插件注册 诊断包
+================================================================================================
+
+所有 APK 来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。
+
+[A] app-hisense-no-impeller-debug.apk
+    字节数          : 122,244,648
+    sha256          : 95330c759c1bc305454faa6a2c5a8bd69eca34c25d164de962618357db7e80c9
+    applicationId   : com.feiniu.tv.music.diaga
+    桌面显示名      : 飞牛A·关Impeller
+    Renderer        : EnableImpeller=false（关闭 Impeller）
+    插件自动注册    : 是（MainActivity）
+    构建类型        : debug
+    Dart 入口       : lib/main.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : (无)
+
+[B] app-hisense-impeller-default-debug.apk
+    字节数          : 122,244,628
+    sha256          : b0ad9f48331c79bf0fe3e60990473f33f076e75981003aa1e65986b192d9a864
+    applicationId   : com.feiniu.tv.music.diagb
+    桌面显示名      : 飞牛B·默认后端
+    Renderer        : 无任何后端 meta-data（Flutter 默认后端）
+    插件自动注册    : 是（MainActivity）
+    构建类型        : debug
+    Dart 入口       : lib/main.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : (无)
+
+[C] app-hisense-impeller-gles-debug.apk
+    字节数          : 122,244,668
+    sha256          : a2987abe9d94ef880858e2ab447c7375749045c13f889a883fdf02e80e483471
+    applicationId   : com.feiniu.tv.music.diagc
+    桌面显示名      : 飞牛C·GLES后端
+    Renderer        : ImpellerBackend=opengles
+    插件自动注册    : 是（MainActivity）
+    构建类型        : debug
+    Dart 入口       : lib/main.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : (无)
+
+[D] app-hisense-no-impeller-release.apk
+    字节数          : 34,103,743
+    sha256          : 0daf5723f4cc3986a0c0d547a8a1e87a7cb1c5a025208c12ebbf9fc3161eed00
+    applicationId   : com.feiniu.tv.music.diagd
+    桌面显示名      : 飞牛D·Rel关Impeller
+    Renderer        : EnableImpeller=false（关闭 Impeller）
+    插件自动注册    : 是（MainActivity）
+    构建类型        : release
+    Dart 入口       : lib/main.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : (无)
+
+[E] app-hisense-engine-smoke.apk
+    字节数          : 120,438,408
+    sha256          : 09264fab1892b4995d408d9c3853bd2ba4d6b9b7293b7367958c6d28bd22b950
+    applicationId   : com.feiniu.tv.music.smoke
+    桌面显示名      : Smoke·插件版
+    Renderer        : 无任何后端 meta-data（Flutter 默认后端）
+    插件自动注册    : 是（MainActivity）
+    构建类型        : debug
+    Dart 入口       : lib/main_engine_smoke.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : smoke-plugins
+
+[F] app-hisense-engine-smoke-no-plugins.apk
+    字节数          : 120,438,392
+    sha256          : 414ed339c8177d4aad774b60d86d5ead1cb8d8b603634b7f5554da49642dc9d0
+    applicationId   : com.feiniu.tv.music.smokenp
+    桌面显示名      : Smoke·无插件
+    Renderer        : 无任何后端 meta-data（Flutter 默认后端）
+    插件自动注册    : 否（DiagSmokeActivity）
+    构建类型        : debug
+    Dart 入口       : lib/main_engine_smoke.dart
+    ABI             : android-arm,android-arm64
+    DIAG_TAG        : smoke-no-plugins
+
+boot.log 路径（每个包独立）
+------------------------------------------------------------------------------------------------
+  com.feiniu.tv.music.diaga          /storage/emulated/0/Android/data/com.feiniu.tv.music.diaga/files/bootlog/boot.log
+  com.feiniu.tv.music.diagb          /storage/emulated/0/Android/data/com.feiniu.tv.music.diagb/files/bootlog/boot.log
+  com.feiniu.tv.music.diagc          /storage/emulated/0/Android/data/com.feiniu.tv.music.diagc/files/bootlog/boot.log
+  com.feiniu.tv.music.diagd          /storage/emulated/0/Android/data/com.feiniu.tv.music.diagd/files/bootlog/boot.log
+  com.feiniu.tv.music.smoke          /storage/emulated/0/Android/data/com.feiniu.tv.music.smoke/files/bootlog/boot.log
+  com.feiniu.tv.music.smokenp        /storage/emulated/0/Android/data/com.feiniu.tv.music.smokenp/files/bootlog/boot.log
+
+判读要点
+------------------------------------------------------------------------------------------------
+  · boot.log 里连一行 [dart] 都没有  ⇒ Dart 根本没执行，问题在引擎/渲染/插件注册层
+  · 有 [dart] runApp after 但没有 first frame callback ⇒ 引擎/渲染层问题
+  · boot.log 没有异常堆栈 ≠ 没有 native crash
+    （UncaughtExceptionHandler 只抓 Java/Kotlin 异常，抓不到 SIGSEGV/libflutter.so/GPU 驱动崩溃）
