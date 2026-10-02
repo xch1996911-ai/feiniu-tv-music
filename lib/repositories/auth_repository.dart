@@ -54,12 +54,19 @@ class AuthRepository extends ChangeNotifier {
   bool get isLoggedIn => _provider != null;
 
   /// 启动时恢复会话：若存在持久化 token，则重建 provider 并设为已登录（惰性，不主动联网）。
+  ///
+  /// 同样全程限时：本方法位于**启动路径**上，一旦原生通道或安全存储不回应，
+  /// 界面会停在启动页 —— 既不进登录页也不报错，与登录时「永远连接中」同类。
+  /// 超时的降级方向统一为「当作未登录」，把用户送到登录页，绝不阻断启动。
   Future<void> restore() async {
     // deviceId 与登录态无关，独立持久化：即使当前无会话也先准备好，
     // 保证首次登录时能拿到稳定值（契约要求「生成一次后复用」）。
-    final deviceId = await _store.getOrCreateDeviceId();
-    final session = await _store.readSession();
+    final deviceId = await _readDeviceIdForRestore();
+    if (deviceId == null) return;
+
+    final session = await _readSessionForRestore();
     if (session == null) return;
+
     _host = session.host;
     _username = session.username;
     final provider = FnosProvider(baseUrl: session.host, deviceId: deviceId);
@@ -67,6 +74,30 @@ class AuthRepository extends ChangeNotifier {
     _provider = provider;
     Log.i('恢复会话 host=${Log.redactHost(session.host)} user=${Log.redactUser(session.username)}');
     notifyListeners();
+  }
+
+  /// 启动恢复用：读取设备标识，失败/超时返回 null（调用方按未登录处理）。
+  Future<String?> _readDeviceIdForRestore() async {
+    try {
+      return await _store.getOrCreateDeviceId().timeout(_deviceIdTimeout);
+    } catch (e) {
+      // 拿不到 deviceId 就无法构造合规的 provider（契约要求 32 位 hex 且复用），
+      // 因此这一路只能放弃自动恢复，让用户走登录页。
+      Log.w('启动恢复：读取设备标识失败/超时，按未登录启动：$e');
+      BootLog.mark('启动·读取设备标识失败或超时');
+      return null;
+    }
+  }
+
+  /// 启动恢复用：读取已保存会话，失败/超时返回 null（调用方按未登录处理）。
+  Future<SessionRecord?> _readSessionForRestore() async {
+    try {
+      return await _store.readSession().timeout(_storeTimeout);
+    } catch (e) {
+      Log.w('启动恢复：读取会话失败/超时，按未登录启动：$e');
+      BootLog.mark('启动·读取会话失败或超时');
+      return null;
+    }
   }
 
   /// 登录。密码在本地计算 sha256 后才上传，明文不离开本机。
@@ -291,7 +322,13 @@ class AuthRepository extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _store.clearSession();
+    try {
+      await _store.clearSession().timeout(_storeTimeout);
+    } catch (e) {
+      // 清不掉也不能把用户困在「内存里已登录」的状态：下面照常清空内存并通知 UI，
+      // 顶多是下次启动还会恢复出旧会话。
+      Log.w('清除会话失败或超时，仅清空内存登录态：$e');
+    }
     _provider = null;
     _currentUser = null;
     _host = null;
