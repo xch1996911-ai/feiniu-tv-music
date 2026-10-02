@@ -75,9 +75,9 @@ class _ServerStatusPageState extends State<ServerStatusPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('NAS: ${auth.host ?? '(未知) }',
+              Text('NAS: ${auth.host ?? "(未知)"}',
                   style: const TextStyle(fontSize: 22)),
-              Text('用户: ${auth.username ?? '(未知) }',
+              Text('用户: ${auth.username ?? "(未知)"}',
                   style: const TextStyle(fontSize: 18)),
               const SizedBox(height: 16),
               if (_loading)

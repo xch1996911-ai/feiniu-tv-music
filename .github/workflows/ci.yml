@@ -48,11 +48,23 @@ jobs:
             echo "=== gradle wrapper ==="; cat android/gradle/wrapper/gradle-wrapper.properties
           } 2>&1 | tee build.log
 
-      # Flutter 3.47.6 要求 compileSdk 36；显式安装以避免 runner 镜像缺件
+      # Flutter 3.47.6 要求 compileSdk 36。runner 镜像不一定把 sdkmanager 放进 PATH，
+      # 故按完整路径 → PATH → 放弃三段式探测；即使装不上，AGP 也会自动下载
+      # （GitHub runner 已预接受 licenses），因此这里不阻断流水线。
       - name: Install Android SDK 36
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" \
-            2>&1 | tee -a build.log
+          set -o pipefail
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          if [ -n "$SDKMANAGER" ] && [ -x "$SDKMANAGER" ]; then
+            echo "使用 sdkmanager: $SDKMANAGER" | tee -a build.log
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" 2>&1 | tee -a build.log || true
+          else
+            echo "::notice::未找到 sdkmanager，跳过显式安装；依赖 AGP 自动下载 SDK 组件" | tee -a build.log
+          fi
 
       - name: flutter pub get
         run: |

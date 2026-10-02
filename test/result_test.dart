@@ -11,7 +11,7 @@ void main() {
   });
 
   test('Err 分支', () {
-    final r = Result.err<String>(AppError('boom', kind: ErrorKind.network));
+    final r = Result<String>.err(AppError('boom', kind: ErrorKind.network));
     expect(r.isErr, isTrue);
     expect(r.error.kind, ErrorKind.network);
     expect(r.error.message, 'boom');
@@ -20,12 +20,12 @@ void main() {
   test('map 仅作用于成功值', () {
     final r = Result.ok(2).map((v) => v * 3);
     expect(r.value, 6);
-    final e = Result.err<int>(AppError('x')).map((v) => v * 3);
+    final e = Result<int>.err(AppError('x')).map((v) => v * 3);
     expect(e.isErr, isTrue);
   });
 
   test('getOrElse 失败回退', () {
-    final e = Result.err<int>(AppError('x'));
+    final e = Result<int>.err(AppError('x'));
     expect(e.getOrElse((_) => -1), -1);
   });
 }

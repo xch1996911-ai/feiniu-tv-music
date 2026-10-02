@@ -107,48 +107,109 @@ class _SongListView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
       itemCount: tracks.length,
       itemBuilder: (context, i) {
-        final t = tracks[i];
-        final node = FocusNode();
-        return FocusableActionDetector(
-          focusNode: node,
+        return _TrackRow(
+          track: tracks[i],
           autofocus: i == 0,
           onActivate: () => onSelect(i),
-          child: Builder(builder: (c) {
-            final focused = node.hasFocus;
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: focused ? Colors.blue.withOpacity(0.25) : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: focused
-                    ? Border.all(color: Colors.blue, width: 2)
-                    : Border.all(color: Colors.transparent),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Text(t.title,
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: focused ? FontWeight.w600 : FontWeight.normal)),
-                  ),
-                  Expanded(flex: 3, child: Text(t.artistNames)),
-                  Expanded(flex: 3, child: Text(t.album.name)),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      t.audioSpec.format ?? '—',
-                      style: const TextStyle(color: Colors.blueGrey),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
         );
       },
+    );
+  }
+}
+
+/// 单行曲目。
+///
+/// Flutter 3.47 的 `FocusableActionDetector` 已移除 `onActivate` 参数，
+/// 改用 `ListTile`：它自带焦点能力与「OK/Enter 触发 `onTap`」行为，
+/// 更契合 D-pad 优先的电视界面。
+///
+/// 焦点节点放在 State 中持有（而非在 build 里 new），否则会泄漏且重建时丢失焦点。
+class _TrackRow extends StatefulWidget {
+  final Track track;
+  final bool autofocus;
+  final VoidCallback onActivate;
+
+  const _TrackRow({
+    required this.track,
+    required this.autofocus,
+    required this.onActivate,
+  });
+
+  @override
+  State<_TrackRow> createState() => _TrackRowState();
+}
+
+class _TrackRowState extends State<_TrackRow> {
+  final FocusNode _node = FocusNode();
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _node.addListener(_onFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _node.removeListener(_onFocusChanged);
+    _node.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!mounted) return;
+    setState(() => _focused = _node.hasFocus);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.track;
+    return ListTile(
+      focusNode: _node,
+      autofocus: widget.autofocus,
+      onTap: widget.onActivate,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: _focused ? Colors.blue : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      tileColor: _focused ? Colors.blue.withValues(alpha: 0.25) : null,
+      focusColor: Colors.blue.withValues(alpha: 0.25),
+      title: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              t.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: _focused ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(t.artistNames,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(t.album.name,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              t.audioSpec.format ?? '—',
+              style: const TextStyle(color: Colors.blueGrey),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

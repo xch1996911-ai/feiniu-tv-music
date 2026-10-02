@@ -1,4 +1,7 @@
-include: package:flutter_lints/flutter_lints.yaml
+# 官方 Flutter 模板的入口是 package:flutter_lints/flutter.yaml；
+# 原先写的 flutter_lints/flutter_lints.yaml 不存在，会导致 include_file_not_found
+# 且整套 flutter_lints 规则失效（等于静默降低了分析标准）。
+include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:

@@ -20,6 +20,7 @@ class MediaSessionService {
         // 电视场景无通知栏，但 MediaSession 仍需常驻以保证后台播放与媒体键。
       ),
     );
-    return handler as PlaybackHandler;
+    // AudioService.init<T> 已按 builder 的返回类型推断出 T，无需再强转
+    return handler;
   }
 }

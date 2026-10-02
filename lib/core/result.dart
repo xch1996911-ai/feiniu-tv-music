@@ -1,3 +1,5 @@
+import 'exceptions.dart';
+
 /// 统一结果类型：用类型系统强制调用方处理失败，避免到处 try/catch 或抛异常穿透 UI。
 ///
 /// 示例：
