@@ -1,39 +1,20 @@
 Analyzing feiniu-tv-music...                                    
 
-warning • The URI 'package:flutter_lints/flutter_lints.yaml' included in '/home/runner/work/feiniu-tv-music/feiniu-tv-music/analysis_options.yaml' can't be found when analyzing '/home/runner/work/feiniu-tv-music/feiniu-tv-music' • analysis_options.yaml:5:10 • include_file_not_found
-  error • 'MusicRepository' doesn't conform to the bound 'ChangeNotifier?' of the type parameter 'T'. Try using a type that is or is a subclass of 'ChangeNotifier?' • lib/app/app.dart:33:32 • type_argument_not_matching_bounds
-  error • Undefined class 'AppError'. Try changing the name to the name of an existing class, or creating a class with the name 'AppError' • lib/core/result.dart:16:28 • undefined_class
-  error • Undefined class 'AppError'. Try changing the name to the name of an existing class, or creating a class with the name 'AppError' • lib/core/result.dart:28:3 • undefined_class
-  error • Undefined class 'AppError'. Try changing the name to the name of an existing class, or creating a class with the name 'AppError' • lib/core/result.dart:38:26 • undefined_class
-  error • Undefined class 'AppError'. Try changing the name to the name of an existing class, or creating a class with the name 'AppError' • lib/core/result.dart:47:9 • undefined_class
-warning • Unnecessary cast. Try removing the cast • lib/playback/media_session_service.dart:23:12 • unnecessary_cast
-  error • The method 'MediaItem' isn't defined for the type 'PlaybackRepository'. Try correcting the name to the name of an existing method, or defining a method named 'MediaItem' • lib/repositories/playback_repository.dart:54:18 • undefined_method
+   info • The member 'value' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/core/result.dart:44:11 • annotate_overrides
+   info • The member 'error' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/core/result.dart:49:18 • annotate_overrides
    info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/player_page.dart:16:12 • deprecated_member_use
    info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/server_status_page.dart:66:12 • deprecated_member_use
-  error • Expected to find '}' • lib/ui/pages/server_status_page.dart:78:49 • expected_token
-  error • Expected a string literal • lib/ui/pages/server_status_page.dart:79:55 • expected_string_literal
-  error • Expected to find '}' • lib/ui/pages/server_status_page.dart:79:55 • expected_token
-  error • Expected to find '}' • lib/ui/pages/server_status_page.dart:80:52 • expected_token
-  error • Expected a string literal • lib/ui/pages/server_status_page.dart:81:55 • expected_string_literal
-  error • Expected to find '}' • lib/ui/pages/server_status_page.dart:81:55 • expected_token
-  error • Unterminated string literal • lib/ui/pages/server_status_page.dart:135:2 • unterminated_string_literal
-  error • Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it • lib/ui/pages/server_status_page.dart:136:1 • expected_executable
    info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/song_list_page.dart:72:12 • deprecated_member_use
-  error • The named parameter 'onActivate' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'onActivate' • lib/ui/pages/song_list_page.dart:115:11 • undefined_named_parameter
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/song_list_page.dart:122:46 • deprecated_member_use
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:7:7 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:11:7 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:15:7 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:7:15 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:14:15 • prefer_const_constructors
-  error • The constructor 'Result.err' doesn't have type parameters. Try moving type arguments to after the type name • test/result_test.dart:14:25 • wrong_number_of_type_arguments_constructor
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:14:34 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:21:15 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:23:15 • prefer_const_constructors
-  error • The constructor 'Result.err' doesn't have type parameters. Try moving type arguments to after the type name • test/result_test.dart:23:25 • wrong_number_of_type_arguments_constructor
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:23:31 • prefer_const_constructors
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:28:15 • prefer_const_constructors
-  error • The constructor 'Result.err' doesn't have type parameters. Try moving type arguments to after the type name • test/result_test.dart:28:25 • wrong_number_of_type_arguments_constructor
    info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:28:31 • prefer_const_constructors
 
-35 issues found. (ran in 7.0s)
+16 issues found. (ran in 8.8s)
