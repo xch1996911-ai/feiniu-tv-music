@@ -301,15 +301,16 @@ Future<String?> testLogin(HttpClient client, String host, String username,
       final data = resp.json as Map;
       final code = data['code'];
       if (code == kCodeOk) {
+        // 用 `is String` 做显式类型判定，替代多余的 as 强制转换（unnecessary_cast）。
         final token = data['data']?['userToken'] ?? data['data']?['token'];
-        if (token != null) {
+        if (token is String && token.isNotEmpty) {
           e.status = 'VERIFIED';
-          e.note = '登录成功，userToken 已下发（${redactToken(token as String)}）';
+          e.note = '登录成功，userToken 已下发（${redactToken(token)}）';
           entries.add(e);
-          return token as String;
+          return token;
         }
         e.status = 'FAILED';
-        e.note = '成功码但缺少 token 字段。data keys=${_keys(data['data'])}';
+        e.note = '成功码但缺少可用 token 字段。data keys=${_keys(data['data'])}';
       } else {
         e.status = 'FAILED';
         e.note = '业务码=$code，msg=${data['msg']}';
@@ -476,7 +477,9 @@ Future<void> testStream(HttpClient client, String host, String token,
     sw.stop();
     e.durationMs = sw.elapsedMilliseconds;
     e.httpStatus = resp.statusCode;
-    e.apiCode = _codeOf(resp.json);
+    // 音频流接口返回二进制音频，没有 {code,msg,data} JSON 信封，因此不记录业务码。
+    // 注意：HttpClientResponse 是单订阅 Stream，响应体在下方 resp.drain() 中一次性消费，
+    // 不可在此处再读一遍（也不应对音频做 jsonDecode）。
     final contentType = resp.headers.contentType?.mimeType;
     // 206 Partial / 200 OK 均视为流可访问
     if (resp.statusCode == 200 || resp.statusCode == 206) {
