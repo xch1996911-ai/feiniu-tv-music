@@ -1,20 +1,5 @@
 Analyzing feiniu-tv-music...                                    
 
-   info • The member 'value' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/core/result.dart:44:11 • annotate_overrides
-   info • The member 'error' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/core/result.dart:49:18 • annotate_overrides
-   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/player_page.dart:16:12 • deprecated_member_use
-   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/server_status_page.dart:66:12 • deprecated_member_use
-   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/pages/song_list_page.dart:72:12 • deprecated_member_use
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:7:7 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:11:7 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/paged_result_test.dart:15:7 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:7:15 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:14:15 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:14:34 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:21:15 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:23:15 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:23:31 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:28:15 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/result_test.dart:28:31 • prefer_const_constructors
+   info • Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' • test/result_test.dart:28:5 • prefer_const_declarations
 
-16 issues found. (ran in 8.8s)
+1 issue found. (ran in 8.6s)
