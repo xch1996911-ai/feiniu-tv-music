@@ -15,7 +15,7 @@ class Album {
   /// 从飞牛音乐 `album/list` / `album/detail` 响应的 data 项解析。
   factory Album.fromJson(Map<String, dynamic> json) {
     return Album(
-      guid: json['guid'] as String,
+      guid: (json['guid'] as String?) ?? '',
       name: (json['name'] as String?) ?? '',
       coverId: json['coverId'] as String?,
       trackCount: _asInt(json['trackCount']),
@@ -33,7 +33,7 @@ class AlbumRef {
 
   factory AlbumRef.fromJson(Map<String, dynamic> json) {
     return AlbumRef(
-      guid: json['guid'] as String,
+      guid: (json['guid'] as String?) ?? '',
       name: (json['name'] as String?) ?? '',
       coverId: json['coverId'] as String?,
     );

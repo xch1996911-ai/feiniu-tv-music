@@ -16,7 +16,7 @@ class Artist {
 
   factory Artist.fromJson(Map<String, dynamic> json) {
     return Artist(
-      guid: json['guid'] as String,
+      guid: (json['guid'] as String?) ?? '',
       name: (json['name'] as String?) ?? '',
       coverId: json['coverId'] as String?,
       trackCount: _asInt(json['trackCount']),
@@ -35,7 +35,7 @@ class ArtistRef {
 
   factory ArtistRef.fromJson(Map<String, dynamic> json) {
     return ArtistRef(
-      guid: json['guid'] as String,
+      guid: (json['guid'] as String?) ?? '',
       name: (json['name'] as String?) ?? '',
       coverId: json['coverId'] as String?,
     );

@@ -83,7 +83,7 @@ class Track {
         : const [];
 
     return Track(
-      guid: json['guid'] as String,
+      guid: (json['guid'] as String?) ?? '',
       title: (json['title'] as String?) ?? '',
       coverId: json['coverId'] as String?,
       durationMs: _asInt(json['duration']),
