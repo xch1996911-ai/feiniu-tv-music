@@ -8,6 +8,54 @@
 
 ---
 
+## 零、实机结论（2026-10-03，本轮已收口）
+
+冒烟包与业务包都在海信 E7N Pro / VIDDA 上**跑通了**，先前「黑屏 → 闪退」不再复现。
+
+| 实测 | 结果 |
+|---|---|
+| **E**（`smoke-plugins`） | 画出 `FLUTTER ENGINE OK`，`已渲染 5 帧` |
+| **F**（`smoke-no-plugins`） | 同上 |
+| **B**（业务代码 + 默认后端） | 成功显示主 App 的登录页 |
+| **C**（业务代码 + GLES 后端） | 同上（**同样成功**） |
+
+由此一次性排除：**引擎启动、渲染后端、ABI 裁剪、插件 native 注册**四项。
+E 与业务包走的是同一个 `MainActivity`（会注册全部插件），它没崩，说明崩溃点
+不在「注册插件」这个动作上。
+
+登录页能跑出来，还额外证明 `BootApp` 的三步初始化**全部成功**：
+
+- 步骤 1 `MediaSessionService.init()`（audio_service 起前台服务）✅
+- 步骤 2 `AuthRepository.restore()`（flutter_secure_storage + Keystore）✅
+- 步骤 3 播放与数据仓库装配 ✅
+
+也就是说，「部分电视 ROM 的 Keystore 不可用」「前台服务被 ROM 拒绝」这两个原本
+列在高危清单最前面的嫌疑人，在本机**都不成立**。
+
+**结论**：先前失败的两处根因都已在 `e57780a` 改掉 —— ① `AndroidManifest` 里写死的
+`ImpellerBackend=opengles`（已删除，改为默认后端）；② 旧版 `MainActivity`（已重写
+并加 `BootTrace` 逐步取证）。正式发布候选因此定为 **G =「默认后端 + release」**。
+
+### 0.1 颜色语义（判读「渲染出来没有」的最快依据）
+
+| 颜色 | 出处 | 含义 |
+|---|---|---|
+| 深蓝 `#14213D` | `launch_background`（启动窗口） | 看到它**且没有字** ⇒ 引擎还没画出第一帧 |
+| 近黑 `#0B0B0F` | `buildTvTheme().scaffoldBackgroundColor` | 业务 App 的画布 |
+
+⚠️ 冒烟包把自己的背景也设成了 `#14213D`，所以照片里「有字的深蓝」和「没字的深蓝」
+是同一个颜色 —— **判读必须看有没有字，不能只看颜色**。
+
+### 0.2 台电视上已确认可用的配置
+
+- 渲染后端：**默认后端**（`AndroidManifest` 里不写任何渲染 meta-data）
+- 插件注册：走标准 `MainActivity` + `super.configureFlutterEngine()`，**正常**
+- 安全存储 / 前台服务：**正常**
+- `AndroidManifest` 里的 `ImpellerBackend` / `EnableImpeller` 一律**不要写死**
+  （写死 GLES 曾直接造成黑屏；写死还会消灭对照组，见 1.2）
+
+---
+
 ## 一、先撤回两个错误结论
 
 老实说，之前两轮修复里有两个结论是**错的**，并且第二个错误直接毁掉了实验设计：
@@ -57,7 +105,7 @@
 
 ---
 
-## 三、诊断矩阵（6 个 APK）
+## 三、诊断矩阵（7 个 APK）
 
 **全部来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。**
 由 `tools/diag/make_variant.py` 生成，脚本只改两处构建配置
@@ -72,6 +120,7 @@
 | **D** | `app-hisense-no-impeller-release.apk` | `EnableImpeller=false` | 是 | **release** | 业务 |
 | **E** | `app-hisense-engine-smoke.apk` | 无 meta-data（默认后端） | 是 | debug | 冒烟 |
 | **F** | `app-hisense-engine-smoke-no-plugins.apk` | 无 meta-data（默认后端） | **否** | debug | 冒烟 |
+| **G** | `app-hisense-release.apk` | 无 meta-data（默认后端） | 是 | **release** | 业务 |
 
 补充说明：
 
@@ -82,14 +131,17 @@
   `super.configureFlutterEngine()`**，因此不会经 `GeneratedPluginRegistrant`
   注册 audio_service / just_audio / flutter_secure_storage。只保留一个纯
   `MethodChannel`（不是插件）用于落盘取证。
-- **6 个包 applicationId 各不相同**，**可以同时安装、互不覆盖**，
+- **7 个包 applicationId 各不相同**，**可以同时安装、互不覆盖**，
   在电视桌面上的名字分别是 `飞牛A·关Impeller` / `飞牛B·默认后端` /
-  `飞牛C·GLES后端` / `飞牛D·Rel关Impeller` / `Smoke·插件版` / `Smoke·无插件`。
-  这样**一轮 U 盘拷入即可全部装完**，不必装一个卸一个。
+  `飞牛C·GLES后端` / `飞牛D·Rel关Impeller` / `Smoke·插件版` / `Smoke·无插件` /
+  `飞牛·正式版`（G）。这样**一轮 U 盘拷入即可全部装完**，不必装一个卸一个。
+- **G 是正式发布候选**（`com.feiniu.tv.music.rel`，默认后端 + release）：
+  7 个包里唯一「配置已在真机验证 ＋ release 构建 ＋ 业务代码」的组合。
+  D（no_impeller + release）保留作对照，不用于发布。
 - **只打包 ARM（`android-arm` + `android-arm64`）**：电视都是 ARM，x86_64 只服务
-  模拟器；去掉它每个包小约 1/3。该设置对 6 个变体完全一致，不构成混淆变量。
+  模拟器；去掉它每个包小约 1/3。该设置对所有变体完全一致，不构成混淆变量。
 
-### 3.1 从哪里下载这 6 个 APK
+### 3.1 从哪里下载这 7 个 APK
 
 GitHub 的 **Artifacts 下载接口必须登录**，即使仓库是公开的。所以除了当次运行页
 （`Actions → Phase1 CI → 该次运行 → 页面底部 Artifacts`）之外，另有一条
@@ -99,11 +151,11 @@ GitHub 的 **Artifacts 下载接口必须登录**，即使仓库是公开的。�
 https://github.com/xch1996911-ai/feiniu-tv-music/tree/release/release
 ```
 
-该分支由 `.github/workflows/publish-diag.yml` **独占**维护，包含全部 6 个 APK
+该分支由 `.github/workflows/publish-diag.yml` **独占**维护，包含全部 7 个 APK
 以及 `fnos_api_probe.exe`、`MANIFEST.txt`、`BUILD_INFO.txt`。
 
 - **超过 90MB 的包以 `.zip` 形式入库**（Git 单文件硬上限 100MB）：解压即得 `.apk`。
-  本轮 6 个包里只有 D（release，约 34MB）是裸 `.apk`，其余 5 个 debug 包都是 `.zip`。
+  7 个包里 D 与 G（release，约 34MB）是裸 `.apk`，其余 5 个 debug 包都是 `.zip`。
 - 发布方式（**不重新构建**，只把已完成的运行里那批产物搬运过去）：
 
 ```bash
@@ -231,9 +283,9 @@ flutter build apk --debug --target-platform android-arm,android-arm64 -t lib/mai
 python3 tools/diag/make_variant.py --revert        # 还原为默认配置
 ```
 
-CI 里由 `.github/workflows/ci.yml` 顺序构建 6 个变体并分别上传，
+CI 里由 `.github/workflows/ci.yml` 顺序构建 7 个变体并分别上传，
 同时产出 `MANIFEST.txt`（每个 APK 的 Renderer / 插件注册 / applicationId /
 字节数 / sha256）。
 
-构建完成后，`.github/workflows/publish-diag.yml` 可把这 6 个产物推到 `release`
+构建完成后，`.github/workflows/publish-diag.yml` 可把这 7 个产物推到 `release`
 分支，使它们能匿名下载（见 3.1）。

@@ -97,7 +97,8 @@ jobs:
                 app-hisense-impeller-gles-debug.apk \
                 app-hisense-no-impeller-release.apk \
                 app-hisense-engine-smoke.apk \
-                app-hisense-engine-smoke-no-plugins.apk"
+                app-hisense-engine-smoke-no-plugins.apk \
+                app-hisense-release.apk"
 
           MISSING=0
           for name in $APKS; do
@@ -119,7 +120,7 @@ jobs:
           done
 
           if [ "$MISSING" -ne 0 ]; then
-            echo "!! 6 个诊断 APK 未全部就绪，拒绝发布不完整的 release 分支"
+            echo "!! 诊断 APK 未全部就绪，拒绝发布不完整的 release 分支"
             exit 1
           fi
 

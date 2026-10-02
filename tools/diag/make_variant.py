@@ -13,7 +13,14 @@
   2. Plugin Registration（GeneratedPluginRegistrant 在 native 层注册插件）
   3. Debug Engine 与 Release Engine 的差异
 
-因此本脚本产出一组**只差一个变量**的构建配置。
+因此本脚本产出一组**只差一个变量**的构建配置，外加一个正式发布候选 G
+（默认后端 + release）。
+
+## 2026-10-03 实机收口
+
+E/F（默认后端，极简 Dart）双双画出第一帧，B/C（业务代码，默认 / GLES
+后端）也双双成功进入登录页 ⇒ 引擎、渲染后端、ABI、插件注册四项全部排除，
+A/B/C/D 的对照价值随之下降，G 成为正式交付候选。
 
 ## 只改构建配置，绝不碰业务代码
 
@@ -24,7 +31,7 @@
     · `<application android:label>`（便于在电视桌面/启动器上区分是哪个 APK）
     · 启动 Activity 类名（无插件版本指向 DiagSmokeActivity）
   android/app/build.gradle.kts
-    · applicationId（6 个 APK 可同时安装、各自独立 boot.log，免去反复卸载重装）
+    · applicationId（各 APK 可同时安装、各自独立 boot.log，免去反复卸载重装）
 
 lib/**、test/**、tools/fnos_api_probe/** 一个字节都不会被改动。
 
@@ -57,8 +64,8 @@ ANCHOR_CLOSE = "<!-- ▲ DIAG_RENDERER_ANCHOR_END -->"
 BASE_APPLICATION_ID = "com.feiniu.tv.music"
 
 # 只打包 ARM：Android TV / 电视盒子都是 ARM，x86_64 只服务模拟器。
-# 去掉它能让每个 APK 小约 1/3，6 个包的总下载量因此可接受；
-# 该设置对 6 个变体完全一致，不会成为混淆变量。
+# 去掉它能让每个 APK 小约 1/3，全部包的总下载量因此可接受；
+# 该设置对所有变体完全一致，不会成为混淆变量。
 PLATFORMS = "android-arm,android-arm64"
 
 RENDERER_BLOCKS: dict[str, tuple[str, ...]] = {
@@ -170,9 +177,27 @@ VARIANTS: dict[str, Variant] = {
         application_id=f"{BASE_APPLICATION_ID}.smokenp",
         diag_tag="smoke-no-plugins",
     ),
+    # ── 正式发布候选：**默认后端 + release**（2026-10-03 新增） ──────────
+    #
+    # 实机结论（海信 E7N Pro / VIDDA）：
+    #   · E/F（默认后端，极简 Dart）画出第一帧 ⇒ 引擎 / 渲染 / ABI / 插件注册全部排除
+    #   · B/C（业务代码，默认 / GLES 后端）**都**成功进入登录页
+    # ⇒ 正式包取「默认后端 + release」：最贴近 Flutter 官方默认，且真机已验证
+    #   业务启动路径可用。D（no_impeller + release）保留作对照，不用于发布。
+    "G": Variant(
+        key="G",
+        label="飞牛·正式版",
+        artifact="app-hisense-release.apk",
+        renderer="default",
+        plugins=True,
+        build="release",
+        entry="lib/main.dart",
+        application_id=f"{BASE_APPLICATION_ID}.rel",
+        diag_tag="",
+    ),
 }
 
-ORDER = ["A", "B", "C", "D", "E", "F"]
+ORDER = ["A", "B", "C", "D", "E", "F", "G"]
 
 
 # ── 文件读写（显式 utf-8 / 禁用换行转换，避免污染 diff 或引入 CRLF） ──────
@@ -231,7 +256,7 @@ def apply_variant(v: Variant) -> None:
     inner = nl.join(block_lines) + nl if block_lines else ""
     manifest = anchor_re.sub(lambda m: m.group(1) + inner + m.group(3), manifest, count=1)
 
-    # 2) 桌面显示名：6 个包同装时，这是唯一能让用户在电视上分辨的依据
+    # 2) 桌面显示名：多个包同装时，这是唯一能让用户在电视上分辨的依据
     manifest = _sub_once(
         manifest, r'android:label="[^"]*"', f'android:label="{v.label}"', "AndroidManifest.xml 的 android:label"
     )
@@ -248,7 +273,7 @@ def apply_variant(v: Variant) -> None:
         "AndroidManifest.xml 的启动 Activity",
     )
 
-    # 4) applicationId：让 6 个包可同时安装（免去每轮卸载重装 + 各自独立 boot.log）
+    # 4) applicationId：让各包可同时安装（免去每轮卸载重装 + 各自独立 boot.log）
     gradle = _sub_once(
         gradle,
         r'applicationId = "[^"]*"',
@@ -329,7 +354,7 @@ def print_matrix() -> None:
 
 
 def write_manifest(dist: Path) -> int:
-    """校验 6 个 APK 是否齐全，并写出 MANIFEST.txt（大小 + sha256 + 配置）。"""
+    """校验全部 APK 是否齐全，并写出 MANIFEST.txt（大小 + sha256 + 配置）。"""
     missing = [VARIANTS[k].artifact for k in ORDER if not (dist / VARIANTS[k].artifact).is_file()]
     if missing:
         print("[FAIL] 缺少以下产物：")
@@ -338,7 +363,7 @@ def write_manifest(dist: Path) -> int:
         return 1
 
     lines = [
-        "海信 E7N Pro / VIDDA 渲染后端 × 插件注册 诊断包",
+        "海信 E7N Pro / VIDDA 诊断包（渲染后端 × 插件注册）+ 正式发布候选",
         "=" * 96,
         "",
         "所有 APK 来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。",

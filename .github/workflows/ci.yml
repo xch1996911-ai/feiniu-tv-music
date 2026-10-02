@@ -4,14 +4,15 @@ name: Phase1 CI
 #
 # 目标：
 #   1) 质量门：flutter pub get -> analyze -> test，任一步失败即 FAILED
-#   2) 诊断产物：6 个「渲染后端 × 插件注册」诊断 APK
+#   2) 诊断产物：「渲染后端 × 插件注册 × 构建类型」的 7 个 APK
 #      （海信 E7N Pro / VIDDA：Flutter 第一帧之前就失败，需要分离变量定位）
+#      G =「默认后端 + release」为正式发布候选（实机已验证 B/C 均可用）
 #   3) Windows 独立 EXE：fnos_api_probe.exe（目标机无需 Flutter/Dart/Git/Node）
 #
 # 约束：
 #   - Flutter 版本固定 3.47.6，不使用会漂移的 latest
 #   - 不允许忽略 analyze / test 的失败，不使用 continue-on-error
-#   - 6 个诊断 APK 来自**同一 commit、同一份 Dart 业务代码**，
+#   - 全部诊断 APK 来自**同一 commit、同一份 Dart 业务代码**，
 #     只允许构建配置（Renderer / 插件注册 / 构建类型）不同
 #   - 本 workflow **不写 release 分支**：那由 publish-diag.yml 独占，见文件末尾说明
 
@@ -25,7 +26,7 @@ on:
 
 jobs:
   android:
-    name: 质量门 + 6 个诊断 APK
+    name: 质量门 + 诊断 APK
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -92,20 +93,20 @@ jobs:
           set -o pipefail
           flutter test 2>&1 | tee -a test.log
 
-      # ── 诊断 APK：6 个变体，只差构建配置 ────────────────────────────────
+      # ── 诊断 APK：7 个变体，只差构建配置 ────────────────────────────────
 
       - name: 打印诊断变体矩阵
         run: |
           set -o pipefail
           python3 tools/diag/make_variant.py --list 2>&1 | tee diag-matrix.log
 
-      - name: 构建 6 个诊断 APK（Renderer × 插件注册）
+      - name: 构建全部诊断 APK（Renderer × 插件注册 × 构建类型）
         run: |
           set -o pipefail
           mkdir -p dist
           python3 tools/diag/make_variant.py --list 2>&1 | tee -a diag-matrix.log
 
-          for V in A B C D E F; do
+          for V in A B C D E F G; do
             echo "" | tee -a build.log
             echo "==================== 变体 $V ====================" | tee -a build.log
 
@@ -114,7 +115,7 @@ jobs:
             python3 tools/diag/make_variant.py "$V" 2>&1 | tee -a diag-matrix.log
 
             # 只打包 ARM：Android TV 都是 ARM，x86_64 只服务模拟器。
-            # 6 个变体一致使用该设置，因此不会成为混淆变量。
+            # 所有变体一致使用该设置，因此不会成为混淆变量。
             if [ "$BUILD_TYPE" = "release" ]; then
               flutter build apk --release --target-platform "$PLATFORMS" -t "$ENTRY" $DART_DEFINES 2>&1 | tee -a build.log
               OUT="build/app/outputs/flutter-apk/app-release.apk"
@@ -136,7 +137,7 @@ jobs:
             python3 tools/diag/make_variant.py --revert 2>&1 | tee -a diag-matrix.log
           done
 
-      - name: 校验 6 个产物并生成 MANIFEST.txt
+      - name: 校验全部产物并生成 MANIFEST.txt
         run: |
           set -o pipefail
           python3 tools/diag/make_variant.py --write-manifest dist 2>&1 | tee -a diag-matrix.log
@@ -184,10 +185,10 @@ jobs:
           done
           echo "脱敏完成"
 
-      # ── 6 个 APK 各自上传为独立 artifact，便于在电视上逐个安装验证 ────────
+      # ── 每个 APK 各自上传为独立 artifact，便于在电视上逐个安装验证 ────────
       #
       # ⚠️ 这些步骤（以及日志脱敏）全部带 `if: always()`：产物是这轮实验唯一的交付物，
-      #    绝不能让它的存续依赖后面某个校验步骤是否通过。真实事故：6 个 APK 全部构建
+      #    绝不能让它的存续依赖后面某个校验步骤是否通过。真实事故：全部 APK 已经构建
       #    成功，却因紧随其后的「还原检查」误报失败，导致上传步骤整批被跳过、产物丢失。
 
       - name: 上传 A · no-impeller debug
@@ -241,6 +242,15 @@ jobs:
         with:
           name: app-hisense-engine-smoke-no-plugins.apk
           path: dist/app-hisense-engine-smoke-no-plugins.apk
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: 上传 G · 正式版（默认后端 + release）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-hisense-release.apk
+          path: dist/app-hisense-release.apk
           if-no-files-found: error
           retention-days: 5
 
@@ -329,6 +339,6 @@ jobs:
   #      `dist/MANIFEST.txt` → 路径对不上，清单被静默跳过。
   #
   # 现在 release 分支由 `.github/workflows/publish-diag.yml` **独占**：
-  # 它把 6 个 APK + probe EXE + MANIFEST 一次性放上去，
+  # 它把 7 个 APK + probe EXE + MANIFEST 一次性放上去，
   # 单一写入者因此不存在互相 force push 的竞态。
   # 触发方式：`git push --force origin main:publish-diag`（等本轮 CI 成功之后再推）。

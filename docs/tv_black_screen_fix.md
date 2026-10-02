@@ -10,7 +10,7 @@
 > 本文按时间顺序记录三轮的根因、修复方案，以及后续排错必须遵守的
 > 「颜色即信号」+「日志落盘」两条约定。
 >
-> 第三轮另起一份**渲染后端 × 插件注册诊断矩阵**（6 个诊断 APK）：
+> 第三轮另起一份**渲染后端 × 插件注册诊断矩阵**（7 个诊断 APK）：
 > 见 [tv_renderer_ab_test.md](./tv_renderer_ab_test.md)。
 >
 > ⚠️ 本文第二轮里的两个结论（「3.47 无法关闭 Impeller」、
@@ -234,7 +234,7 @@ token 会话，但**读会话失败只会降级，不会崩**。
 | `lib/main.dart` | 第三轮：补 `Dart main() entered` / `runApp before` / `runApp after` / `first frame callback` 四个节点 |
 | `lib/main_engine_smoke.dart`（新增） | 第三轮：最小引擎冒烟入口，只依赖 Flutter SDK |
 | `android/.../DiagSmokeActivity.kt`（新增） | 第三轮：**不注册任何插件**的诊断 Activity |
-| `tools/diag/make_variant.py`（新增） | 第三轮：生成 6 个诊断变体的构建配置 |
+| `tools/diag/make_variant.py`（新增） | 第三轮：生成 7 个诊断变体的构建配置 |
 
 ### 降级策略（不因为一个可选能力拖死启动）
 
