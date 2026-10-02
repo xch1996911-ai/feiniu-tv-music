@@ -40,9 +40,9 @@ android {
     buildTypes {
         release {
             // Phase 1 调试期先用 debug 签名；发布前替换为正式签名。
+            // 注意：不要在此写 minifyEnabled / shrinkResources —— AGP 9 的新 DSL
+            // 已移除这两个属性（官方 3.47.6 模板亦不含），默认值本就是关闭。
             signingConfig = signingConfigs.getByName("debug")
-            minifyEnabled = false
-            shrinkResources = false
         }
     }
 }
