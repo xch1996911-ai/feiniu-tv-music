@@ -22,7 +22,7 @@
 
 ## 二、根因一：地址漏写 `http://`（真实故障）
 
-用户在遥控器上输入 `192.168.3.250:5666` —— 地址栏 hint 里写的是
+用户在遥控器上输入 `192.168.1.20:5666` —— 地址栏 hint 里写的是
 `http://192.168.1.10:5666`，但遥控器输入不会照抄 hint。
 
 `FnosClient` 原先把用户输入**原样**交给 Dio 作 `baseUrl`，于是请求 URL 没有 scheme，
@@ -31,7 +31,7 @@
 **修法**：`FnosClient.normalizeBaseUrl()`
 
 - 用 `^[a-zA-Z][a-zA-Z0-9+.\-]*://` 判定是否已有 scheme ——
-  ⚠️ 判定必须**要求字母开头**。写成 `^[^/]+://` 之类会把 `192.168.3.250:5666`
+  ⚠️ 判定必须**要求字母开头**。写成 `^[^/]+://` 之类会把 `192.168.1.20:5666`
   里的冒号误判成 scheme 分隔符，等于没修。
 - 无 scheme → 补 `http://`（局域网 HTTP 5666 是绝对主流）。
 - 去掉尾斜杠，否则端点路径自带的前导 `/` 会拼成 `//music/api/v1`。
@@ -50,7 +50,7 @@ FnosClient({required String baseUrl, ...})
 ```
 
 Dart 里**形参在构造函数体内可见**，会**遮蔽同名字段**。所以构造函数体里的
-`baseUrl` 是用户原始输入 `192.168.3.250:5666`，`BaseOptions` 内部
+`baseUrl` 是用户原始输入 `192.168.1.20:5666`，`BaseOptions` 内部
 `Uri.parse` 直接抛：
 
 ```
@@ -115,7 +115,7 @@ FormatException: Scheme not starting with alphabetic character (at character 1)
 - `test/fnos_client_url_test.dart`：`normalizeBaseUrl` 的 6 条
   （补 scheme、不改写已有 scheme、去尾斜杠、IP 冒号不被误判、空串、构造时归一化）。
 - `test/auth_repository_probe_test.dart`：断言探针发出的是**带 scheme 的绝对 URL**
-  （`scheme=http`、`host=192.168.3.250`、`port=5666`、路径正确）——
+  （`scheme=http`、`host=192.168.1.20`、`port=5666`、路径正确）——
   这条测试就是为了钉死本轮这个 bug，防止以后有人把归一化删掉。
 
 > 教训：**只断言「能登录」是不够的**。本轮那个形参遮蔽的 bug 不会被

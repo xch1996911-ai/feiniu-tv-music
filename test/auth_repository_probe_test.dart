@@ -7,7 +7,7 @@ import 'support/fake_adapter.dart';
 /// `AuthRepository.probe` —— 免登录连通性探测。
 ///
 /// 这条测试盯住一个**真实故障**：用户在电视遥控器上把 NAS 地址输成
-/// `192.168.3.250:5666`（漏掉 `http://`），请求 URL 因此没有 scheme，
+/// `192.168.1.20:5666`（漏掉 `http://`），请求 URL 因此没有 scheme，
 /// 界面上表现为「登录一直显示连接中」，且没有任何有效错误。
 /// 归一化必须做在客户端层，所有入口（登录 / 恢复会话 / 探测）都经过它。
 void main() {
@@ -24,13 +24,13 @@ void main() {
       final fake = okAdapter();
       final repo = AuthRepository();
 
-      final res = await repo.probe('192.168.3.250:5666', adapter: fake);
+      final res = await repo.probe('192.168.1.20:5666', adapter: fake);
 
       expect(res.isOk, isTrue, reason: res.isErr ? res.error.message : '');
       expect(res.value, contains('连通正常'));
       final uri = fake.last.uri;
       expect(uri.scheme, 'http');
-      expect(uri.host, '192.168.3.250');
+      expect(uri.host, '192.168.1.20');
       expect(uri.port, 5666);
       expect(uri.path, FnosEndpoints.initializationState);
     });
@@ -57,7 +57,7 @@ void main() {
         );
       final repo = AuthRepository();
 
-      final res = await repo.probe('192.168.3.250:5666', adapter: fake);
+      final res = await repo.probe('192.168.1.20:5666', adapter: fake);
 
       expect(res.isErr, isTrue);
       expect(res.error.message, isNotEmpty);
@@ -65,8 +65,8 @@ void main() {
 
     test('normalizeHost 委托给同一套规则（供界面显示实际请求地址）', () {
       final repo = AuthRepository();
-      expect(repo.normalizeHost('192.168.3.250:5666'),
-          'http://192.168.3.250:5666');
+      expect(repo.normalizeHost('192.168.1.20:5666'),
+          'http://192.168.1.20:5666');
       expect(repo.normalizeHost('http://a.b:1/'), 'http://a.b:1');
     });
   });
