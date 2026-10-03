@@ -15,12 +15,27 @@ import '../widgets/cover_image.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
 
+// ── 行内文字的行高 ────────────────────────────────────────────
+//
+// ⚠️ 本文件所有位于**固定行高**里的 `Text` 都必须显式带上 [_textHeight]。
+//    M3 主题给 `DefaultTextStyle` 的行高是 20/14 ≈ 1.43，`TextStyle` 会与它
+//    merge，于是 21 号字实际占 30px 而不是 25px —— 行高按「看上去的高度」写
+//    就必然 `RenderFlex overflowed`（电视上就是黄黑条纹）。
+//    队列面板行此前就是这么溢出 2px 的。
+//
+// ⚠️ 取值还必须满足「字号 × height 是整数」：Flutter 会把**每一行**的行盒
+//    高度向上取整。曾经用 19 / 14 配 1.2 得到 22.8 / 16.8 → 取整后 23 / 17，
+//    于是「封面正方形 + 两行文字」这种算式上正好等于行高的布局被判溢出
+//    `RenderFlex overflowed by 0.400 pixels`（0.2 + 0.2，正好是两行的取整差）。
+/// 行内文字的单行倍高。配 20 / 15 / 21 / 16 号字都落在整数上。
+const double _textHeight = 1.2;
+
 // ── 专辑瓦片的几何常量 ────────────────────────────────────────
 //
 // ⚠️ 这些值**必须**与 `_AlbumTile` 里的实际用法一致：网格的 `mainAxisExtent`
-//    就是用 `tileWidth + _albumTextBlock` 反推出来的。写死一个「看起来够高」
-//    的常量会导致宽屏上封面变大、行高不变 → `RenderFlex overflowed`
-//    （实测 1920 宽下专辑网格溢出 67px，电视上就是黄黑条纹）。
+//    就是用 `tileWidth + _albumTextBlock + _albumHeightSlack` 反推出来的。
+//    写死一个「看起来够高」的常量会导致宽屏上封面变大、行高不变
+//    → `RenderFlex overflowed`（实测 1920 宽下专辑网格溢出 67px）。
 
 /// 封面与标题之间的间距。
 const double _albumCoverGap = 10;
@@ -28,26 +43,29 @@ const double _albumCoverGap = 10;
 /// 标题与副标题之间的间距。
 const double _albumTitleGap = 3;
 
-/// 专辑名字号。
-const double _albumTitleSize = 19;
+/// 专辑名字号。⚠️ 与 [_textHeight] 的乘积必须是**整数**（原因见上）。
+const double _albumTitleSize = 20;
 
-/// 副标题（歌手 · N 首）字号。
-const double _albumSubSize = 14;
-
-/// 瓦片内文字的单行倍高。
-///
-/// ⚠️ 必须显式写进 `TextStyle.height`：M3 主题 default 行高是 1.43，
-///    比直觉的 1.0 高出近一半，不写就会把固定行高撑爆。
-const double _albumTextHeight = 1.2;
+/// 副标题（歌手 · N 首）字号。同样要求乘积是整数。
+const double _albumSubSize = 15;
 
 /// 瓦片里焦点环占掉的高度（`padding: all(10)` × 2 + 环线 3 × 2）。
 const double _albumRingInset = 26;
 
+/// 高度余量。
+///
+/// 行高与内容「恰好相等」时不会溢出，但不同平台 / 字体的度量会有
+/// 零点几像素的差异，留一点余量更稳。
+const double _albumHeightSlack = 2;
+
 /// 封面下方「文字块」的总高。
+///
+/// 必须与 [_AlbumTile] 里实际的 `SizedBox` / `fontSize` / `height` 完全一致，
+/// 否则网格行高与实际内容对不上（见上面 [_albumHeightSlack] 的说明）。
 const double _albumTextBlock = _albumCoverGap +
-    _albumTitleSize * _albumTextHeight +
+    _albumTitleSize * _textHeight +
     _albumTitleGap +
-    _albumSubSize * _albumTextHeight;
+    _albumSubSize * _textHeight;
 
 /// 概览类型（决定版式与统计口径）。
 enum OverviewKind {
@@ -116,9 +134,10 @@ class _OverviewPageState extends State<OverviewPage> {
   /// ⚠️ 固定行高**必须**装得下「焦点环内边距 + 环线 + 内容」：
   /// 小于内容高度就是 `RenderFlex overflowed`（电视上是黄黑条纹）。
   /// 反直觉的一点是内容比看上去高 —— M3 主题给 Text 的默认行高是 1.43。
-  /// 因此下面每个 Text 都显式写了 `height: 1.2`，算式才成立：
+  /// 因此下面每个 Text 都显式写了 `height: _textHeight`，算式才成立
+  /// （取整后的实际占位，向上取整见 [_textHeight] 的说明）：
   /// - 歌手行：可用 92-4-4-8-8-3-3 = 62；头像 56 ≤ 62 ✅；
-  ///   文字 21×1.2 + 4 + 15×1.2 = 47.2 ≤ 62 ✅
+  ///   文字 21×1.2 + 4 + 15×1.2 = 25.2+4+18 → 取整 26+4+18 = 48 ≤ 62 ✅
   /// - 风格行：可用 78-4-4-14-14-3-3 = 36；最高子项（箭头图标 26）≤ 36 ✅
   static const double _artistRowExtent = 92;
   static const double _genreRowExtent = 78;
@@ -334,7 +353,9 @@ class _OverviewPageState extends State<OverviewPage> {
         final double tileWidth =
             (usable - _albumSpacing * (columns - 1)) / columns;
         final double cover = tileWidth - _albumRingInset;
-        final double tileExtent = tileWidth + _albumTextBlock;
+        // 行高 = 封面 + 文字块 + 余量（见各常量上的说明）
+        final double tileExtent =
+            tileWidth + _albumTextBlock + _albumHeightSlack;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -527,7 +548,7 @@ class _ArtistRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 21,
-                        height: 1.2,
+                        height: _textHeight,
                         fontWeight: FontWeight.w600,
                         color: TvColors.text,
                       ),
@@ -539,7 +560,7 @@ class _ArtistRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 15,
-                        height: 1.2,
+                        height: _textHeight,
                         color: TvColors.textFaint,
                       ),
                     ),
@@ -614,7 +635,7 @@ class _AlbumTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: _albumTitleSize,
-                height: _albumTextHeight,
+                height: _textHeight,
                 fontWeight: FontWeight.w600,
                 color: TvColors.text,
               ),
@@ -628,7 +649,7 @@ class _AlbumTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: _albumSubSize,
-                height: _albumTextHeight,
+                height: _textHeight,
                 color: TvColors.textFaint,
               ),
             ),
@@ -682,7 +703,7 @@ class _GenreRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 21,
-                    height: 1.2,
+                    height: _textHeight,
                     fontWeight: FontWeight.w600,
                     color: TvColors.text,
                   ),
@@ -692,7 +713,7 @@ class _GenreRow extends StatelessWidget {
                 '${overview.trackCount} 首',
                 style: const TextStyle(
                   fontSize: 16,
-                  height: 1.2,
+                  height: _textHeight,
                   color: TvColors.textFaint,
                 ),
               ),

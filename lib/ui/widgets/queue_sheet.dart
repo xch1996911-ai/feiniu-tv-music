@@ -10,6 +10,18 @@ import 'cover_image.dart';
 import 'tv_focus.dart';
 import 'tv_glass.dart';
 
+/// 行内文字的行高倍数。
+///
+/// ⚠️ 本文件所有「固定行高的行」里的 `Text` 都必须显式带上它。
+/// M3 主题给 `DefaultTextStyle` 的行高是 `20/14 ≈ 1.43`，`TextStyle` 会与它
+/// merge，于是 18 号字实际占 26px、14 号字占 20px —— 在 [QueueSheet] 的
+/// 固定行高里必然 `RenderFlex overflowed`。
+///
+/// 取值还要满足「字号 × height 是整数」：Flutter 对每一行的行盒高度**向上取整**
+/// （`19 × 1.2 = 22.8 → 23`），算式上「恰好等于行高」也会被判溢出
+/// （`overview_page.dart` 的专辑瓦片曾因此差 `0.400 pixels`）。
+const double _textHeight = 1.2;
+
 /// 当前播放队列面板（播放页与首页迷你播放器**共用同一份**队列）。
 ///
 /// ## 数据源
@@ -261,12 +273,20 @@ class _QueueRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
+                        // ⚠️ `height` 必须显式写死。
+                        // M3 的 DefaultTextStyle 行高是 20/14 ≈ 1.43，会与
+                        // TextStyle merge：18 号字实际占 26px、14 号字占 20px，
+                        // 叠加 2px 间距后在固定行高里必然 RenderFlex 溢出。
+                        // 且 字号 × height 必须落在整数上 —— Flutter 对**每一行**
+                        // 的行盒高度向上取整（19×1.2=22.8→23），算式上「刚好相等」
+                        // 也会被判溢出（overview 专辑瓦片曾因此差 0.400px）。
                         Text(
                           track.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 18,
+                            height: _textHeight, // 21.6 → 22
                             fontWeight: isCurrent
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -281,7 +301,10 @@ class _QueueRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 14, color: TvColors.textFaint),
+                            fontSize: 14,
+                            height: _textHeight, // 16.8 → 17
+                            color: TvColors.textFaint,
+                          ),
                         ),
                       ],
                     ),
