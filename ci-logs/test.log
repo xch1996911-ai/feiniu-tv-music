@@ -7,13 +7,10 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: deviceId 校验 拒绝长度错误 / 非 hex / 空 / null
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: toHex 逐字节补零
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 不依赖任何插件即可渲染出 FLUTTER ENGINE OK
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 帧计数随首帧回调递增，并在 maxFrames 处停止
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: first frame callback 一定会被标记出来（电视端唯一判据）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 标记会经 feiniu/boot 通道发得出去（原生落盘通道必须可用）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: DIAG_TAG 有默认值，未注入 dart-define 时也不会是空串
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 A 纯占位符 / 符号 / 只有时间标签 → 无效
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 B 真实歌词（中文 / 英文 / 纯文本）→ 有效
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 C 有信息量的字符数统计口径（符号与标点不计）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 帧计数随首帧回调递增，并在 maxFrames 处停止
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 NAS 占位符不再阻断在线兜底 D NAS 只回 ♪ 时判为无歌词（不提前结束）
 [FeiNiuTV] [事件] NAS 歌词判为无效（1 行 / 0 个有效字符），已转在线兜底
@@ -35,6 +32,9 @@
 [FeiNiuTV] [诊断] 歌词 = NAS 无有效歌词（在线兜底未启用）
 ::endgroup::
 ::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: first frame callback 一定会被标记出来（电视端唯一判据）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 标记会经 feiniu/boot 通道发得出去（原生落盘通道必须可用）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: DIAG_TAG 有默认值，未注入 dart-define 时也不会是空串
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.1 统一风格集合与标签映射 A 英文/中文/大小写/连字符写法都映射到同一个统一风格
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.1 统一风格集合与标签映射 B 映射不上的**明确标签**保留原样，不丢数据也不硬塞
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.3 版本词与语言/姓名不得当风格 C Live / 现场 / Remastered / 原声版 单独出现时不算风格证据
@@ -51,51 +51,40 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 N 全部靠推断得出的风格会被标记为 inferred
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 O 规则版本随结果一起产出（供索引判断是否需要重算）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 显示明确空态 + 「去音乐库」入口，而不是显示全曲库
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 「去音乐库」可聚焦并能触发回调
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 0 首（共 0 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 服务端 isFavorite 播种进来的歌会显示（首次迁移）
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 没有播种过的歌**不会**因为服务端标记而进收藏页
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 在别处收藏一首歌 → 收藏页立即出现（无需重启）
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 取消收藏 → 立即从列表移除；全部取消 → 回到空态
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Ok 分支
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Err 分支
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: map 仅作用于成功值
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: getOrElse 失败回退
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 服务端 isFavorite 播种进来的歌会显示（首次迁移）
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 没有播种过的歌**不会**因为服务端标记而进收藏页
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 在别处收藏一首歌 → 收藏页立即出现（无需重启）
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 取消收藏 → 立即从列表移除；全部取消 → 回到空态
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
+::endgroup::
+::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 盐值与真实契约一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 MD5 小写 hex（对照公开值）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 免签名白名单按前缀匹配（是前端自身路由，不是 /music/api/v1 下的接口）
@@ -288,64 +277,115 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: jsonUnixSeconds 0 / 负数 / null / 非数字返回 null
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 A 第一页加载成功：拿到 50 首、hasMore=true
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 B 加载下一页会追加而非替换
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 [FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 C hasMore=false 后不再请求
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 30 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 D 并发调用 loadMore 只产生一次请求（同一页去重）
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 [FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 E 分页数据按 guid 去重（服务端返回重复项也不重复入库）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 搜索索引 = 75 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 75 首（共 75 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 D 补充 loadFirst 在已有数据时不重复请求（返回页面不重头再来）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 error 状态可 retry 恢复
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 F 第 30 首播完能进入第 31 首（队列已含后续歌曲）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列接近末尾时触发预加载
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列中间位置不触发预加载（避免无谓请求）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 H appendToQueue 不移动 currentIndex（不打断正在播放的歌）
+[FeiNiuTV] [诊断] 搜索索引 = 30 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 Q 顺序播放：最后一首自然结束 → 停止，不回第一首
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 R 列表循环：最后一首自然结束 → 回第一首
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 S 单曲循环：自然结束 → 当前曲重播（不换歌）
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 T 播放模式切换生效且状态同步
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 列表循环下手动 next 到队尾会回绕
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 顺序播放下手动 next 到队尾不动
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 随机播放：连续自然结束不会崩溃且不重复当前曲
+[FeiNiuTV] [诊断] 搜索索引 = 10 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 10 首（共 10 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） U 搜索匹配歌名
+[FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） U 搜索匹配专辑名
+[FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） 搜索空串返回空列表
+[FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） 搜索结果可建立独立播放队列（不污染曲库队列）
+[FeiNiuTV] [诊断] 搜索索引 = 30 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 会把曲库拉完
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 120 首（共 120 首）
+[FeiNiuTV] [事件] 曲库增量核对：新增 70 首、删除 0 首、变更 0 首
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 120 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
@@ -357,7 +397,33 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 E 分页数据按 guid 去重（服务端返回重复项也不重复入库）
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 可重入：并发调用不重复拉取
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 120 首（共 120 首）
+[FeiNiuTV] [事件] 曲库增量核对：新增 70 首、删除 0 首、变更 0 首
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 120 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） 索引失败时停止，不无限重试
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：断了；当前显示 50 首（完整=false）
+[FeiNiuTV] [事件] 曲库整理中断：断了
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
@@ -365,39 +431,11 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 搜索索引 = 75 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 75 首（共 75 首）
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 D 补充 loadFirst 在已有数据时不重复请求（返回页面不重头再来）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 error 状态可 retry 恢复
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 F 第 30 首播完能进入第 31 首（队列已含后续歌曲）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列接近末尾时触发预加载
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列中间位置不触发预加载（避免无谓请求）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 H appendToQueue 不移动 currentIndex（不打断正在播放的歌）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 Q 顺序播放：最后一首自然结束 → 停止，不回第一首
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 R 列表循环：最后一首自然结束 → 回第一首
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 S 单曲循环：自然结束 → 当前曲重播（不换歌）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 T 播放模式切换生效且状态同步
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 列表循环下手动 next 到队尾会回绕
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 顺序播放下手动 next 到队尾不动
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 随机播放：连续自然结束不会崩溃且不重复当前曲
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） U 搜索匹配歌名
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） U 搜索匹配专辑名
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） 搜索空串返回空列表
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） 搜索结果可建立独立播放队列（不污染曲库队列）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 会把曲库拉完
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 可重入：并发调用不重复拉取
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） 索引失败时停止，不无限重试
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 mark 记录到内存且不抛异常
 [FeiNiuTV] 契约测试-唯一标记-A
@@ -1117,100 +1155,42 @@ In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the f
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 安全模式 原生通道可用时 nativeDeviceId 返回原生值
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 控制层暴露的状态与 Repository 一致（单一数据源）
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 addToQueue 追加到末尾且不移动 currentIndex
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 addToQueue 相同 guid 不重复入队
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 removeFromQueue 拒绝移除正在播放的曲目
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 removeFromQueue 移除前面的元素时 index 同步前移
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 4 首（共 4 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 4 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 4 首（共 4 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 removeFromQueue 移除越界索引返回 false
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 1 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: PlaybackControl 统一控制层 状态流会发出新快照（供未来 WebSocket 推送）
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 Z 保存当前曲目与进度后，新实例能读回并定位（不自动播放）
+[FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 5 首（共 5 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 Z 恢复的曲库里已不存在该曲 → 返回 false，不崩溃
+[FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 Z 保存当前曲目与进度后，新实例能读回并定位（不自动播放）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 Z 恢复的曲库里已不存在该曲 → 返回 false，不崩溃
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 Z 播放模式能跨实例恢复（持久化生效）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: APP 重启状态恢复 没有上次记录时恢复不报错
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 L 加载当前歌曲歌词并能定位高亮行
@@ -1218,8 +1198,14 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 N 换歌时旧歌词被清空（不残留上一首）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 O 无歌词时返回 -1，不抛异常
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 M 同一行内高亮不变（不会每 500ms 抖一次）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 歌词请求失败 → 显示暂无歌词但不影响播放
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词源直接抛异常时 load 不抛出（只标记暂无歌词）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 歌词请求失败 → 显示暂无歌词但不影响播放
+[FeiNiuTV] [诊断] 歌词 = NAS 请求失败（歌词接口失败）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词源直接抛异常时 load 不抛出（只标记暂无歌词）
+[FeiNiuTV] [诊断] 歌词 = NAS 请求失败（Bad state: 模拟歌词接口在传输层直接抛异常）
+::endgroup::
+::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词请求有硬超时（Dio 的 receiveTimeout 只约束包间隔）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首
@@ -1339,18 +1325,8 @@ In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the f
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 D 某页失败时保留已取得的数据，且不谎报「已整理完成」
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 E 半成品不覆盖上一次的完整索引
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
@@ -1384,13 +1360,28 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-03 16:35:17.000）
+[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-03 16:49:23.000）
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：断网；当前显示 137 首（完整=true）
+[FeiNiuTV] [事件] 曲库整理中断：断网
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 G 索引按身份分文件：切换账户不串数据，也不互相覆盖
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 G 索引按身份分文件：切换账户不串数据，也不互相覆盖
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 H 曲库新增曲目后，再次整理能增量核对出来
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 I 索引进度文案同时给出「已索引」与「全库总数」，不混为一谈
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-B 索引持久化的健壮性 J 损坏的索引文件按「无缓存」处理，不阻断启动
@@ -1447,136 +1438,101 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ① 中文原文搜索继续可用
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ② 拼音全拼（含空格分隔）
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ③ 首字母（含前缀）
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 完整首字母优于首字母前缀（看命中位置，不看分值） (failed)
-Expected: MatchStrength:<MatchStrength.initials>
-  Actual: MatchStrength:<MatchStrength.original>
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 107:7                  main.<fn>.<fn>
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 完整首字母优于首字母前缀（看命中位置，不看分值）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ④ 部分拼音：拼音前缀与连续子串
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 短查询不做宽松匹配（一个字母不能命中整个曲库）
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑤ 混合查询：中文 + 拼音任意组合
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑥ 英文大小写不敏感
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑦ 空格 / 全角 / 标点归一化
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 归一化不改写展示名：版本词保留在原名里
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑧ 轻微拼写错误给出低优先级候选
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 多音字：词组优先（重庆 / 音乐 等）
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 无结果时安静返回空，不编造命中
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 短查询不做宽松匹配（一个字母不能命中整个曲库）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑤ 混合查询：中文 + 拼音任意组合
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑥ 英文大小写不敏感
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑦ 空格 / 全角 / 标点归一化
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 归一化不改写展示名：版本词保留在原名里
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 中文原文精确匹配优先于拼音匹配
 ::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑧ 轻微拼写错误给出低优先级候选 (failed)
-Expected: true
-  Actual: <false>
-只有纠错路径才会给出这条候选
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 166:7                  main.<fn>.<fn>
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 歌曲名命中优先于仅歌手字段命中
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 查询歌手名时歌手条目优先，其歌曲也能通过歌手字段命中
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 排序稳定可复现（同查询两次结果完全一致）
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 结果不展示内部拼音索引，只有原始曲目信息
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 超过 50 首时，第 51 首与最后一首都能被拼音找到
+[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 索引持久缓存：重建实例后**不重算**就能搜到（账号隔离）
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 8 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 增量维护：只有变化的条目被重算
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 7 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 缓存版本不符时**整份丢弃重建**，绝不沿用失效缓存
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 曲库清空后再恢复：索引跟着走，不残留也不卡死
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 0 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 查询序号：晚到的旧结果会被标记为过期
+[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 多音字：词组优先（重庆 / 音乐 等）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 无结果时安静返回空，不编造命中
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 中文原文精确匹配优先于拼音匹配 (failed)
-Expected: MatchPosition:<MatchPosition.exact>
-  Actual: MatchPosition:<MatchPosition.prefix>
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 190:7                  main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 歌曲名命中优先于仅歌手字段命中
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 查询歌手名时歌手条目优先，其歌曲也能通过歌手字段命中
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 排序稳定可复现（同查询两次结果完全一致）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 结果不展示内部拼音索引，只有原始曲目信息
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 超过 50 首时，第 51 首与最后一首都能被拼音找到
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 索引持久缓存：重建实例后**不重算**就能搜到（账号隔离）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 增量维护：只有变化的条目被重算
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 缓存版本不符时**整份丢弃重建**，绝不沿用失效缓存
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 曲库清空后再恢复：索引跟着走，不残留也不卡死
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 查询序号：晚到的旧结果会被标记为过期
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 TextNorm：全角→半角、大小写折叠、ü→v、丢标点
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 项目词典：每条都满足「简体 / 小写无调 / 读音数=字数」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 词典的最长词组长度是推导出来的（不是写死的）
@@ -1588,50 +1544,37 @@ test/pinyin_search_test.dart 190:7                  main.<fn>.<fn>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 没有当前曲目时不渲染 未播放任何歌曲 → 迷你播放器不占位
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 概览只画统计，不展开曲目
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 点选歌手 → 进详情，展示该歌手的曲目与统计
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 进详情后焦点落在「返回」上（不会平白消失）
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 从详情返回 → 回到概览，且焦点回到原来那一行
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 概览显示封面 / 专辑名 / 歌手 / 歌曲数
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 点选专辑 → 进详情，只显示该专辑的曲目
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 风格：无标签时如实说明（需求「一、3」） 曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 概览页的焦点链 歌手行之间可以遥控器上下移动
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 概览页的焦点链 歌手行之间可以遥控器上下移动
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: sha256("password") 与公开值一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 恒为 64 位小写 hex（服务端按此格式校验）
@@ -1715,15 +1658,14 @@ test/pinyin_search_test.dart 190:7                  main.<fn>.<fn>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_queue_test.dart: 附加：加载失败与播放控制 togglePlay 走引擎的 play/pause
 ::endgroup::
 ::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 收藏是持久的：新实例 restore 后仍能读出同一份 (failed)
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 1 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
 TimeoutException after 0:10:00.000000: Test timed out after 10 minutes.
 dart:isolate  _RawReceivePort._handleMessage
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 焦点链 播放 →(→) 随机（两个入口都能走到）
+[FeiNiuTV] [诊断] 搜索索引 = 1 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
 ::endgroup::
 
-::error::445 tests passed, 4 failed.
+::error::448 tests passed, 1 failed.
