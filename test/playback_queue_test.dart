@@ -23,21 +23,21 @@ void main() {
   /// 标记仓储是否已被用例自己 dispose（ChangeNotifier 不允许重复 dispose）。
   var repoDisposed = false;
 
+  /// 等待串行加载链与微任务全部结束。
+  ///
+  /// 串行链是纯 Future 链（零延时的 `Future.delayed`），若干次让出事件循环
+  /// 即可让链上的任务与 `loadAndPlay` 真正跑完。
+  Future<void> settle() async {
+    for (var i = 0; i < 8; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
   /// 建立一个带 [tracks] 队列、当前位于 [startIndex] 的仓储。
   Future<void> givenQueue(List<Track> tracks, {int startIndex = 0}) async {
     repo.setQueue(tracks, startIndex: startIndex);
     // 让串行链上的首次加载真正完成。
     await settle();
-  }
-
-  /// 等待串行加载链与微任务全部结束。
-  ///
-  /// 刻意不用 `Future.delayed` 之外的大延时：串行链是纯 Future 链，
-  /// 若干次 `pumpEventQueue` 即可让微任务与已就绪的定时器跑完。
-  Future<void> settle() async {
-    for (var i = 0; i < 8; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
   }
 
   setUp(() {

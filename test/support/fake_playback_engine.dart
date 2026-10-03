@@ -37,13 +37,17 @@ class FakePlaybackEngine implements PlaybackEngine {
   bool playing = false;
 
   Duration _position = Duration.zero;
-  Duration? _duration = const Duration(minutes: 3);
+
+  /// 曲目时长。固定值：测试只关心「队列语义」，不模拟真实时长变化。
+  final Duration _duration = const Duration(minutes: 3);
 
   /// 按曲目 id 定制的加载延迟。用于构造「旧请求后返回」的竞态场景。
   final Map<String, Duration> loadDelays = <String, Duration>{};
 
   /// 未命中 [loadDelays] 时使用的默认延迟。
-  Duration defaultLoadDelay = Duration.zero;
+  ///
+  /// 固定为 0：需要延迟的场景一律用 [loadDelays] 按曲目 id 精确指定。
+  final Duration defaultLoadDelay = Duration.zero;
 
   int playCalls = 0;
   int pauseCalls = 0;
@@ -142,7 +146,7 @@ class FakePlaybackEngine implements PlaybackEngine {
   /// 模拟当前曲目**自然播放结束**（对应真实引擎 completed 状态的边沿）。
   Future<void> simulateTrackCompleted() async {
     playing = false;
-    _position = _duration ?? Duration.zero;
+    _position = _duration;
     _emit();
     await _listener?.onTrackCompleted();
   }

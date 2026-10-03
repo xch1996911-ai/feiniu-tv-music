@@ -16,7 +16,7 @@ Track makeTrack(
     title: title ?? '曲目 $guid',
     durationMs: durationMs,
     accessStatus: accessStatus,
-    album: const AlbumRef(guid: 'album_$guid', name: '专辑 $guid'),
+    album: AlbumRef(guid: 'album_$guid', name: '专辑 $guid'),
     artists: const <ArtistRef>[],
     audioSpec: const AudioSpec(format: 'flac', sampleRate: 44100, bitDepth: 16),
   );
