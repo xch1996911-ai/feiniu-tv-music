@@ -1,45 +1,19 @@
 Analyzing feiniu-tv-music...                                    
 
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/boot/boot_screen.dart:505:12 • prefer_const_constructors
-   info • Redundant initialization to 'null'. Try removing the initializer • lib/domain/genre.dart:380:11 • avoid_init_to_null
-   info • 'maxMultiLength' is deprecated and shouldn't be used. replaced by maxPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:136:24 • deprecated_member_use
-   info • 'maxMultiLength' is deprecated and shouldn't be used. replaced by maxPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:137:22 • deprecated_member_use
-   info • 'minMultiLength' is deprecated and shouldn't be used. replaced by minPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:190:40 • deprecated_member_use
-   info • 'maxMultiLength' is deprecated and shouldn't be used. replaced by maxPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:191:40 • deprecated_member_use
-warning • Unused import: 'album.dart'. Try removing the import directive • lib/domain/search_index.dart:1:8 • unused_import
-warning • Unused import: 'artist.dart'. Try removing the import directive • lib/domain/search_index.dart:2:8 • unused_import
-  error • Const variables must be initialized with a constant value. Try changing the initializer to be a constant expression • lib/domain/search_index.dart:236:41 • const_initialized_with_non_constant_value
-  error • The constructor being called isn't a const constructor. Try removing 'const' from the constructor invocation • lib/domain/search_index.dart:236:41 • const_with_non_const
-   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/repositories/library_repository.dart:369:42 • unnecessary_brace_in_string_interps
-   info • Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' • lib/repositories/local_library_repository.dart:501:5 • prefer_const_declarations
-   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/repositories/playback_repository.dart:664:16 • unnecessary_brace_in_string_interps
+  error • The operator '<' can't be unconditionally invoked because the receiver can be 'null'. Try adding a null check to the target ('!') • lib/domain/pinyin_service.dart:140:40 • unchecked_use_of_nullable_value
+   info • 'minMultiLength' is deprecated and shouldn't be used. replaced by minPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:194:40 • deprecated_member_use
+   info • 'maxMultiLength' is deprecated and shouldn't be used. replaced by maxPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:195:40 • deprecated_member_use
+  error • Undefined name 'via_shuffle'. Try correcting the name to one that is defined, or defining the name • lib/repositories/playback_repository.dart:956:26 • undefined_identifier
    info • Unnecessary braces in a string interpolation. Try removing the braces • lib/repositories/playback_repository.dart:958:15 • unnecessary_brace_in_string_interps
-   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/repositories/playback_repository.dart:1229:18 • unnecessary_brace_in_string_interps
-  error • Too many positional arguments: 1 expected, but 2 found. Try removing the extra arguments • lib/services/catalogue_store.dart:180:50 • extra_positional_arguments
-warning • Unused import: 'dart:convert'. Try removing the import directive • lib/services/local_paths.dart:2:8 • unused_import
-   info • Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' • lib/services/remote/qr_code.dart:102:5 • prefer_const_declarations
-warning • The declaration '_tokenOf' isn't referenced. Try removing the declaration of '_tokenOf' • lib/services/remote/remote_server.dart:363:10 • unused_element
-  error • The getter 'headersSent' isn't defined for the type 'HttpResponse'. Try importing the library that defines 'headersSent', correcting the name to the name of an existing getter, or defining a getter or field named 'headersSent' • lib/services/remote/remote_server.dart:455:25 • undefined_getter
-  error • Too many positional arguments: 1 expected, but 2 found. Try removing the extra arguments • lib/services/search_index_store.dart:186:44 • extra_positional_arguments
-  error • The operator '~/' can't be unconditionally invoked because the receiver can be 'null'. Try adding a null check to the target ('!') • lib/services/search_index_store.dart:199:55 • unchecked_use_of_nullable_value
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/pages/remote_control_page.dart:176:29 • prefer_const_constructors
 warning • The value of the field '_keyword' isn't used. Try removing the field, or using it • lib/ui/pages/search_page.dart:53:10 • unused_field
-  error • The getter 'isIndexing' isn't defined for the type 'LibraryRepository'. Try importing the library that defines 'isIndexing', correcting the name to the name of an existing getter, or defining a getter or field named 'isIndexing' • lib/ui/pages/song_list_page.dart:81:29 • undefined_getter
-  error • Undefined class 'QueueSource'. Try changing the name to the name of an existing class, or creating a class with the name 'QueueSource' • lib/ui/shell/app_shell.dart:237:11 • undefined_class
-   info • Type could be non-nullable. Try changing the type to be non-nullable • lib/ui/shell/app_shell.dart:237:23 • unnecessary_nullable_for_final_variable_declarations
-  error • Undefined name 'QueueSource'. Try correcting the name to one that is defined, or defining the name • lib/ui/shell/app_shell.dart:238:16 • undefined_identifier
-  error • Undefined name 'QueueSource'. Try correcting the name to one that is defined, or defining the name • lib/ui/shell/app_shell.dart:238:46 • undefined_identifier
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/genre_inference_test.dart:186:9 • prefer_const_constructors
-  error • The method 'buildFullIndex' isn't defined for the type 'LibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'buildFullIndex' • test/library_pagination_test.dart:382:21 • undefined_method
-  error • The method 'buildFullIndex' isn't defined for the type 'LibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'buildFullIndex' • test/library_pagination_test.dart:396:17 • undefined_method
-  error • The method 'buildFullIndex' isn't defined for the type 'LibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'buildFullIndex' • test/library_pagination_test.dart:397:17 • undefined_method
-  error • The method 'buildFullIndex' isn't defined for the type 'LibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'buildFullIndex' • test/library_pagination_test.dart:413:21 • undefined_method
-  error • The method 'genreOverviews' isn't defined for the type 'LocalLibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'genreOverviews' • test/local_library_test.dart:604:45 • undefined_method
-  error • The method 'genreOverviews' isn't defined for the type 'LocalLibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'genreOverviews' • test/local_library_test.dart:618:32 • undefined_method
-  error • The method 'genreOverviews' isn't defined for the type 'LocalLibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'genreOverviews' • test/local_library_test.dart:628:37 • undefined_method
-  error • The method 'genreOverviews' isn't defined for the type 'LocalLibraryRepository'. Try correcting the name to the name of an existing method, or defining a method named 'genreOverviews' • test/local_library_test.dart:632:37 • undefined_method
-  error • The named parameter 'code' is required, but there's no corresponding argument. Try adding the required argument • test/remote_pairing_test.dart:61:16 • missing_required_argument
-  error • Too many positional arguments: 0 expected, but 1 found. Try removing the extra positional arguments, or specifying the name for named arguments • test/remote_pairing_test.dart:61:21 • extra_positional_arguments_could_be_named
-  error • A value of type 'String?' can't be assigned to a variable of type 'String'. Try changing the type of the variable, or casting the right-hand type to 'String' • test/remote_pairing_test.dart:98:11 • invalid_assignment
+warning • Duplicate import. Try removing all but one import of the library • lib/ui/shell/app_shell.dart:15:8 • duplicate_import
+  error • Undefined class 'LyricLine'. Try changing the name to the name of an existing class, or creating a class with the name 'LyricLine' • lib/ui/widgets/lyric_view.dart:160:20 • undefined_class
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:190:18 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:191:20 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:192:19 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:193:22 • unnecessary_const
+   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:25:20 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:90:9 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:128:9 • prefer_const_constructors
 
-41 issues found. (ran in 8.1s)
+15 issues found. (ran in 6.1s)
