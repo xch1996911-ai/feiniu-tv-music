@@ -1,19 +1,8 @@
 Analyzing feiniu-tv-music...                                    
 
-  error • The operator '<' can't be unconditionally invoked because the receiver can be 'null'. Try adding a null check to the target ('!') • lib/domain/pinyin_service.dart:140:40 • unchecked_use_of_nullable_value
-   info • 'minMultiLength' is deprecated and shouldn't be used. replaced by minPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:194:40 • deprecated_member_use
-   info • 'maxMultiLength' is deprecated and shouldn't be used. replaced by maxPhraseLength. Try replacing the use of the deprecated member with the replacement • lib/domain/pinyin_service.dart:195:40 • deprecated_member_use
-  error • Undefined name 'via_shuffle'. Try correcting the name to one that is defined, or defining the name • lib/repositories/playback_repository.dart:956:26 • undefined_identifier
-   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/repositories/playback_repository.dart:958:15 • unnecessary_brace_in_string_interps
-warning • The value of the field '_keyword' isn't used. Try removing the field, or using it • lib/ui/pages/search_page.dart:53:10 • unused_field
-warning • Duplicate import. Try removing all but one import of the library • lib/ui/shell/app_shell.dart:15:8 • duplicate_import
-  error • Undefined class 'LyricLine'. Try changing the name to the name of an existing class, or creating a class with the name 'LyricLine' • lib/ui/widgets/lyric_view.dart:160:20 • undefined_class
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:190:18 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:191:20 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:192:19 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/genre_inference_test.dart:193:22 • unnecessary_const
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:25:20 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:90:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_usability_test.dart:128:9 • prefer_const_constructors
+  error • A value of type 'Set<CachedSearchDoc>' can't be assigned to a variable of type 'Map<String, CachedSearchDoc>'. Try changing the type of the variable, or casting the right-hand type to 'Map<String, CachedSearchDoc>' • lib/services/search_service.dart:402:14 • invalid_assignment
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:29:16 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:30:18 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:31:20 • unnecessary_const
 
-15 issues found. (ran in 6.1s)
+4 issues found. (ran in 9.8s)
