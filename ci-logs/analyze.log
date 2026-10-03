@@ -1,24 +1,7 @@
 Analyzing feiniu-tv-music...                                    
 
-   info • Unnecessary braces in a string interpolation. Try removing the braces • lib/playback/playback_control.dart:174:22 • unnecessary_brace_in_string_interps
-  error • Undefined name 'page'. Try correcting the name to one that is defined, or defining the name • lib/repositories/library_repository.dart:245:14 • undefined_identifier
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:84:26 • ambiguous_import
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:85:24 • ambiguous_import
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:255:3 • ambiguous_import
-  error • 'PlaybackState' isn't a function. Try correcting the name to match an existing function, or define a method or function named 'PlaybackState' • lib/repositories/playback_repository.dart:255:33 • invocation_of_non_function
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:255:33 • ambiguous_import
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:277:10 • ambiguous_import
-  error • The name 'PlaybackState' is defined in the libraries 'package:audio_service/audio_service.dart' and 'package:feiniu_tv_music/playback/playback_control.dart'. Try using 'as prefix' for one of the import directives, or hiding the name from all but one of the imports • lib/repositories/playback_repository.dart:280:3 • ambiguous_import
-   info • The member 'play' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/repositories/playback_repository.dart:524:16 • annotate_overrides
-   info • The member 'pause' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/repositories/playback_repository.dart:529:16 • annotate_overrides
-   info • The member 'togglePlay' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • lib/repositories/playback_repository.dart:534:16 • annotate_overrides
-   info • Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal • lib/ui/pages/player_page.dart:217:18 • prefer_const_literals_to_create_immutables
-  error • The getter 'currentIndex' isn't defined for the type 'Object'. Try importing the library that defines 'currentIndex', correcting the name to the name of an existing getter, or defining a getter or field named 'currentIndex' • test/lyric_and_control_test.dart:123:61 • undefined_getter
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_and_control_test.dart:220:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_and_control_test.dart:221:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_and_control_test.dart:222:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_and_control_test.dart:249:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/lyric_and_control_test.dart:250:9 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/support/fake_lyric_source.dart:28:14 • prefer_const_constructors
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:221:36 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:222:36 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:250:38 • unnecessary_const
 
-20 issues found. (ran in 9.1s)
+3 issues found. (ran in 9.2s)
