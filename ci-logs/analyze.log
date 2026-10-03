@@ -1,2 +1,5 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 7.3s)
+
+  error • Undefined name 'MusicServerProvider'. Try correcting the name to one that is defined, or defining the name • test/support/fake_music_repository.dart:64:16 • undefined_identifier
+
+1 issue found. (ran in 8.5s)
