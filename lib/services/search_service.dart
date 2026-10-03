@@ -246,10 +246,15 @@ class SearchService extends ChangeNotifier {
       _built = 0;
     }
 
+    // ⚠️ 身份为空（未登录 / widget 测试里没有装配 AuthRepository）时
+    //    **完全跳过磁盘**：这时候既没有"按账号隔离"可言，
+    //    又会去碰 `feiniu/boot` 平台通道 —— 在 `testWidgets` 的假时钟下，
+    //    那条通道的异常路径足以把测试挂到 10 分钟超时。
     if (!_cacheLoaded) {
       _cacheLoaded = true;
       try {
-        final SearchIndexSnapshot? snap = await _store.load(identity);
+        final SearchIndexSnapshot? snap =
+            identity.isEmpty ? null : await _store.load(identity);
         if (snap != null) {
           _cache = snap.docs;
           _cacheHit = true;
@@ -334,6 +339,7 @@ class SearchService extends ChangeNotifier {
   }
 
   void _persistIfDirty(_IndexBuilder b, String identity) {
+    if (identity.isEmpty) return; // 无身份 ⇒ 不落盘（见 _buildAsync 的说明）
     if (!b.dirty && _cacheHit) return;
     final SearchIndexSnapshot snap = SearchIndexSnapshot(
       identity: identity,

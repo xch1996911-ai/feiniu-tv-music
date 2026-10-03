@@ -594,7 +594,7 @@ class SearchIndex {
     FieldMatch? best;
     for (int start = 0; start < n; start++) {
       final List<int> steps = <int>[];
-      final int? end = _dfs(doc, token, 0, start, 0, dead, steps);
+      final int? end = _dfs(doc, token, start, 0, dead, steps);
       if (end == null) continue;
       final FieldMatch m = _classify(steps, start, end, n);
       if (best == null || _better(m, best)) best = m;
@@ -626,15 +626,25 @@ class SearchIndex {
   }
 
   /// 步进类型：0=汉字/原字符，1=整音节，2=音节前缀，3=首字母。
+  ///
+  /// ⚠️ 这里**刻意不接受 `qLen` 形参**，而是在函数内用 `q.length`。
+  /// 之前多了一个 `int qLen` 形参，调用处写成
+  /// `_dfs(doc, token, 0, start, 0, dead, steps)` ——
+  /// 位置参数错位，`qLen` 恒为 0，于是 `qi == qLen` 在**进入函数的第一行就成立**，
+  /// `_dfs` 立刻返回 `di`（空 steps）。
+  /// 后果极其隐蔽：**任何查询都会在 start=0 处以「零长度匹配」命中每个字段**，
+  /// 于是所有命中都被判成 original/prefix（固定分），
+  /// 「搜 `qlx` 能搜到七里香」这类断言照样通过，只有断言
+  /// strength/position 的测试才抓得住。少一个形参就少一整类错位可能。
   static int? _dfs(
     AlignedText doc,
     String q,
-    int qLen,
     int di,
     int qi,
     Set<int> dead,
     List<int> steps,
   ) {
+    final int qLen = q.length;
     if (qi == qLen) return di;
     if (di >= doc.length) return null;
     final int key = di * (qLen + 1) + qi;
@@ -648,7 +658,7 @@ class SearchIndex {
       // 非汉字只有一种消费方式：原字符（长度 1）。
       if (q.startsWith(ch, qi)) {
         steps.add(0);
-        final int? r = _dfs(doc, q, qLen, di + 1, qi + 1, dead, steps);
+        final int? r = _dfs(doc, q, di + 1, qi + 1, dead, steps);
         if (r != null) return r;
         steps.removeLast();
       }
@@ -658,14 +668,14 @@ class SearchIndex {
     // 1) 汉字原位
     if (q.startsWith(ch, qi)) {
       steps.add(0);
-      final int? r = _dfs(doc, q, qLen, di + 1, qi + 1, dead, steps);
+      final int? r = _dfs(doc, q, di + 1, qi + 1, dead, steps);
       if (r != null) return r;
       steps.removeLast();
     }
     // 2) 整音节
     if (syl.isNotEmpty && q.startsWith(syl, qi)) {
       steps.add(1);
-      final int? r = _dfs(doc, q, qLen, di + 1, qi + syl.length, dead, steps);
+      final int? r = _dfs(doc, q, di + 1, qi + syl.length, dead, steps);
       if (r != null) return r;
       steps.removeLast();
     }
@@ -676,7 +686,7 @@ class SearchIndex {
       for (int len = maxLen; len >= 1; len--) {
         if (!q.startsWith(syl.substring(0, len), qi)) continue;
         steps.add(len == 1 ? 3 : 2);
-        final int? r = _dfs(doc, q, qLen, di + 1, qi + len, dead, steps);
+        final int? r = _dfs(doc, q, di + 1, qi + len, dead, steps);
         if (r != null) return r;
         steps.removeLast();
       }
