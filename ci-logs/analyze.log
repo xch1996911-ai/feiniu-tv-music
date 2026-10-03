@@ -1,7 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:221:36 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:222:36 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_and_control_test.dart:250:38 • unnecessary_const
-
-3 issues found. (ran in 9.2s)
+No issues found! (ran in 6.7s)
