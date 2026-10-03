@@ -1,20 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • The constant name 'String' isn't a lowerCamelCase identifier. Try changing the name to follow the lowerCamelCase style • lib/repositories/lyric_repository.dart:27:3 • constant_identifier_names
-  error • Expected to find ',' • lib/repositories/lyric_repository.dart:27:10 • expected_token
-  error • Expected to find ',' • lib/repositories/lyric_repository.dart:27:14 • expected_token
-  error • Expected to find '}' • lib/repositories/lyric_repository.dart:27:20 • expected_token
-warning • A value for optional parameter 'nextDown' isn't ever given. Try removing the unused parameter • lib/ui/pages/overview_page.dart:802:10 • unused_element_parameter
-   info • Use 'const' for final variables initialized to a constant value. Try replacing 'final' with 'const' • lib/ui/widgets/tv_glass.dart:143:5 • prefer_const_declarations
-warning • A value for optional parameter 'delay' isn't ever given. Try removing the unused parameter • test/online_lyric_test.dart:37:10 • unused_element_parameter
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:124:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:139:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:153:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:170:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:184:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:196:17 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/online_lyric_test.dart:200:11 • prefer_const_constructors
-  error • The static getter 'label' can't be accessed through an instance. Try using the enum 'LyricOrigin' to access the getter • test/online_lyric_test.dart:358:28 • instance_access_to_static_member
-  error • The static getter 'label' can't be accessed through an instance. Try using the enum 'LyricOrigin' to access the getter • test/online_lyric_test.dart:485:28 • instance_access_to_static_member
-
-16 issues found. (ran in 6.3s)
+No issues found! (ran in 6.8s)
