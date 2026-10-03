@@ -33,6 +33,15 @@ dependencies:
   # 轻量依赖注入 / 状态（不引入重型框架，见 technical_research.md 决策 D2）
   provider: ^6.1.2
 
+  # 汉字 → 拼音（拼音模糊搜索）
+  #
+  # ⚠️ 选型必须锁在 3.x：`lpinyin` 2.0.3 的 SDK 约束是
+  #    `>=2.12.0-259.9.beta <3.0.0`，**不含 Dart 3**，pub 解析会直接失败
+  #    （pub.dev 页面上显示的 "Dart 3 compatible" 是误导）。
+  #    `pinyin` 3.3.0 的约束是 `>=2.12.0 <4.0.0`，纯 Dart、零依赖、BSD-2，
+  #    且内置字表 + 词组表，正是"多音字按词组判定"所需。
+  pinyin: ^3.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

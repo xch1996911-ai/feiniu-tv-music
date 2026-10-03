@@ -47,9 +47,11 @@ class NavRail extends StatelessWidget {
     required this.nodes,
     required this.logoutNode,
     required this.diagnosticsNode,
+    required this.remoteNode,
     required this.onSelected,
     required this.onLogout,
     required this.onDiagnostics,
+    required this.onRemote,
     this.width = 206,
   });
 
@@ -64,11 +66,17 @@ class NavRail extends StatelessWidget {
   /// 「诊断与帮助」入口的焦点节点（V5）。
   final FocusNode diagnosticsNode;
 
+  /// 「手机遥控」入口的焦点节点（V5 §七）。
+  final FocusNode remoteNode;
+
   final ValueChanged<int> onSelected;
   final VoidCallback onLogout;
 
   /// 打开诊断与帮助页（技术细节的唯一入口）。
   final VoidCallback onDiagnostics;
+
+  /// 打开手机遥控页。
+  final VoidCallback onRemote;
   final double width;
 
   @override
@@ -115,15 +123,23 @@ class NavRail extends StatelessWidget {
                   _LogoutTile(
                     node: logoutNode,
                     onLogout: onLogout,
-                    // 焦点链：退出登录 ⇄ 诊断（两个都在底部固定区）
-                    nextDown: diagnosticsNode,
+                    // 焦点链：底部固定区自上而下为
+                    // 退出登录 → 手机遥控 → 诊断与帮助（首尾相接）。
+                    nextDown: remoteNode,
                     nextUp: items.isNotEmpty ? nodes[items.length - 1] : null,
+                  ),
+                  const SizedBox(height: 2),
+                  _RemoteTile(
+                    node: remoteNode,
+                    onOpen: onRemote,
+                    nextUp: logoutNode,
+                    nextDown: diagnosticsNode,
                   ),
                   const SizedBox(height: 2),
                   _DiagnosticsTile(
                     node: diagnosticsNode,
                     onOpen: onDiagnostics,
-                    nextUp: logoutNode,
+                    nextUp: remoteNode,
                   ),
                 ],
               ),
@@ -300,6 +316,55 @@ class _LogoutTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 16, color: TvColors.textFaint),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 「手机遥控」入口（V5 §七）。
+///
+/// 放在侧栏底部（与退出登录、诊断并列）而不是主导航里：
+/// 它不是「一个内容页」，而是「让另一台设备接管控制」的设备级操作，
+/// 与「退出登录」同类。
+class _RemoteTile extends StatelessWidget {
+  const _RemoteTile({
+    required this.node,
+    required this.onOpen,
+    this.nextUp,
+    this.nextDown,
+  });
+
+  final FocusNode node;
+  final VoidCallback onOpen;
+  final FocusNode? nextUp;
+  final FocusNode? nextDown;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocus(
+      focusNode: node,
+      debugLabel: 'nav.remote',
+      onPressed: onOpen,
+      nextUp: nextUp,
+      nextDown: nextDown,
+      builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
+        status: s,
+        radius: 10,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: const Row(
+          children: <Widget>[
+            Icon(Icons.smartphone, size: 19, color: TvColors.textFaint),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '手机遥控',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 15, color: TvColors.textFaint),
               ),
             ),
           ],

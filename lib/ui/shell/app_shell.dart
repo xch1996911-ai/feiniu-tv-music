@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../core/diagnostics.dart';
 import '../../core/log.dart';
 import '../../domain/track.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
+import '../../repositories/music_repository.dart';
 import '../../repositories/playback_repository.dart';
 import '../pages/diagnostics_page.dart';
 import '../pages/favorites_page.dart';
@@ -21,6 +23,8 @@ import '../pages/track_list_page.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/nav_rail.dart';
 import '../widgets/queue_sheet.dart';
+import '../../services/remote/remote_server.dart';
+import '../pages/remote_control_page.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
 import 'shell_stage.dart';
@@ -98,6 +102,14 @@ class _AppShellState extends State<AppShell> {
   /// 诊断与帮助是否打开（V5：技术细节的唯一去处）。
   bool _diagOpen = false;
 
+  /// 手机遥控是否打开（V5 §七）。
+  bool _remoteOpen = false;
+
+  /// 手机遥控服务。**由 Shell 持有**（而不是页面）：
+  /// 手机扫码后要能持续控制，用户离开这个页面（比如去看播放队列）
+  /// 不该把手机踢下线。
+  RemoteControlServer? _remote;
+
   /// 歌手 / 专辑 / 风格 里点开的那条概览详情；null = 正在看概览。
   LibraryOverview? _openOverview;
 
@@ -110,6 +122,7 @@ class _AppShellState extends State<AppShell> {
   );
   final FocusNode _logoutNode = FocusNode(debugLabel: 'nav.logout');
   final FocusNode _diagNode = FocusNode(debugLabel: 'nav.diagnostics');
+  final FocusNode _remoteNode = FocusNode(debugLabel: 'nav.remote');
 
   final FocusNode _searchNode = FocusNode(debugLabel: 'shell.search');
   final FocusNode _miniCover = FocusNode(debugLabel: 'mini.cover');
@@ -161,6 +174,7 @@ class _AppShellState extends State<AppShell> {
     }
     _logoutNode.dispose();
     _diagNode.dispose();
+    _remoteNode.dispose();
     _searchNode.dispose();
     _miniCover.dispose();
     _miniPrev.dispose();
@@ -320,6 +334,43 @@ class _AppShellState extends State<AppShell> {
     setState(() => _diagOpen = true);
   }
 
+  // ── 手机遥控 ──────────────────────────────────────────────
+
+  Future<void> _openRemote() async {
+    Log.i('UI 打开手机遥控');
+    final RemoteControlServer server =
+        _remote ??= RemoteControlServer(
+      playback: _playback,
+      music: context.read<MusicRepository>(),
+      library: _library,
+      local: _local,
+    );
+    if (!server.isRunning) {
+      final int? port = await server.start();
+      if (port == null) {
+        Diagnostics.event('遥控服务启动失败：端口被占用或权限不足');
+      }
+    }
+    if (!mounted) return;
+    _focusBeforePlayer = FocusManager.instance.primaryFocus;
+    setState(() => _remoteOpen = true);
+  }
+
+  void _closeRemote() {
+    if (!_remoteOpen) return;
+    setState(() => _remoteOpen = false);
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (!mounted) return;
+      final FocusNode? before = _focusBeforePlayer;
+      if (before != null && before.canRequestFocus) {
+        before.requestFocus();
+      } else {
+        _navNodes[_navIndex].requestFocus();
+      }
+      _focusBeforePlayer = null;
+    });
+  }
+
   void _closeDiagnostics() {
     if (!_diagOpen) return;
     setState(() => _diagOpen = false);
@@ -345,7 +396,8 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final bool overlayOpen = _playerOpen || _queueOpen || _diagOpen;
+    final bool overlayOpen =
+        _playerOpen || _queueOpen || _diagOpen || _remoteOpen;
     final bool atRoot =
         !overlayOpen && _openOverview == null && _stage == ShellStage.home;
 
@@ -357,7 +409,9 @@ class _AppShellState extends State<AppShell> {
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (didPop) return;
         // 由内到外逐层关闭，每次只关一层。
-        if (_diagOpen) {
+        if (_remoteOpen) {
+          _closeRemote();
+        } else if (_diagOpen) {
           _closeDiagnostics();
         } else if (_queueOpen) {
           _closeQueue();
@@ -398,9 +452,11 @@ class _AppShellState extends State<AppShell> {
                         nodes: _navNodes,
                         logoutNode: _logoutNode,
                         diagnosticsNode: _diagNode,
+                        remoteNode: _remoteNode,
                         onSelected: (int i) => _goStage(_navStages[i]),
                         onLogout: _logout,
                         onDiagnostics: _openDiagnostics,
+                        onRemote: _openRemote,
                       ),
                       Expanded(
                         child: Column(
@@ -425,6 +481,13 @@ class _AppShellState extends State<AppShell> {
                 ),
                 if (_playerOpen) PlayerPage(onBack: _closePlayer),
                 if (_queueOpen) QueueSheet(onClose: _closeQueue),
+                if (_remoteOpen && _remote != null)
+                  Positioned.fill(
+                    child: RemoteControlPage(
+                      server: _remote!,
+                      onBack: _closeRemote,
+                    ),
+                  ),
                 if (_diagOpen)
                   Positioned.fill(
                     child: ColoredBox(
@@ -453,6 +516,10 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _logout() async {
     Log.i('UI 退出登录');
+    // 需求 §七.9：退出登录后旧手机会话必须立即失效。
+    // 停止服务会一并 revoke 会话（见 RemoteControlServer.stop）。
+    await _remote?.stop(reason: '退出登录');
+    _remote = null;
     await _auth.logout();
   }
 

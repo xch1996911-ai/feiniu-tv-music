@@ -352,15 +352,21 @@ class LibraryRepository extends ChangeNotifier {
         _error = res.error;
         _phase = LibraryPhase.error;
         // ⚠️ 半成品不覆盖已完成的索引（§三-B.3）。
-        if (!hadComplete && res.tracks.isNotEmpty) {
-          _tracks = List<Track>.unmodifiable(res.tracks);
-        } else if (hadComplete) {
+        if (hadComplete) {
           _tracks = previous;
+          // 保留「完整」标记：**手上这份索引本身是完整的**，
+          // 只是「本次在线核对」没做完。把它标成未完成会让用户
+          // 明明看着完整的歌手/专辑列表，却被告知「曲库未整理完成」。
+          _complete = true;
+        } else if (res.tracks.isNotEmpty) {
+          _tracks = List<Track>.unmodifiable(res.tracks);
+          _complete = false;
+        } else {
+          _complete = false;
         }
-        _complete = false;
         Diagnostics.note('曲库索引',
-            '本次整理未完成（第 ${res.pages} 页失败）：${res.error}；'
-            '当前显示 ${_tracks.length} 首');
+            '本次在线核对未完成（第 ${res.pages} 页失败）：${res.error}；'
+            '当前显示 ${_tracks.length} 首（完整=${_complete}）');
         Diagnostics.event('曲库整理中断：${res.error}');
         _recomputeGenres();
         return;

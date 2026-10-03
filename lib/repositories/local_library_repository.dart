@@ -167,6 +167,13 @@ class LocalLibraryRepository extends ChangeNotifier {
   // ── 生命周期 ──────────────────────────────────────────────
 
   /// 启动时恢复本机状态。**失败一律降级为空**，绝不影响启动。
+  ///
+  /// ⚠️ V5：拆成**两段独立**的 try ——
+  /// 一段读安全存储（收藏 / 最近 / 偏好），一段读本机文件（用户手动风格）。
+  /// 原先它们挤在同一个 `Future.wait` 里，于是**任何一段失败都会把另一段
+  /// 一起丢掉**：Keystore 在部分电视 ROM 上不可用时，连「用户已确认的风格」
+  /// 这种完全不相关的数据都会被静默清空。两类数据的存储介质本就不同，
+  /// 容错也必须各自独立。
   Future<void> restore() async {
     try {
       final results = await Future.wait<Object?>(<Future<Object?>>[
@@ -174,7 +181,6 @@ class LocalLibraryRepository extends ChangeNotifier {
         _store.readFavoriteGuids(),
         _store.readFavoritesSeeded(),
         _store.readPlayerLayoutKey(),
-        _catalogue.loadOverrides(),
       ]).timeout(const Duration(seconds: 4));
 
       _recent
@@ -188,20 +194,27 @@ class LocalLibraryRepository extends ChangeNotifier {
       _favoritesSeeded = results[2] as bool;
       _playerLayout = PlayerLayout.fromStorage(results[3] as String?);
 
+      Log.i('LOCAL_RESTORE 最近 ${_recent.length} 条 · 收藏 ${_favorites.length} 首 · '
+          '播种=${_favoritesSeeded ? '是' : '否'} · 播放页=${_playerLayout.storageKey}');
+    } catch (e) {
+      Log.w('LOCAL_RESTORE 安全存储恢复失败（按空状态继续）：$e');
+    }
+
+    try {
+      final Map<String, List<String>> overrides =
+          await _catalogue.loadOverrides();
       _genreOverrides
         ..clear()
-        ..addAll(results[4] as Map<String, List<String>>);
-
-      Log.i('LOCAL_RESTORE 最近 ${_recent.length} 条 · 收藏 ${_favorites.length} 首 · '
-          '播种=${_favoritesSeeded ? '是' : '否'} · 播放页=${_playerLayout.storageKey} · '
-          '手动风格 ${_genreOverrides.length} 首');
+        ..addAll(overrides);
+      Log.i('LOCAL_RESTORE 手动风格 ${_genreOverrides.length} 首');
       if (_genreOverrides.isNotEmpty) {
         Diagnostics.note('风格手动确认', '已恢复 ${_genreOverrides.length} 首用户指定风格');
       }
-      _safeNotify();
     } catch (e) {
-      Log.w('LOCAL_RESTORE 恢复失败（按空状态继续）：$e');
+      Log.w('LOCAL_RESTORE 手动风格恢复失败（忽略）：$e');
     }
+
+    _safeNotify();
   }
 
   /// 记录一次播放。
