@@ -52,9 +52,31 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 文档级 [offset:] 作用于所有行
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 纯元数据标签被跳过，无时间轴的裸文本保留（无时间）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 空文本返回空列表
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 记录后新的在前，重复播放会把它前移到首位
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 当前曲重复触发直接短路（进度刷新会反复回调）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 空 guid 被忽略
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 超过上限时只保留最近 50 条
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） Z 持久化往返：新实例 restore 后能读回同样的顺序
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） restore 失败（Keystore 不可用）→ 降级为空，不抛异常
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） recentTracks 还原为曲目，已从曲库删除的自动跳过
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 曲库为空时 recentTracks 返回空列表（不抛）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏 / 最近添加 收藏直接用服务端 isFavorite，不在本地另存一份
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏 / 最近添加 最近添加按 createdAt 倒序，无时间的沉底
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏 / 最近添加 最近添加遵守 limit
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏 / 最近添加 空曲库不抛异常
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 分组视图 按歌手分组取第一位歌手，无歌手归入「未知歌手」
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 分组视图 按专辑分组，无专辑名归入「未知专辑」
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 分组视图 按风格分组：一首可出现在多个分组里
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 分组视图 曲库完全没有风格标签 → 返回空列表（UI 应如实说「没有风格标签」）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 分组视图 风格标签里的空白串被忽略
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 打开播放页后焦点直接落在「播放/暂停」上
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 C 上一首 →右→ 播放/暂停 →右→ 下一首；左键原路返回
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 三层之间上下贯通：顶部 ↔ 控制区 ↔ 进度区
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 D 从播放/暂停 ↓ 进进度区，↑ 回播放/暂停；连续 10 次不卡死
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） 持有 token 时每个 API 请求都带 Cookie: <REDACTED>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） 无 token 时不带 Cookie 头（由服务端返回 99999）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） authHeaders（供播放器/图片组件用）只含 Cookie，不含 authx
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 从三个控制键向下都能进进度区，向上都能回控制区
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） API 请求自动附带 authx 头，且形状为 nonce/timestamp/sign
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） 查询值含空格与中文时，authx 与 Cookie 均正常
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size track/list 发出的 query 恰好是 page 与 size
@@ -63,6 +85,7 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID getLyrics 发出 trackGUID，而不是 guid
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 歌词参数必须是 trackGUID 服务端因参数错误返回 100002 时映射为服务端错误
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 HTTP 401 + 99999 → tokenExpired（Cookie 缺失/失效）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页三层焦点链 歌词区不参与焦点链（方向键不会被歌词吃掉）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 120001 → auth（登录/授权失败），与 99999 明确区分
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100001 → server（含参数缺失，如缺 deviceId）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 业务错误码映射 100005 → notFound
@@ -83,6 +106,36 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 端点常量（Phase 1 九个接口全部 VERIFIED） 路径与真实契约一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 端点常量（Phase 1 九个接口全部 VERIFIED） 分页与歌词参数名按实测
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 端点常量（Phase 1 九个接口全部 VERIFIED） 九个 Phase 1 接口都标记为已验证
+::endgroup::
+::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活（验收 C） OK 激活播放/暂停，且焦点留在原按钮上 (failed)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: true
+  Actual: <false>
+setQueue 后应在播放
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure>.<anonymous closure> (file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart:215:7)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart line 215
+The test description was:
+  OK 激活播放/暂停，且焦点留在原按钮上
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Test failed. See exception logs above.
+The test description was: OK 激活播放/暂停，且焦点留在原按钮上
+
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活（验收 C） OK 激活上一首 / 下一首，焦点不跳走
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活（验收 C） 进度区左右键 = 快退/快进 5 秒（不是移动焦点）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） 主键是 guid，标题/封面取自真实字段
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） duration 单位是毫秒（218711ms ≈ 218.7s ≈ 3分39秒）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: Track.fromJson（真实样本） audioSpec.duration 与顶层一致（同为毫秒）
@@ -866,6 +919,13 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 O 无歌词时返回 -1，不抛异常
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 M 同一行内高亮不变（不会每 500ms 抖一次）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 歌词请求失败 → 显示暂无歌词但不影响播放
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词源直接抛异常时 load 不抛出（只标记暂无歌词）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词请求有硬超时（Dio 的 receiveTimeout 只约束包间隔）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P docEpoch 在内容被替换时自增（UI 靠它决定是否把歌词弹回顶部）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 同一首切回来命中缓存，不再发第二次请求
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P force=true 时忽略缓存重新请求（用于手动重试）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 T 模式可切换并写回状态快照
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 PlayMode 持久化键稳定（不依赖 enum 顺序）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 未知持久化值降级为顺序播放（不抛异常）
@@ -926,4 +986,4 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/auth_repository_restore_test.dart: AuthRepository 存储路径限时（回归） 清除会话永不回应时，logout() 仍应清空内存登录态
 ::endgroup::
 
-🎉 209 tests passed.
+::error::241 tests passed, 1 failed.
