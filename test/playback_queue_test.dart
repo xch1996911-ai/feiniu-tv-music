@@ -353,16 +353,25 @@ void main() {
       expect(repo.current?.guid, 'guid_b');
     });
 
-    test('G 播放超过 3 秒时上一首回到本曲开头（不切歌）', () async {
-      await givenQueue(<Track>[makeTrack('guid_a'), makeTrack('guid_b')]);
+    test('G 播放超过 3 秒后按上一首仍切到上一首（V5 起不再「回到本曲开头」）', () async {
+      // ⚠️ V4 的行为是「播放超过 3 秒 → seek(0) 回到本曲开头」。
+      // 需求「播放模式补充要求」§2 明确要求：
+      // 「无论进度和播放状态，都回到此前播放的上一首」——
+      // 这条规则会让「上一首」在两种完全不同的行为之间随机切换，
+      // 在随机播放下更是与用户听到的顺序完全无关。因此 V5 已删除它。
+      await givenQueue(
+        <Track>[makeTrack('guid_a'), makeTrack('guid_b')],
+        startIndex: 1,
+      );
       engine.setPosition(const Duration(seconds: 10));
 
       await repo.previous();
       await settle();
 
-      expect(repo.currentIndex, 0, reason: '应保持在当前曲目');
-      expect(engine.seeks, isNotEmpty, reason: '应执行 seek 到开头');
-      expect(engine.seeks.last, Duration.zero);
+      expect(repo.currentIndex, 0, reason: '应切到上一首而不是回到本曲开头');
+      expect(engine.playingId, 'guid_a');
+      expect(engine.seeks, isEmpty, reason: '不应再用 seek(0) 冒充「上一首」');
+      expect(repo.playHistory.last, 'guid_a');
     });
   });
 

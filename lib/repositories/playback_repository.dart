@@ -42,6 +42,45 @@ import 'music_repository.dart';
 /// - 播放模式（顺序 / 列表循环 / 单曲 / 随机）+ 持久化；
 /// - 队列跨分页追加（[appendToQueue]），使「第 30 首播完能接第 31 首」；
 /// - 播放错误自动跳过（有尝试上限，防死循环）。
+///
+/// ## V5 修复：三种模式此前「表现不符合预期」的真实原因
+///
+/// 用户实机反馈：随机播放很快听到重复、顺序播放到「最后一首」就停、
+/// 单曲循环会跳下一首、随机播放的「上一首」跑到列表里的前一首。
+/// 逐条对应到代码：
+///
+/// 1. **随机播放重复** —— 原实现是 [Random.nextInt] **有放回**取样：
+///    ```dart
+///    candidate = _random.nextInt(_queue.length);  // 每次都从全队列重抽
+///    ```
+///    这不是「随机遍历」，而是「随机点播」。从 N 首里抽 n 次，出现重复的
+///    期望次数按生日问题增长：N=50 时大约抽 **9 次**就会出现重复，
+///    N=1000 时也只要抽 **39 次**。所以「很快又听到前面听过的歌」是必然。
+///    → 现在改为**一次性随机遍历计划**（[_plan]，Fisher–Yates 洗牌），
+///    一轮里每首恰好播一次；一轮走完再重新生成，且保证新一轮第一首
+///    不是刚播完那首。[PlayMode.shuffle]
+///
+/// 2. **「数量明显少于曲目总量」** —— 这是**曲库索引**的问题而不是播放模式
+///    的问题：队列来自 `library.tracks`，而 V4 只加载了首屏 50 首
+///    （见 `LibraryRepository` 的类文档）。50 首的「随机」怎么抽都会很快重复。
+///    → 由 V5 的全曲库索引修复；本类不再做任何补偿。
+///
+/// 3. **顺序播放「最后一首」就停** —— 队列末尾是「已加载的最后一首」，
+///    而 [_maybePrefetch] 只在**成功切歌之后**调用；走到末尾时命中的是
+///    「保持不动」分支，预加载永远不触发，于是队列不再增长、播放停止。
+///    → 现在「到达队尾」也会先尝试预加载，只有确实没有更多内容才停。
+///
+/// 4. **单曲循环跳到下一首** —— [PlayAdvanceAction.repeatCurrent] 走的是
+///    `seek(0)` + `play()`；在 `completed` 状态下这一步在部分 ROM 上
+///    不会重新起播（播放器停在末尾，UI 又是「播放中」），
+///    紧接着的自然结束事件就把它推进到下一首。
+///    → 现在改为**重新下发一次加载**（复用 [_playCurrent] 的串行链），
+///    这是唯一在真机上被证明能起播的路径。
+///
+/// 5. **随机的「上一首」跑到列表前一首** —— 原 `previous()` 是
+///    `_index -= 1`（队列顺序），与随机播放的**实际播放顺序**无关。
+///    → 现在改为**播放历史栈**（[_history]），只记录用户操作产生的顺序，
+///    与界面列表顺序无关，首曲不回绕、无记录时不动作。
 class PlaybackRepository extends ChangeNotifier
     implements PlaybackCommandListener, PlaybackControl {
   final MusicRepository _music;
@@ -74,6 +113,12 @@ class PlaybackRepository extends ChangeNotifier
   /// 连续播放失败的曲目数（用于错误自动跳过的死循环保护）。
   int _consecutiveFailures = 0;
 
+  /// 自动推进重入闸门（见 [onTrackCompleted]）。
+  ///
+  /// 只用来挡「同一次自然结束被并发触发两次」，不挡连续的单次推进 ——
+  /// 因此进函数立刻置位、`finally` 立刻复位。
+  bool _advancing = false;
+
   /// 当前曲目**上次加载是否失败**。
   ///
   /// 用途：网络恢复后用户按「播放」时，引擎里**没有音源**，
@@ -86,7 +131,50 @@ class PlaybackRepository extends ChangeNotifier
   static const int _maxAutoSkip = 5;
 
   /// 随机播放用（避免连续随机到同一首）。
-  final Random _random = Random();
+  ///
+  /// ⚠️ 只在**生成随机遍历计划**时使用（见 [_rebuildPlan]），
+  /// 不在每次切歌时使用 —— 后者是 V4 的 bug（见类文档第 1 条）。
+  ///
+  /// 需求「播放模式补充要求」§5 要求「用可控的随机种子验证随机序列，
+  /// 但实际使用时不固定种子」：因此这里允许测试注入固定种子
+  /// （`PlaybackRepository(random: Random(42))`），生产路径永远是
+  /// [newSystemRandom]（不固定种子）。
+  final Random _random;
+
+  /// 生产环境用的随机源工厂（不固定种子）。
+  static Random newSystemRandom() => Random();
+
+  // ── 随机遍历计划（V5）──────────────────────────────────────
+
+  /// 本轮随机遍历的**曲目标识**顺序（不是下标）。
+  ///
+  /// ⚠️ 用 guid 而不是下标：队列会被 [appendToQueue] 追加、
+  /// 被 [removeFromQueue] 删除，下标会整体漂移，而计划一旦漂移就会出现
+  /// 「重复播同一首」或「整首被跳过」——这正是需求要求避免的两件事。
+  List<String> _plan = const <String>[];
+
+  /// 计划游标：下一个待播位置。
+  int _planCursor = 0;
+
+  /// 上一首的历史（V5）：**用户操作产生**的播放顺序，最新在最后。
+  ///
+  /// 只记录「真正开始播放过」的曲目 guid；随机播放时它与队列顺序毫无关系，
+  /// 这正是需求要的语义（「对随机播放的上一首，要回到本次播放中此前那一首，
+  /// 而不是队列列表里前一首」）。
+  final List<String> _history = <String>[];
+
+  /// 历史长度上限。防止长时间播放后无限增长（电视常年不关机）。
+  static const int maxHistory = 200;
+
+  /// 本次切歌的**来源**，只用于诊断日志（需求：「诊断日志记录……切歌来源」）。
+  ///
+  /// 取值：`set_queue` / `restore` / `manual_next` / `manual_previous` /
+  /// `media_next` / `media_previous` / `auto_complete` / `auto_repeat_one` /
+  /// `auto_shuffle` / `auto_wrap` / `retry` / `error_skip`。
+  ///
+  /// ⚠️ 只记「谁发起的」，**不含任何凭据**；也不展示在普通用户界面
+  /// （只进日志与诊断页）。
+  String _advanceSource = 'none';
 
   /// 统一状态流（供 [PlaybackControl.states]）。用同步广播以免漏掉首个订阅者。
   final StreamController<PlaybackSnapshot> _states =
@@ -96,9 +184,11 @@ class PlaybackRepository extends ChangeNotifier
     required MusicRepository music,
     required PlaybackEngine handler,
     SecureStore? store,
+    Random? random,
   })  : _music = music,
         _handler = handler,
-        _store = store ?? SecureStore() {
+        _store = store ?? SecureStore(),
+        _random = random ?? newSystemRandom() {
     // 引擎播放状态变化 → 通知 UI（进度条、播放/暂停按钮）。
     _stateSub = _handler.stateChanges.listen((_) => _safeNotify());
     // 装配队列控制回调：MediaSession 媒体键 / 自然结束 → 本类的队列逻辑。
@@ -189,6 +279,13 @@ class PlaybackRepository extends ChangeNotifier
     _source = QueueSource.restored;
     _consecutiveFailures = 0;
     _lastError = null;
+    _advanceSource = 'restore';
+    // 恢复点是「上次听的那首」，队列就是整张曲库 → 用统一的历史回填规则
+    // （随机模式只放当前这首，其它模式回填队列前缀），
+    // 这样「上一首」的行为与直接点这首开始播完全一致。
+    _seedHistory(idx);
+    _plan = const <String>[];
+    _planCursor = 0;
     Log.i('STATE_RESTORE 定位到 index=$idx（未自动播放）');
     _safeNotify();
     return true;
@@ -224,8 +321,30 @@ class PlaybackRepository extends ChangeNotifier
   /// 队列里是否还有下一首（不考虑播放模式的回绕）。
   bool get hasNext => _index >= 0 && _index < _queue.length - 1;
 
-  /// 队列里是否还有上一首。
-  bool get hasPrevious => _index > 0;
+  /// 是否还能「上一首」。
+  ///
+  /// V5 起语义改成**播放历史**：历史里至少要有「当前这首 + 上一首」两条
+  /// 才可能回退（见 [_history]）。界面据此把按钮置灰，
+  /// 而不是让用户按了没反应（需求：「用户没有上一首记录时，显示无操作」）。
+  ///
+  /// 例外：**允许边界回绕的模式**（列表循环 / 单曲循环）在队首也能「上一首」
+  /// —— 需求明确要求「第一首处上一首应回到最后一首」。
+  /// 随机播放**不**适用该例外（随机的上一首必须沿真实历史）。
+  bool get hasPrevious {
+    if (_queue.length <= 1) return false;
+    if (_history.length >= 2) return true;
+    return _mode.wrapOnManualPrevious;
+  }
+
+  /// 播放历史（guid，最新的在最后）。只读，供测试与诊断使用。
+  List<String> get playHistory => List<String>.unmodifiable(_history);
+
+  /// 本轮随机计划的剩余数量（供诊断/测试使用）。
+  int get shuffleRemaining =>
+      _planCursor >= _plan.length ? 0 : _plan.length - _planCursor;
+
+  /// 当前曲目是否是队列里的**最后一首**（顺序播放"最后一首"判定）。
+  bool get isLastInQueue => _queue.isNotEmpty && _index == _queue.length - 1;
 
   List<Track> get queue => _queue;
   int get currentIndex => _index;
@@ -271,6 +390,7 @@ class PlaybackRepository extends ChangeNotifier
         duration: duration ?? Duration.zero,
         mode: _mode,
         error: _lastError,
+        hasPrevious: hasPrevious,
       );
 
   static String sourceLabelOf(QueueSource s) => switch (s) {
@@ -327,14 +447,177 @@ class PlaybackRepository extends ChangeNotifier
     required QueueSource source,
     int startIndex = 0,
   }) {
-    _queue = List<Track>.unmodifiable(tracks);
+    // ⚠️ **必须先按 guid 去重**（需求：「重复条目……都要有明确处理」）。
+    //
+    // 不去重会有两个后果，而且都很难查：
+    //   1. `_history` / 随机计划都以 **guid** 为身份，队列里同一 guid 出现两次时
+    //      `indexWhere` 永远返回第一个 → 随机计划里的第二次「命中」会跳回同一首，
+    //      表现为随机播放**重复**（正是本版要修掉的那个 bug）；
+    //   2. 「一轮里每首恰好一次」的断言不再成立。
+    // 保留**首次出现**的位置，`startIndex` 随之映射到去重后的下标。
+    final List<Track> unique = <Track>[];
+    final Set<String> seen = <String>{};
+    for (final Track t in tracks) {
+      if (t.guid.isEmpty) continue; // 无 guid 无法建立身份，宁可丢弃
+      if (seen.add(t.guid)) unique.add(t);
+    }
+    final int dropped = tracks.length - unique.length;
+    if (dropped > 0) {
+      Log.w('QUEUE_SET 丢弃 $dropped 个重复/无标识条目 '
+          '（${tracks.length} → ${unique.length}）');
+    }
+
+    // startIndex 是**原列表**下标 → 换算成去重后的下标。
+    int mapped = -1;
+    if (startIndex >= 0 && startIndex < tracks.length) {
+      final String guid = tracks[startIndex].guid;
+      mapped = unique.indexWhere((Track t) => t.guid == guid);
+    }
+
+    _queue = List<Track>.unmodifiable(unique);
     _source = source;
-    _index = (startIndex >= 0 && startIndex < tracks.length) ? startIndex : -1;
+    _index = mapped;
     _consecutiveFailures = 0;
     _lastError = null;
+    _advanceSource = 'set_queue';
+
+    // ⚠️ V5：开始播放**新队列**时必须清掉上一队列的三样东西
+    // （需求「播放模式补充要求」第 4 条）：
+    //   · 播放历史 —— 否则「上一首」会跳回上一条队列里的歌；
+    //   · 随机计划 —— 否则新队列会按旧计划的 guid 找不到任何歌（表现为随机播放停住）；
+    //   · 进度 —— 由 `_playCurrent()` 重新 setAudioSource 自然重置；
+    //     这里额外作废在飞的加载（`_generation` 由 `_playCurrent` 自增）。
+    _history.clear();
+    _plan = const <String>[];
+    _planCursor = 0;
+
     Log.i('QUEUE_SET source=${source.storageKey} '
-        'length=${tracks.length} start=$_index');
+        'length=${_queue.length} start=$_index mode=${_mode.storageKey}');
+
+    if (_queue.isEmpty) {
+      // 空队列：必须**停掉**上一首，否则界面显示「新队列」而声音还是旧的。
+      _index = -1;
+      _generation++; // 作废在飞的加载
+      Log.w('QUEUE_SET 空队列，停止播放并清空当前曲目');
+      unawaited(_handler.stop().catchError((Object e) {
+        Log.w('QUEUE_SET 停止旧音源失败（忽略）：$e');
+      }));
+      _safeNotify();
+      return;
+    }
+
+    // 从列表中间某首开始播时，回填它**之前**的条目，使「上一首」有意义
+    // （见 [_seedHistory] 的说明）。
+    _seedHistory(mapped);
+    if (_mode == PlayMode.shuffle) {
+      _rebuildPlan();
+    }
     _playCurrent();
+  }
+
+  /// 建立队列后「回填」播放历史，使队首之外的位置也能按「上一首」。
+  ///
+  /// ## 为什么需要这一步
+  ///
+  /// 需求同时要求两件事，看起来互相矛盾：
+  /// - 「列表循环：第一首处上一首应回到最后一首」（⇒ 需要知道"上一条目"）
+  /// - 「上一首必须回到**实际播放历史**，而不是队列列表里前一首」（随机播放）
+  ///
+  /// 两者的统一解释是：**历史记录的是"用户实际经过的顺序"**。
+  /// 用户点列表第 30 首开始播放时，"经过的顺序"就是列表的 1..30 ——
+  /// 因为他是从列表里走下来的（哪怕没听）。所以这里回填 `[0..index]`。
+  ///
+  /// ⚠️ **随机播放例外**：队列顺序与用户听到的顺序无关，
+  /// 回填队列前缀会让「上一首」跳到"列表里前一首"，正是需求禁止的行为。
+  /// 因此随机模式下历史里**只放当前这首**，等真实的播放推进再累积。
+  ///
+  /// ⚠️ 同样**不覆盖 [_playCurrent] 的 push**：这里只回填到 `index`（含），
+  /// 随后 `_playCurrent()` 压入同一 guid 时会被"相邻重复"判据挡掉。
+  void _seedHistory(int upToIndex) {
+    _history.clear();
+    if (_queue.isEmpty || upToIndex < 0) return;
+    if (_mode == PlayMode.shuffle) {
+      _pushHistory(_queue[upToIndex].guid);
+      return;
+    }
+    // 只保留最近 [maxHistory] 条 —— 回填 3000 首没有意义，
+    // 而且会让 `_history.removeRange` 的截断逻辑变成一次无谓的搬运。
+    final int from = upToIndex - maxHistory + 1 > 0 ? upToIndex - maxHistory + 1 : 0;
+    for (int i = from; i <= upToIndex; i++) {
+      // ⚠️ **不可播放的曲目不进历史**：`_playCurrent()` 会把它跳过，
+      // 若这里把它也塞进历史，「上一首」就会退到一首根本不会播的歌上，
+      // 表现为「按上一首之后又跳回同一首」（用户看到的是按钮失灵）。
+      if (!_queue[i].isAccessible) continue;
+      _pushHistory(_queue[i].guid);
+    }
+  }
+
+  /// 重新生成一轮随机遍历计划（Fisher–Yates）。
+  ///
+  /// [avoidFirst] 用于「一轮播完后再来一轮」：保证新一轮第一首**不是**
+  /// 刚播完那首（需求：「避免连续两次听同一首」）。
+  void _rebuildPlan({String? avoidFirst}) {
+    final List<String> guids = <String>[
+      for (final Track t in _queue)
+        if (t.guid.isNotEmpty) t.guid,
+    ];
+    // 洗牌：Fisher–Yates，均匀分布且无偏。
+    for (int i = guids.length - 1; i > 0; i--) {
+      final int j = _random.nextInt(i + 1);
+      final String tmp = guids[i];
+      guids[i] = guids[j];
+      guids[j] = tmp;
+    }
+
+    final String? currentGuid = current?.guid;
+    // 当前正在播的那首**不在本轮计划内**（它已经播过了），
+    // 这样「一轮里每首恰好播一次」才成立。
+    final List<String> plan = <String>[
+      for (final String g in guids)
+        if (g != currentGuid) g,
+    ];
+
+    if (avoidFirst != null && plan.length > 1 && plan.first == avoidFirst) {
+      final String tmp = plan[0];
+      plan[0] = plan[1];
+      plan[1] = tmp;
+    }
+
+    _plan = List<String>.unmodifiable(plan);
+    _planCursor = 0;
+    Log.i('SHUFFLE_PLAN 生成新遍历计划 ${_plan.length} 首'
+        '（当前 ${currentGuid ?? '-'} 不参与本轮）');
+  }
+
+  /// 取下一首随机曲目在队列中的下标；计划用尽则自动开新一轮。
+  int? _shuffleNextIndex() {
+    if (_queue.isEmpty) return null;
+    var guard = 0;
+    // 计划里的 guid 可能已不在队列中（被移除）→ 跳过，最多扫一轮计划长度。
+    while (guard <= _plan.length) {
+      guard++;
+      if (_planCursor >= _plan.length) {
+        // 一轮走完：重新生成，且避开刚播完这首。
+        _rebuildPlan(avoidFirst: current?.guid);
+        if (_plan.isEmpty) return null; // 队列只有当前这一首
+      }
+      final String guid = _plan[_planCursor];
+      _planCursor++;
+      final int idx = _queue.indexWhere((Track t) => t.guid == guid);
+      if (idx >= 0) return idx;
+      Log.w('SHUFFLE_PLAN 计划中的 $guid 已不在队列，跳过');
+    }
+    return null;
+  }
+
+  /// 把一首曲子压入播放历史（**在离开它之前**调用）。
+  void _pushHistory(String? guid) {
+    if (guid == null || guid.isEmpty) return;
+    if (_history.isNotEmpty && _history.last == guid) return;
+    _history.add(guid);
+    if (_history.length > maxHistory) {
+      _history.removeRange(0, _history.length - maxHistory);
+    }
   }
 
   /// **不改变 currentIndex**：分页加载更多时调用，正在播放的歌不会被换掉。
@@ -355,6 +638,32 @@ class PlaybackRepository extends ChangeNotifier
     }
     if (fresh.isEmpty) return _queue.length;
     _queue = List<Track>.unmodifiable(<Track>[..._queue, ...fresh]);
+
+    // ⚠️ 随机模式下**必须同步更新遍历计划**（需求：「队列变化时的顺序
+    //    （追加、插入、删除）也需要明确地重建或更新随机序列，
+    //    避免重复或跳过」）。
+    //
+    // 做法：把新曲目乱序后**追加到当前计划末尾**。
+    // 不重建整个计划 —— 那会让「已经播过但还没轮到的歌」重新进入本轮，
+    // 造成重复；也不原样追加 —— 那会让新歌集中在最后一段按列表顺序播，
+    // 削弱随机性。追加到末尾乱序，既保证本轮不重复、不跳过，
+    // 又让新增曲目本轮就能轮到。
+    if (_mode == PlayMode.shuffle) {
+      final List<String> extra = <String>[
+        for (final Track t in fresh)
+          if (t.guid.isNotEmpty) t.guid,
+      ];
+      for (int i = extra.length - 1; i > 0; i--) {
+        final int j = _random.nextInt(i + 1);
+        final String tmp = extra[i];
+        extra[i] = extra[j];
+        extra[j] = tmp;
+      }
+      _plan = List<String>.unmodifiable(<String>[..._plan, ...extra]);
+      Log.i('SHUFFLE_PLAN 队列追加 ${extra.length} 首已并入随机计划 '
+          '（剩余 ${shuffleRemaining}）');
+    }
+
     Log.i('QUEUE_APPEND added=${fresh.length} total=${_queue.length} '
         'index=$_index');
     _safeNotify();
@@ -374,15 +683,27 @@ class PlaybackRepository extends ChangeNotifier
     _queue = List<Track>.unmodifiable(tracks);
     _index = -1; // 未开始播放，current 为 null → Mini Player 隐藏
     _source = QueueSource.library;
+    // 新队列：历史与随机计划一并清空（V5，见 [_playQueueImpl] 的说明）。
+    _history.clear();
+    _plan = const <String>[];
+    _planCursor = 0;
     Log.i('QUEUE_ADOPT 已建立队列但未播放 total=${_queue.length}');
     _safeNotify();
   }
 
   @override
   Future<int> addToQueue(Track track) async {
+    if (track.guid.isEmpty) return _queue.length;
     final existing = _queue.any((t) => t.guid == track.guid);
     if (existing) return _queue.length;
     _queue = List<Track>.unmodifiable(<Track>[..._queue, track]);
+    // ⚠️ 随机模式下必须把新曲目并入本轮计划，否则它要等到**下一轮**
+    //    重新洗牌才会被播到（用户会觉得「加了歌但随机播不到」）。
+    if (_mode == PlayMode.shuffle) {
+      _plan = List<String>.unmodifiable(<String>[..._plan, track.guid]);
+      Log.i('SHUFFLE_PLAN 单曲入队已并入随机计划（剩余 $shuffleRemaining）');
+    }
+    Log.i('QUEUE_ADD guid=${track.guid} total=${_queue.length}');
     _safeNotify();
     return _queue.length;
   }
@@ -461,6 +782,10 @@ class PlaybackRepository extends ChangeNotifier
     }
 
     final track = _queue[_index];
+    // 记入播放历史（去重相邻重复，因此重复按播放不会堆叠）。
+    // 放在这里而不是调用方：只有**真正开始加载**的曲目才算「播放过」，
+    // 被跳过/作废的请求不该进历史。
+    _pushHistory(track.guid);
     final gen = ++_generation;
     final url = _music.buildStreamUrl(track.guid);
     final headers = _music.authHeaders;
@@ -471,7 +796,9 @@ class PlaybackRepository extends ChangeNotifier
       album: track.album.name,
     );
     Log.i('PLAY_REQUEST gen=$gen index=$_index guid=${track.guid} '
-        'mode=${_mode.storageKey} source=${_source.storageKey}');
+        'mode=${_mode.storageKey} source=${_source.storageKey} '
+        'via=$_advanceSource queue=${_queue.length} '
+        'cursor=$_planCursor/${_plan.length} history=${_history.length}');
 
     // 串行排队：前一个加载结束后才下发本次，且下发前先确认自己仍是最新请求。
     //
@@ -506,6 +833,11 @@ class PlaybackRepository extends ChangeNotifier
       Log.e('PLAY_ERROR gen=$gen guid=${item.id}', e, st);
       _loadFailed = true;
       _lastError = '播放失败：正在跳过这首';
+      // 加载失败 = 这首**根本没播出来**，不该留在播放历史里，
+      // 否则「上一首」会回退到一首放不出来的歌上。
+      if (_history.isNotEmpty && _history.last == item.id) {
+        _history.removeLast();
+      }
       _safeNotify();
       // 加载失败也自动跳过，但有次数上限（见 [_handleLoadFailure]）。
       await _handleLoadFailure();
@@ -533,14 +865,23 @@ class PlaybackRepository extends ChangeNotifier
       return;
     }
     _consecutiveFailures++;
-    if (!hasNext) {
-      Log.w('PLAY_ERROR 已是最后一首且加载失败，停止');
+    // 是否还有「别的曲子」可试 —— 随机模式由计划决定（它可以一直开新轮），
+    // 所以不能只看 `hasNext`。
+    final bool canTryAnother = _mode == PlayMode.shuffle
+        ? _queue.length > 1
+        : (hasNext || _mode == PlayMode.repeatAll);
+    if (!canTryAnother) {
+      Log.w('PLAY_ERROR 已无可切换的曲目且加载失败，停止');
       _safeNotify();
       return;
     }
     Log.i('PLAY_SKIP_ERROR_TRACK 加载失败，自动跳下一首 '
-        '($_consecutiveFailures/$_maxAutoSkip)');
-    await next();
+        '($_consecutiveFailures/$_maxAutoSkip) mode=${_mode.storageKey}');
+    // ⚠️ 加载失败**不是**「自然播完」，所以这里走 `next()` 而不是
+    //   `onTrackCompleted()`：否则单曲循环下失败会反复重播同一首，
+    //   永远跳不出去（需求：「加载失败与正常播完要分开处理，
+    //   单曲循环下失败不得无限重试」）。
+    await next(via: 'error_skip');
   }
 
   @override
@@ -551,6 +892,7 @@ class PlaybackRepository extends ChangeNotifier
     if (_loadFailed && current != null) {
       final t = current!;
       Log.i('PLAY_RETRY 重新加载当前曲目 guid=${t.guid}');
+      _advanceSource = 'retry';
       _playCurrent();
       return;
     }
@@ -575,48 +917,152 @@ class PlaybackRepository extends ChangeNotifier
   }
 
   /// 下一首。末尾行为取决于播放模式：
-  /// - 列表循环 / 随机 → 回绕到第一首；
-  /// - 顺序播放 / 单曲循环 → 保持不动（不崩溃）。
+  /// - 随机 → 取**本轮随机遍历计划**的下一首（每首恰好一次，走完再开一轮）；
+  /// - 列表循环 / 单曲循环 → 回绕到第一首；
+  /// - 顺序播放 → 保持不动（不崩溃）。
+  ///
+  /// [via] 只是**诊断日志的来源标记**（页面按钮 / 媒体键 / 手机遥控），
+  /// 不影响任何行为 —— 三条入口必须走同一份逻辑，这正是本类的核心约束。
+  ///
+  /// ⚠️ V5：随机分支**不再**用 `Random.nextInt` 有放回取样（见类文档第 1 条）。
   @override
-  Future<void> next() async {
+  Future<void> next({String via = 'manual_next'}) async {
     if (_queue.isEmpty) return;
+
+    // 队列只有一首：**只有会循环的模式**才「从头重播」。
+    // 需求：「队列中只有一首时，上一首/下一首都从头播放这首」（单曲循环/列表循环），
+    // 但顺序播放的语义是「末首不重新开始整队列」——只有一首时那就是整队列，
+    // 所以必须是**无操作**而不是重播。
+    if (_queue.length == 1) {
+      if (_mode == PlayMode.sequence) {
+        Log.i('SKIP_NEXT 队列仅一首且顺序播放，无操作');
+        _safeNotify();
+        return;
+      }
+      Log.i('SKIP_NEXT 队列仅一首（mode=${_mode.storageKey}），从头重播');
+      _advanceSource = '${via}_single';
+      _playCurrent();
+      return;
+    }
+
+    if (_mode == PlayMode.shuffle) {
+      final int? target = _shuffleNextIndex();
+      if (target == null) {
+        Log.i('SKIP_NEXT 随机计划为空，保持当前曲目');
+        _safeNotify();
+        return;
+      }
+      _index = target;
+      _advanceSource = '${via}_shuffle';
+      Log.i('SKIP_NEXT 随机计划 → index=$_index guid=${_queue[_index].guid} '
+          '剩余 ${shuffleRemaining}');
+      _playCurrent();
+      unawaited(_maybePrefetch());
+      return;
+    }
+
     if (_index < _queue.length - 1) {
       _index += 1;
+      _advanceSource = via;
       Log.i('SKIP_NEXT index=$_index guid=${_queue[_index].guid}');
       _playCurrent();
       unawaited(_maybePrefetch());
     } else if (_mode.wrapOnManualNext) {
       _index = 0;
+      _advanceSource = '${via}_wrap';
       Log.i('SKIP_NEXT 回绕到队首 index=0 mode=${_mode.storageKey}');
       _playCurrent();
     } else {
-      Log.i('SKIP_NEXT 已到队尾 index=$_index，保持当前曲目');
-      _safeNotify();
+      // 队尾：**先尝试预加载**再决定停不停。
+      // ⚠️ V5 修复：V4 在这里直接 `_safeNotify()` 返回，于是「曲库还有下一页」
+      //    时也不会去取 —— 表现就是「顺序播放到最后一首就停」，
+      //    而那个「最后一首」其实只是**已加载的最后一首**。
+      Log.i('SKIP_NEXT 已到队尾 index=$_index，尝试预加载后续内容');
+      final bool grew = await _maybePrefetch();
+      if (grew && _index < _queue.length - 1) {
+        _index += 1;
+        _advanceSource = '${via}_prefetch';
+        Log.i('SKIP_NEXT 预加载成功，继续 index=$_index');
+        _playCurrent();
+      } else {
+        Log.i('SKIP_NEXT 确无更多内容，保持当前曲目');
+        _safeNotify();
+      }
     }
   }
 
-  /// 上一首。播放超过 3 秒时先回到本曲开头（常见媒体键语义）。
+  /// 上一首：**只走播放历史**，不依赖界面列表顺序。
+  ///
+  /// 需求原文（播放模式补充要求 §2）：
+  /// - 「只使用用户操作产生的历史记录，不依赖界面列表顺序」；
+  /// - 「无论进度和播放状态，都回到此前播放的上一首，首曲不回绕」；
+  /// - 「对随机播放的上一首，要回到本次播放中此前那一首，
+  ///   而不是队列列表里前一首」；
+  /// - 「用户没有上一首记录时，显示无操作，不能跳到别的位置」。
+  ///
+  /// ⚠️ 因此这里**刻意删掉了** V4 的「播放超过 3 秒先回到本曲开头」逻辑：
+  /// 那条规则会让「上一首」在两种完全不同的行为之间随机切换，
+  /// 在随机播放下更是与用户的预期完全无关（历史里的上一首才是用户听到的上一首）。
+  /// [via] 同 [next]：仅用于诊断日志的来源标记。
   @override
-  Future<void> previous() async {
+  Future<void> previous({String via = 'manual_previous'}) async {
     if (_queue.isEmpty) return;
-    if (_handler.position != null && _handler.position! > const Duration(seconds: 3)) {
-      Log.i('SEEK 上一首键：播放超过 3 秒，回到本曲开头');
-      await _handler.seek(Duration.zero);
+
+    // 队列只有一首：只有会循环的模式才「从头重播」（理由见 [next]）。
+    if (_queue.length == 1) {
+      if (_mode == PlayMode.sequence) {
+        Log.i('SKIP_PREVIOUS 队列仅一首且顺序播放，无操作');
+        _safeNotify();
+        return;
+      }
+      Log.i('SKIP_PREVIOUS 队列仅一首（mode=${_mode.storageKey}），从头重播');
+      _advanceSource = '${via}_single';
+      _playCurrent();
+      return;
+    }
+
+    if (_history.length < 2) {
+      // 没有上一首记录。
+      // 允许边界回绕的模式（列表循环 / 单曲循环）→ 回最后一首（需求明确要求）。
+      // 顺序播放 / 随机播放 → **无操作**（需求：「首曲不回绕」
+      // 与「随机的上一首不得跳到列表里前一首」）。
+      if (_mode.wrapOnManualPrevious) {
+        _index = _queue.length - 1;
+        _advanceSource = '${via}_wrap';
+        Log.i('SKIP_PREVIOUS 无历史但模式允许回绕 → 队尾 index=$_index '
+            'mode=${_mode.storageKey}');
+        _playCurrent();
+        return;
+      }
+      Log.i('SKIP_PREVIOUS 无播放历史（${_history.length} 条），无操作 '
+          'mode=${_mode.storageKey}');
       _safeNotify();
       return;
     }
-    if (_index > 0) {
-      _index -= 1;
-      Log.i('SKIP_PREVIOUS index=$_index guid=${_queue[_index].guid}');
-      _playCurrent();
-    } else if (_mode == PlayMode.repeatAll || _mode == PlayMode.shuffle) {
-      _index = _queue.length - 1;
-      Log.i('SKIP_PREVIOUS 回绕到队尾 index=$_index');
-      _playCurrent();
-    } else {
-      Log.i('SKIP_PREVIOUS 已到队首 index=$_index，保持当前曲目');
-      _safeNotify();
+
+    // 弹出「当前这首」，目标就是新的最后一条。
+    _history.removeLast();
+    var guard = 0;
+    while (_history.isNotEmpty && guard < maxHistory) {
+      guard++;
+      final String guid = _history.last;
+      final int idx = _queue.indexWhere((Track t) => t.guid == guid);
+      if (idx >= 0) {
+        _index = idx;
+        _advanceSource = via;
+        Log.i('SKIP_PREVIOUS 历史回退 → index=$_index guid=$guid '
+            '（剩余历史 ${_history.length}）');
+        _playCurrent();
+        _safeNotify();
+        return;
+      }
+      // 这首已不在队列里（被移除/换队列）→ 继续往前找。
+      Log.w('SKIP_PREVIOUS 历史里的 $guid 已不在队列，继续回退');
+      _history.removeLast();
     }
+
+    Log.i('SKIP_PREVIOUS 历史中已无可回退的曲目，无操作');
+    _safeNotify();
   }
 
   @override
@@ -632,11 +1078,28 @@ class PlaybackRepository extends ChangeNotifier
 
   // ── 播放模式 ──────────────────────────────────────────────
 
+  /// 切换播放模式。
+  ///
+  /// ⚠️ V5：**切换模式不重建队列**（需求：「不能随机后还在顺序播放，
+  /// 整体语意要准确」—— 反过来也一样：切回顺序播放不该把队列洗乱）。
+  /// 随机模式只是「改变下一首的取法」，队列本身保持原样。
+  ///
+  /// 进入随机时会**立即生成一轮遍历计划**；离开随机时丢弃计划
+  /// （避免残留计划在下次进入随机时被误用，导致连着播旧序列里的歌）。
   @override
   Future<void> setMode(PlayMode mode) async {
     if (_mode == mode) return;
+    final PlayMode previousMode = _mode;
     _mode = mode;
-    Log.i('PLAY_MODE_CHANGE mode=${mode.storageKey}');
+    Log.i('PLAY_MODE_CHANGE ${previousMode.storageKey} → ${mode.storageKey}');
+
+    if (mode == PlayMode.shuffle) {
+      _rebuildPlan();
+    } else {
+      _plan = const <String>[];
+      _planCursor = 0;
+    }
+
     _safeNotify();
     try {
       await _store.writePlayModeKey(mode.storageKey);
@@ -646,64 +1109,129 @@ class PlaybackRepository extends ChangeNotifier
     }
   }
 
-  /// 随机播放时挑一个**尽量不是当前曲**的下一首。
-  int _randomIndexNext() {
-    if (_queue.length <= 1) return _index;
-    var candidate = _index;
-    var guard = 0;
-    while (candidate == _index && guard < 8) {
-      candidate = _random.nextInt(_queue.length);
-      guard++;
-    }
-    if (candidate == _index) {
-      // 兜底：只有一个可选项时直接回绕
-      candidate = (_index + 1) % _queue.length;
-    }
-    return candidate;
-  }
-
   // ── PlaybackCommandListener：MediaSession 与自然结束的入口 ──
   // 页面按钮调用上面的 next()/previous()，媒体键调用这里，
   // 两条路径最终都执行同一份代码，因此不存在两套队列状态。
 
   @override
-  Future<void> onSkipToNext() => next();
+  Future<void> onSkipToNext() => next(via: 'media_next');
 
   @override
-  Future<void> onSkipToPrevious() => previous();
+  Future<void> onSkipToPrevious() => previous(via: 'media_previous');
 
-  /// 当前曲目自然播放结束 → 按播放模式推进。
+  /// 当前曲目自然播放结束 → 按播放模式推进**一次**。
   ///
-  /// 顺序播放在最后一首**不循环**（V1 行为，保持不变）。
+  /// 四种模式的目标语义（需求「播放模式补充要求」§（补充六））：
+  ///
+  /// | 模式 | 一首播完之后 |
+  /// |---|---|
+  /// | 顺序播放 | 播下一首；**确实是队列最后一首**时停止，不回到开头 |
+  /// | 列表循环 | 播下一首；最后一首之后回到第一首，继续循环 |
+  /// | 随机播放 | 按**随机遍历计划**取下一首（与手动「下一首」同一份计划） |
+  /// | 单曲循环 | 当前曲**从 0:00 重新播放**，不换曲 |
+  ///
+  /// ## 为什么要有 [_advancing] 这个重入闸门
+  ///
+  /// 需求：「避免自然结束和手动切歌同时发生导致跳过多首」。
+  /// 顺序播放分支里会 `await _maybePrefetch()`（可能耗时数百毫秒），
+  /// 这段窗口内若又收到一次 completed（快进到结尾、ROM 重复派发），
+  /// 两次推进就会叠加成「一次跳两首」。
+  /// 闸门只挡**并发**，不挡正常的连续单次推进。
   @override
   Future<void> onTrackCompleted() async {
-    Log.i('PLAY_COMPLETED index=$_index mode=${_mode.storageKey}');
+    if (_advancing) {
+      Log.i('AUTO_NEXT 上一次自动推进尚未结束，忽略重复的 completed');
+      return;
+    }
+    _advancing = true;
+    try {
+      await _handleCompleted();
+    } finally {
+      _advancing = false;
+    }
+  }
+
+  Future<void> _handleCompleted() async {
+    Log.i('PLAY_COMPLETED index=$_index mode=${_mode.storageKey} '
+        'queue=${_queue.length}');
     _consecutiveFailures = 0;
+
+    // 空队列（用户清空了队列 / 队列来源被删光）：没有任何"下一首"可言。
+    // 放在最前面，避免 `wrapToFirst` 分支把 `_index` 设成 0 而队列是空的。
+    if (_queue.isEmpty) {
+      Log.i('PLAY_COMPLETED 队列为空，无操作');
+      _safeNotify();
+      return;
+    }
+
     switch (_mode.onCompleted) {
       case PlayAdvanceAction.stop:
-        if (!hasNext) {
-          Log.i('AUTO_NEXT 顺序播放且已是队尾，停在 completed');
-          _safeNotify();
+        if (hasNext) {
+          Log.i('AUTO_NEXT index=$_index → ${_index + 1}');
+          await next(via: 'auto_next');
           return;
         }
-        Log.i('AUTO_NEXT index=$_index → ${_index + 1}');
-        await next();
+        // 队列里的最后一首 —— 但队列可能只是「已加载的最后一首」，
+        // 先尝试预加载，真的没有更多才停（V5 修复，见类文档第 3 条）。
+        final bool grew = await _maybePrefetch();
+        if (grew && _index < _queue.length - 1) {
+          Log.i('AUTO_NEXT 预加载到新曲目，继续 index=${_index + 1}');
+          await next(via: 'auto_next_prefetch');
+          return;
+        }
+        Log.i('AUTO_NEXT 顺序播放且确认已是队尾，停在 completed（不回第一首）');
+        _safeNotify();
+        return;
+
       case PlayAdvanceAction.wrapToFirst:
+        // 列表循环：即使「当前是最后一首」也要回到第一首继续循环。
+        // 队列只有一首时「回到第一首」= 重播这首，同样是正确行为。
         _index = 0;
+        _advanceSource = 'auto_wrap';
         Log.i('AUTO_NEXT 列表循环 → 队首 index=0');
         _playCurrent();
         unawaited(_maybePrefetch());
+        return;
+
       case PlayAdvanceAction.repeatCurrent:
-        Log.i('AUTO_NEXT 单曲循环 → 重播当前曲 index=$_index');
-        await _handler.seek(Duration.zero);
-        await _handler.play();
-        _safeNotify();
+        // 单曲循环：**重新下发一次加载**，而不是 seek(0)+play()。
+        //
+        // ⚠️ V5 修复（类文档第 4 条）：`completed` 状态下 `seek(0)` 之后
+        //    `play()` 在部分 ROM 上不会重新起播，播放器停在末尾、
+        //    界面却显示「播放中」，紧接着就出现「单曲循环跳下一首」。
+        //    走 [_playCurrent] 会复用串行链与 generation 令牌，
+        //    是唯一在真机上被证明能起播的路径；它把进度重置为 0，
+        //    因此语义上就是「从 0 秒重新播放同一首」。
+        //
+        // ⚠️ 这里**不修改 `_index`、不 push 历史**（同一首不算"去过新地方"），
+        //    所以无论循环多少次，历史长度都不变。
+        _advanceSource = 'auto_repeat_one';
+        Log.i('AUTO_NEXT 单曲循环 → 从 0:00 重新加载当前曲 index=$_index '
+            'guid=${current?.guid ?? '-'}');
+        _playCurrent();
+        return;
+
       case PlayAdvanceAction.pickRandom:
-        final target = _randomIndexNext();
-        Log.i('AUTO_NEXT 随机 → index=$_index → $target');
+        // 队列只有一首：一轮就等于这一首 → 循环它（需求「随机默认整轮循环」）。
+        if (_queue.length <= 1) {
+          _advanceSource = 'auto_shuffle_single';
+          Log.i('AUTO_NEXT 随机播放且队列仅一首 → 重新播放该曲');
+          _playCurrent();
+          return;
+        }
+        final int? target = _shuffleNextIndex();
+        if (target == null) {
+          Log.i('AUTO_NEXT 随机计划为空，保持当前曲目');
+          _safeNotify();
+          return;
+        }
+        Log.i('AUTO_NEXT 随机计划 → index=$_index → $target '
+            '（剩余 ${shuffleRemaining}）');
         _index = target;
+        _advanceSource = 'auto_shuffle';
         _playCurrent();
         unawaited(_maybePrefetch());
+        return;
     }
   }
 

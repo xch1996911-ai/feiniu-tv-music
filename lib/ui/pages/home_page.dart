@@ -176,8 +176,8 @@ class _HomePageState extends State<HomePage> {
         if (shown.isEmpty)
           const TrackListEmpty(
             icon: Icons.history,
-            text: '暂无最近播放\n\n'
-                '从「音乐库」里挑一首开始播放，这里就会留下痕迹。',
+            text: '暂无最近播放',
+            hint: '从音乐库挑一首开始播放',
           )
         else
           for (int i = 0; i < shown.length; i++)

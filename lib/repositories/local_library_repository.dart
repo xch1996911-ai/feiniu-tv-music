@@ -2,9 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/diagnostics.dart';
 import '../core/log.dart';
+import '../domain/genre.dart';
+import '../domain/genre_inferencer.dart';
 import '../domain/player_layout.dart';
 import '../domain/track.dart';
+import '../services/catalogue_store.dart';
 import '../services/secure_store.dart';
 
 /// 一份「概览」条目（歌手 / 专辑 / 风格各一条）。
@@ -40,8 +44,14 @@ class LibraryOverview {
   /// 该条目涉及的**去重专辑数**（歌手概览用；其余为 0）。
   final int albumCount;
 
-  /// 该条目下的曲目（曲库原顺序），供详情页建队列。
+/// 该条目下的曲目（曲库原顺序），供详情页建队列。
   final List<Track> tracks;
+
+  /// 该条目的风格是否**全部来自推断**（而非服务端标签或用户手动确认）。
+  ///
+  /// 概览页据此显示「推断」标识 —— 需求 §三.4：
+  /// 「风格概览可显示『推断』标识，避免把推断当作原始标签」。
+  final bool inferred;
 
   const LibraryOverview({
     required this.key,
@@ -51,6 +61,7 @@ class LibraryOverview {
     this.subtitle,
     this.coverId,
     this.albumCount = 0,
+    this.inferred = false,
   });
 }
 
@@ -69,10 +80,60 @@ class LibraryOverview {
 /// （详见 [SecureStore] 里收藏区的说明）。需求要求「按下立即更新并持久保存」，
 /// 所以用本机集合作为**唯一**数据源，并在首次把服务端值**播种**进来一次。
 class LocalLibraryRepository extends ChangeNotifier {
-  LocalLibraryRepository({SecureStore? store})
-      : _store = store ?? SecureStore();
+  LocalLibraryRepository({SecureStore? store, CatalogueStore? catalogue})
+      : _store = store ?? SecureStore(),
+        _catalogue = catalogue ?? CatalogueStore();
 
   final SecureStore _store;
+
+  /// 用户手动风格用**文件**存（非敏感、可能较长），与曲库索引**分离**：
+  /// 重建索引整份替换 `catalogue_*.json`，但永远不碰 `genre_overrides.json`
+  /// （需求 §三-B.7：刷新/重建索引不能无故重置用户记忆）。
+  final CatalogueStore _catalogue;
+
+  // ── 用户手动风格（最高优先级）────────────────────────────
+
+  final Map<String, List<String>> _genreOverrides = <String, List<String>>{};
+
+  /// 曲目标识 → 用户手动确认的风格。**只读**视图。
+  Map<String, List<String>> get genreOverrides =>
+      Map<String, List<String>>.unmodifiable(_genreOverrides);
+
+  bool get hasGenreOverrides => _genreOverrides.isNotEmpty;
+
+  /// 某首歌的用户手动风格（空表示未手动指定）。
+  List<String> trackedGenres(String guid) =>
+      List<String>.unmodifiable(_genreOverrides[guid] ?? const <String>[]);
+
+  /// 用户改过风格后触发曲库层重算（由装配层注入）。
+  VoidCallback? onGenreOverrideChanged;
+
+  /// 设置/清除某首歌的手动风格。
+  ///
+  /// 传空列表 = 取消手动指定（之后回落到自动归纳结果）。
+  /// 手动结果**永远优先**，自动归纳不会覆盖它（见 [GenreSource.rank]）。
+  Future<void> setTrackGenres(String guid, List<String> genres) async {
+    if (guid.isEmpty) return;
+    final List<String> cleaned = <String>[
+      for (final String g in genres)
+        if (g.trim().isNotEmpty) g.trim(),
+    ];
+    if (cleaned.isEmpty) {
+      _genreOverrides.remove(guid);
+    } else {
+      _genreOverrides[guid] = cleaned;
+    }
+    Log.i('GENRE_OVERRIDE guid=$guid → '
+        '${cleaned.isEmpty ? '(取消手动)' : cleaned.join('/')}');
+    Diagnostics.note('风格手动确认', '已累计 ${_genreOverrides.length} 首');
+    _safeNotify();
+    onGenreOverrideChanged?.call();
+    try {
+      await _catalogue.saveOverrides(_genreOverrides);
+    } catch (e) {
+      Log.w('GENRE_OVERRIDE 保存失败（内存已生效，重启后会丢失）：$e');
+    }
+  }
 
   // ── 最近播放 ──────────────────────────────────────────────
 
@@ -113,7 +174,8 @@ class LocalLibraryRepository extends ChangeNotifier {
         _store.readFavoriteGuids(),
         _store.readFavoritesSeeded(),
         _store.readPlayerLayoutKey(),
-      ]).timeout(const Duration(seconds: 3));
+        _catalogue.loadOverrides(),
+      ]).timeout(const Duration(seconds: 4));
 
       _recent
         ..clear()
@@ -126,8 +188,16 @@ class LocalLibraryRepository extends ChangeNotifier {
       _favoritesSeeded = results[2] as bool;
       _playerLayout = PlayerLayout.fromStorage(results[3] as String?);
 
+      _genreOverrides
+        ..clear()
+        ..addAll(results[4] as Map<String, List<String>>);
+
       Log.i('LOCAL_RESTORE 最近 ${_recent.length} 条 · 收藏 ${_favorites.length} 首 · '
-          '播种=${_favoritesSeeded ? '是' : '否'} · 播放页=${_playerLayout.storageKey}');
+          '播种=${_favoritesSeeded ? '是' : '否'} · 播放页=${_playerLayout.storageKey} · '
+          '手动风格 ${_genreOverrides.length} 首');
+      if (_genreOverrides.isNotEmpty) {
+        Diagnostics.note('风格手动确认', '已恢复 ${_genreOverrides.length} 首用户指定风格');
+      }
       _safeNotify();
     } catch (e) {
       Log.w('LOCAL_RESTORE 恢复失败（按空状态继续）：$e');
@@ -310,9 +380,18 @@ class LocalLibraryRepository extends ChangeNotifier {
     for (final Track t in catalogue) {
       final String name = t.album.name.trim();
       final String guid = t.album.guid.trim();
+      // ⚠️ V5 修复：只用「专辑名」当分组键是不够的。
+      //    不同歌手的同名专辑（《精选集》《Best》《Live》…）会被合并成一张，
+      //    表现为「某张专辑歌曲数莫名很多、歌手名只显示第一位」。
+      //    契约 §5.1 里 `track.album.guid` 是存在的，正常都能拿到；
+      //    拿不到时用「专辑名 + 首位歌手」兜底 —— 比只用专辑名安全得多。
+      final String fallbackArtist =
+          t.artists.isEmpty ? '' : t.artists.first.name.trim();
       final String key = guid.isNotEmpty
           ? 'al:$guid'
-          : (name.isNotEmpty ? 'al:#$name' : 'al:#$unknownAlbum');
+          : (name.isNotEmpty
+              ? 'al:#$name\u0000$fallbackArtist'
+              : 'al:#$unknownAlbum');
       final _Bucket b = _bucketFor(
         buckets,
         key,
@@ -333,12 +412,98 @@ class LocalLibraryRepository extends ChangeNotifier {
     return List<LibraryOverview>.unmodifiable(sorted);
   }
 
-  /// 风格概览。
+  /// 风格概览：**服务端标签 + 自动归纳 + 待分类**。
   ///
-  /// ⚠️ 实测样本里 `genres` 是空数组。曲库完全没有风格标签时返回**空列表**，
-  /// UI 必须如实显示「暂无风格标签」——
-  /// **绝不能**把全部歌曲归进一个「未知风格」分类来假装有数据。
-  static List<LibraryOverview> genreOverviews(List<Track> catalogue) {
+  /// ⚠️ V5 变化（需求 §三）：
+  /// - V4 只读 `Track.genres`。实测曲库的 `genres` **全是空数组**，
+  ///   于是风格页永远只有一个「暂无风格标签」空态 —— 功能等于不存在；
+  /// - 现在以 [GenreInferencer] 的归纳结果为数据源：有结论的按风格分组，
+  ///   **证据不足的进「待分类」**，而不是伪造成「流行」或「未知风格」。
+  ///
+  /// [inference] 为 null 时退回「只认服务端标签」的旧口径，
+  /// 保证调用方没接线时也不会崩。
+  ///
+  /// 一个关键点：**「待分类」也要带真实曲目列表** ——
+  /// 用户点进去要能看到「哪些歌还没分类」并手动指定。
+  /// 只显示一个数字而不给曲目，等于没有可操作性。
+  List<LibraryOverview> genreOverviewsOf(
+    List<Track> catalogue, {
+    GenreInferenceResult? inference,
+  }) {
+    final GenreInferenceResult? inf = inference;
+    if (inf == null) {
+      return explicitGenreOverviews(catalogue);
+    }
+
+    final Map<String, _Bucket> buckets = <String, _Bucket>{};
+    final _Bucket pending =
+        _Bucket(key: 'g:#${GenreRules.unclassified}', title: GenreRules.unclassified);
+
+    // 标识 → Track，便于按归纳结果回填曲目。
+    final Map<String, Track> byKey = <String, Track>{};
+    for (final Track t in catalogue) {
+      final String key =
+          t.guid.isNotEmpty ? t.guid : '${t.title}\u0000${t.artistNames}';
+      byKey.putIfAbsent(key, () => t);
+    }
+
+    for (final MapEntry<String, List<GenreAssignment>> e in inf.byGuid.entries) {
+      final Track? t = byKey[e.key];
+      if (t == null) continue; // 索引里的曲目已不在当前曲库
+      for (final GenreAssignment a in e.value) {
+        final _Bucket b = _bucketFor(buckets, 'g:#${a.genre}', a.genre);
+        b.setCoverIfEmpty(t.effectiveCoverId);
+        b.add(t);
+      }
+    }
+
+    // 归纳没给出结论的 → 待分类
+    for (final MapEntry<String, Track> e in byKey.entries) {
+      if (inf.byGuid.containsKey(e.key)) continue;
+      pending.setCoverIfEmpty(e.value.effectiveCoverId);
+      pending.add(e.value);
+    }
+
+    final List<LibraryOverview> out = <LibraryOverview>[
+      for (final _Bucket b in buckets.values)
+        LibraryOverview(
+          key: b.key,
+          title: b.title,
+          coverId: b.coverId,
+          trackCount: b.tracks.length,
+          tracks: List<Track>.unmodifiable(b.tracks),
+          inferred: inf.isGenreFullyInferred(b.title),
+        ),
+      if (pending.tracks.isNotEmpty)
+        LibraryOverview(
+          key: pending.key,
+          title: pending.title,
+          coverId: pending.coverId,
+          trackCount: pending.tracks.length,
+          tracks: List<Track>.unmodifiable(pending.tracks),
+        ),
+    ];
+
+    // 排序：曲目多的在前；统一集合内按声明顺序；「待分类」永远沉底。
+    final List<String> order = GenreRules.unified;
+    out.sort((LibraryOverview a, LibraryOverview b) {
+      final bool ap = a.title == GenreRules.unclassified;
+      final bool bp = b.title == GenreRules.unclassified;
+      if (ap != bp) return ap ? 1 : -1;
+      final int c = b.trackCount.compareTo(a.trackCount);
+      if (c != 0) return c;
+      final int ia = order.indexOf(a.title);
+      final int ib = order.indexOf(b.title);
+      if (ia >= 0 && ib >= 0) return ia.compareTo(ib);
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return a.title.compareTo(b.title);
+    });
+    return List<LibraryOverview>.unmodifiable(out);
+  }
+
+  /// 「只认服务端标签」的旧口径（V4 行为），保留给未接线的调用方与测试。
+  static List<LibraryOverview> explicitGenreOverviews(List<Track> catalogue) {
     final buckets = <String, _Bucket>{};
     for (final Track t in catalogue) {
       for (final String g in t.genres) {

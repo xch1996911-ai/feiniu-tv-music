@@ -83,4 +83,13 @@ class ArtistRef {
         .map((e) => ArtistRef.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
+  /// 序列化回服务端形态（供本地曲库索引落盘）。
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'guid': guid,
+        'name': name,
+        if (coverId != null) 'coverId': coverId,
+        if (createdAt != null) 'createdAt': unixSecondsOf(createdAt),
+        if (updatedAt != null) 'updatedAt': unixSecondsOf(updatedAt),
+      };
 }

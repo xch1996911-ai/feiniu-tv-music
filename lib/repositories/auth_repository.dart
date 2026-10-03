@@ -53,6 +53,23 @@ class AuthRepository extends ChangeNotifier {
   /// 已登录 = 已持有可用的 provider（其内已注入 token）。
   bool get isLoggedIn => _provider != null;
 
+  /// 曲库索引的身份串 ——「服务端 + 主机 + 账户」的稳定组合。
+  ///
+  /// 用途：本地索引按身份分文件存放，**切 NAS / 切账户时必须互不可见**
+  /// （需求 §三-A.9）。若只用主机名，同一台 NAS 上两个账户的曲库会互相污染；
+  /// 若只用账户名，两台 NAS 上的同名账户会互相污染。
+  ///
+  /// ⚠️ 它会被写进**文件名**（经 `CatalogueStore.fileKey` 摘要），
+  /// 因此**绝不能包含 token / 密码**；这里只有 providerId / host / 用户标识。
+  String get catalogueIdentity {
+    final String p = _provider?.providerId ?? 'nologin';
+    final String h = _host ?? '';
+    final String u = _currentUser?.guid.isNotEmpty == true
+        ? _currentUser!.guid
+        : (_username ?? '');
+    return '$p@$h#$u';
+  }
+
   /// 启动时恢复会话：若存在持久化 token，则重建 provider 并设为已登录（惰性，不主动联网）。
   ///
   /// 同样全程限时：本方法位于**启动路径**上，一旦原生通道或安全存储不回应，

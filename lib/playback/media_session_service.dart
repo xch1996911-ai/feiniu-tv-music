@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 
 import 'playback_engine.dart';
+import '../core/branding.dart';
 
 /// MediaSession / 后台播放初始化。
 ///
@@ -21,7 +22,7 @@ class MediaSessionService {
       builder: () => PlaybackHandler(),
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'com.feiniu.tv.music.audio',
-        androidNotificationChannelName: '飞牛音乐',
+        androidNotificationChannelName: kAppName,
         androidNotificationIcon: 'mipmap/ic_launcher',
         // 电视场景无通知栏，但 MediaSession 仍需常驻以保证后台播放与媒体键。
       ),

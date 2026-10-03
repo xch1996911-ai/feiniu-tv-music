@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../core/branding.dart';
 import '../../core/exceptions.dart';
 import '../../core/ids.dart';
 import '../../core/log.dart';
@@ -24,7 +25,7 @@ class FnosProvider implements MusicServerProvider {
   final String providerId = 'fnos';
 
   @override
-  final String label = '飞牛音乐';
+  final String label = kAppName;
 
   final FnosClient _client;
 

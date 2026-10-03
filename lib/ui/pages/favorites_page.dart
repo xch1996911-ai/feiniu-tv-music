@@ -98,9 +98,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
           const Expanded(
             child: TrackListEmpty(
               icon: Icons.favorite_border,
-              text: '还没有收藏的歌曲\n\n'
-                  '在「音乐库」「歌手」「专辑」等列表里，把焦点移到歌曲行上，'
-                  '按右键选中「♡」即可收藏。',
+              text: '暂无收藏',
+              hint: '在歌曲行上按右键即可收藏',
             ),
           )
         else

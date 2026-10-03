@@ -92,12 +92,13 @@ class _SongListPageState extends State<SongListPage> {
 
     if (library.phase == LibraryPhase.error && library.tracks.isEmpty) {
       return TrackListEmpty(
-        text: '${library.error ?? '加载失败'}\n\n回到这里再试一次，或检查 NAS 是否在线。',
+        text: '曲库加载失败',
+        hint: library.error == null ? null : '回到这里再试一次，或检查 NAS 是否在线',
       );
     }
 
     if (library.tracks.isEmpty) {
-      return const TrackListEmpty(text: '曲库为空。');
+      return const TrackListEmpty(text: '暂无歌曲');
     }
 
     // 底部多一条用于显示「加载更多 / 没有更多了」

@@ -18,7 +18,7 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
-        android:label="飞牛 TV 音乐"
+        android:label="XX音乐"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
@@ -45,9 +45,19 @@
             </intent-filter>
         </activity>
 
-        <!-- audio_service：后台播放 + MediaSession + 遥控媒体键 -->
+        <!-- audio_service：后台播放 + MediaSession + 遥控媒体键。
+             ⚠️ V5 修复：类名必须是 `com.ryanheise.audioservice.AudioService`。
+             本项目原先写的是 `...MediaPlaybackService` —— 那是 audio_service
+             0.17.x 的类名，在 0.18.x（本工程 pinned `^0.18.15`）的 jar 里
+             **根本不存在这个类**（官方源码目录只有 AudioService.java、
+             AudioServiceActivity.java、MediaButtonReceiver.java …）。
+             声明一个不存在的 service 的后果：`startService`/`bindService`
+             找不到组件，前台服务起不来，MediaSession 与媒体键全部失效，
+             而且不会在启动路径上抛出显眼的异常 —— 与图1里
+             「Activity 未提供正确 FlutterEngine」是**两个独立的错**，
+             两个都必须修。 -->
         <service
-            android:name="com.ryanheise.audioservice.MediaPlaybackService"
+            android:name="com.ryanheise.audioservice.AudioService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback"
             tools:ignore="Instantiatable">
@@ -55,6 +65,19 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- audio_service 官方 Android setup 要求的媒体键接收器。
+             缺了它，电视遥控器/蓝牙耳机上的播放暂停、上一首、下一首
+             **不会有任何反应**（广播无人接收，且同样静默失败）。
+             Android 12+ 起 exported 必须显式声明，否则清单合并报错。 -->
+        <receiver
+            android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="flutterEmbedding"

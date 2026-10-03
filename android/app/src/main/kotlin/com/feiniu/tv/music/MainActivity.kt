@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.security.SecureRandom
@@ -33,8 +33,62 @@ import java.util.Locale
  * 都不会经过它，只出现在 `adb logcat` 与 `/data/tombstones/`。
  * 所以 **boot.log 里没有异常堆栈 ≠ 没有 native crash**；
  * boot.log 的用途是回答「执行到了哪一步」，不是提供 native 堆栈。
+ *
+ * ## ⚠️ 基类必须是 `AudioServiceActivity`，不能是 `FlutterActivity`（V5 根因修复）
+ *
+ * 实机（图1）启动时报：
+ *
+ * ```
+ * PlatformException(The Activity class declared in your AndroidManifest.xml
+ *   is wrong or has not provided the correct FlutterEngine. Please see the
+ *   README for instructions., null, null, null)
+ * ```
+ *
+ * 该字符串来自 audio_service 0.18.15 的
+ * `AudioServicePlugin.java` → `ClientInterface.onMethodCall`：
+ *
+ * ```java
+ * if (wrongEngineDetected) {
+ *   throw new IllegalStateException("The Activity class declared in your ...");
+ * }
+ * ```
+ *
+ * 而 `wrongEngineDetected` 的判定在同一文件的 `onAttachedToEngine` 里：
+ *
+ * ```java
+ * FlutterEngine sharedEngine = getFlutterEngine(binding.getActivity());
+ * clientInterface.setWrongEngineDetected(
+ *     flutterPluginBinding.getBinaryMessenger() != sharedEngine.getDartExecutor());
+ * ```
+ *
+ * 即：**插件注册所在引擎**必须**就是** `AudioServicePlugin.getFlutterEngine()`
+ * 返回的那个「共享引擎」。而
+ *
+ * ```java
+ * public class AudioServiceActivity extends FlutterActivity {
+ *   @Override public FlutterEngine provideFlutterEngine(@NonNull Context context) {
+ *     return AudioServicePlugin.getFlutterEngine(context);  // ← 关键
+ *   }
+ * }
+ * ```
+ *
+ * 是官方唯一保证「两者是同一个引擎」的方式。本类原先继承裸 `FlutterActivity`，
+ * `provideFlutterEngine` 走的是 FlutterActivity 自己新建的引擎，
+ * 与 `AudioServicePlugin.getFlutterEngine()` 从 `FlutterEngineCache` 取/新建的
+ * 引擎**不是同一个对象** ⇒ `wrongEngineDetected = true` ⇒ 之后每一次
+ * audio_service 的 MethodChannel 调用都抛 PlatformException。
+ *
+ * 危害不止「没有后台播放」：`PlaybackHandler` 继承自 audio_service 的
+ * `BaseAudioHandler`，其 `play/pause/skipToNext/...` 全部经由该 MethodChannel
+ * 下发 —— 也就是说**前台播放本身也是不可靠的**，只是我们此前把它当成
+ * 「降级为本地播放」掩盖过去了。
+ *
+ * ⚠️ 与之配套的两处 Manifest 错配见 `AndroidManifest.xml`：
+ * service 名必须是 `com.ryanheise.audioservice.AudioService`（0.18.x 已无
+ * `MediaPlaybackService` 这个类），且必须声明 `MediaButtonReceiver`，否则
+ * 遥控媒体键收不到广播。
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
 
     companion object {
         private const val CHANNEL = "feiniu/boot"
@@ -79,6 +133,17 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "logPath" -> result.success(BootTrace.logFile(this).absolutePath)
+                    // 应用内部数据目录。Dart 侧用它落盘**曲库索引**等
+                    // 非敏感元数据（`filesDir` 是应用私有目录，不需要任何
+                    // 存储权限，也不会被其他 App 读到）。
+                    //
+                    // ⚠️ 为什么不引入 `path_provider`：
+                    //    本项目已有一条经过实机验证的原生通道，加个方法即可；
+                    //    多一个带原生实现的依赖，就多一份「在某个电视 ROM 上
+                    //    插件注册失败」的风险 —— 而这台机器上没有 adb，
+                    //    代价是一轮完整的「下载 APK → 拷 U 盘 → 装电视」。
+                    //    凭据仍然只走 `flutter_secure_storage`（见 SecureStore）。
+                    "dataDir" -> result.success(filesDir.absolutePath)
                     "bootAttempts" -> result.success(prefs.getInt(KEY_ATTEMPTS, 0))
                     "markBootOk" -> {
                         prefs.edit().putInt(KEY_ATTEMPTS, 0).apply()

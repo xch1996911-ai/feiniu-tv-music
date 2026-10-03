@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../repositories/auth_repository.dart';
+import '../core/branding.dart';
 import '../repositories/music_repository.dart';
 import '../repositories/library_repository.dart';
 import '../repositories/local_library_repository.dart';
@@ -54,7 +55,7 @@ class App extends StatelessWidget {
         ChangeNotifierProvider<LocalLibraryRepository>.value(value: local),
       ],
       child: MaterialApp(
-        title: '飞牛 TV 音乐',
+        title: kAppName,
         debugShowCheckedModeBanner: false,
         // 与启动引导页共用同一套主题，避免引导页 → 主界面切换时样式跳变。
         theme: buildTvTheme(),

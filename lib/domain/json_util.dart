@@ -64,3 +64,11 @@ DateTime? jsonUnixSeconds(dynamic v) {
   if (n == null || n <= 0) return null;
   return DateTime.fromMillisecondsSinceEpoch(n > 100000000000 ? n : n * 1000);
 }
+
+/// [DateTime] → **Unix 秒**（[jsonUnixSeconds] 的逆运算，口径必须一致）。
+///
+/// 用于把领域模型写回 JSON：本地曲库索引需要把服务端返回的曲目元数据
+/// 落盘，重启后直接反序列化，避免每次启动都全库重拉
+/// （见 `lib/services/catalogue_store.dart`）。
+int? unixSecondsOf(DateTime? d) =>
+    d == null ? null : d.millisecondsSinceEpoch ~/ 1000;

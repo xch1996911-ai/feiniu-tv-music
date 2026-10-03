@@ -72,6 +72,24 @@ class AudioSpec {
       durationMs: jsonIntOrNull(json['duration']),
     );
   }
+
+  /// 序列化回**服务端形态**，使 [AudioSpec.fromJson] 能原样读回（往返一致）。
+  ///
+  /// 用途：本地曲库索引落盘（`lib/services/catalogue_store.dart`）。
+  /// 刻意保持字段名与契约一致（`duration` 而不是 `durationMs`），
+  /// 这样「落盘的 JSON」与「服务端返回的 JSON」是同一套解析路径 ——
+  /// 少一套解析代码，就少一处将来会漂移的地方。
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        if (format != null) 'format': format,
+        if (codec != null) 'codec': codec,
+        if (container != null) 'container': container,
+        if (sampleRate != null) 'sampleRate': sampleRate,
+        if (bitDepth != null) 'bitDepth': bitDepth,
+        if (bitrate != null) 'bitrate': bitrate,
+        if (channel != null) 'channel': channel,
+        if (size != null) 'size': size,
+        if (durationMs != null) 'duration': durationMs,
+      };
 }
 
 /// 曲目。
@@ -202,4 +220,31 @@ class Track {
       accessStatus: jsonInt(json['accessStatus']),
     );
   }
+
+  /// 序列化回**服务端形态**（字段名与 `Track.fromJson` 完全对应）。
+  ///
+  /// ⚠️ 只用于**本地缓存**，不是「要写回 NAS」的载荷 —— 飞牛没有曲目写接口。
+  /// 往返一致性由 `test/catalogue_index_test.dart` 的往返用例锁定。
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'guid': guid,
+        'title': title,
+        if (coverId != null) 'coverId': coverId,
+        'year': year,
+        'discNo': discNo,
+        'trackNo': trackNo,
+        if (isrc != null) 'isrc': isrc,
+        'duration': durationMs,
+        'isCue': isCue,
+        'isFavorite': isFavorite,
+        'genres': genres,
+        if (createdAt != null) 'createdAt': unixSecondsOf(createdAt),
+        if (updatedAt != null) 'updatedAt': unixSecondsOf(updatedAt),
+        'album': album.toJson(),
+        'artists': <Map<String, dynamic>>[
+          for (final ArtistRef a in artists) a.toJson(),
+        ],
+        'audioSpec': audioSpec.toJson(),
+        'hasLyric': hasLyric,
+        'accessStatus': accessStatus,
+      };
 }

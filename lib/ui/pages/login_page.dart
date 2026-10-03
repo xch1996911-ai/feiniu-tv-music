@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/branding.dart';
 import '../../repositories/auth_repository.dart';
 
 /// 登录页（Phase 1 临时验证 UI）。
@@ -221,7 +222,7 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('飞牛 TV 音乐 · Phase 1',
+                  const Text(kAppName,
                       style:
                           TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 24),

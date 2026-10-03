@@ -437,6 +437,12 @@ class _PlayerPageState extends State<PlayerPage> {
     final PlayMode mode = context.select<PlaybackRepository, PlayMode>(
       (PlaybackRepository p) => p.mode,
     );
+    // V5：是否有「上一首」由**播放历史**决定（不是队列下标）。
+    // 没有历史时按钮置灰 —— 需求要求「显示为不可用」，
+    // 而不是让用户按了半天没反应还以为遥控器坏了。
+    final bool canPrevious = context.select<PlaybackRepository, bool>(
+      (PlaybackRepository p) => p.hasPrevious,
+    );
     final PlaybackRepository p = context.read<PlaybackRepository>();
 
     return Row(
@@ -473,11 +479,14 @@ class _PlayerPageState extends State<PlayerPage> {
           debugLabel: 'player.mode',
           icon: _modeIcon(mode),
           label: mode.shortLabel,
-          tooltip: '播放顺序',
+          tooltip: '播放模式（${mode.label}）',
           onPressed: () {
-            final PlayMode nextMode =
-                PlayMode.values[(p.mode.index + 1) % PlayMode.values.length];
-            Log.i('PLAY_MODE_CHANGE UI ${p.mode.name} → ${nextMode.name}');
+            // ⚠️ 用 `mode.next` 而不是 `PlayMode.values[index+1]`：
+            // 循环顺序（顺序 → 列表循环 → 随机 → 单曲 → 顺序）是
+            // 在 `playback_control.dart` 里定义并注释的**唯一一处**，
+            // UI 不应该再自己推一遍（否则改顺序时两边会不一致）。
+            final PlayMode nextMode = mode.next;
+            Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → ${nextMode.storageKey}');
             unawaited(p.setMode(nextMode));
           },
           nextLeft: _layoutNode,
@@ -512,7 +521,9 @@ class _PlayerPageState extends State<PlayerPage> {
           node: _prevNode,
           debugLabel: 'player.prev',
           icon: Icons.skip_previous,
-          tooltip: '上一首',
+          // V5：没有上一首记录（或队列只有一首且当前模式不回绕）时置灰。
+          tooltip: canPrevious ? '上一首' : '没有上一首',
+          iconColor: canPrevious ? null : TvColors.textFaint,
           onPressed: () {
             Log.i('SKIP_PREVIOUS (player)');
             unawaited(p.previous());

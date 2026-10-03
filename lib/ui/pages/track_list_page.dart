@@ -8,9 +8,9 @@ import '../../playback/playback_control.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
-import '../widgets/tv_glass.dart';
 
 /// 列表来源。两种来源的**排序依据完全不同**，不能混用：
 /// - [recent]：按**实际播放时间**倒序（本机记录）；
@@ -135,8 +135,8 @@ class _TrackListPageState extends State<TrackListPage> {
   }
 
   String _subtitleOf(int n) => switch (widget.source) {
-        TrackListSource.recent => n == 0 ? '暂无播放记录' : '共 $n 首 · 按最近播放时间',
-        TrackListSource.recentlyAdded => n == 0 ? '暂无新增' : '共 $n 首 · 按入库时间',
+        TrackListSource.recent => n == 0 ? '' : '共 $n 首 · 按最近播放时间',
+        TrackListSource.recentlyAdded => n == 0 ? '' : '共 $n 首 · 按入库时间',
       };
 
   void _appendAll(List<Track> tracks) {
@@ -237,47 +237,15 @@ class _EmptyBlock extends StatelessWidget {
     final String? label = actionLabel;
     final VoidCallback? action = onAction;
 
-    return Center(
-      child: TvGlass(
-        radius: 20,
-        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 52, color: TvColors.textFaint),
-            const SizedBox(height: 18),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 19,
-                height: 1.6,
-                color: TvColors.textFaint,
-              ),
-            ),
-            if (label != null && action != null) ...<Widget>[
-              const SizedBox(height: 22),
-              TvFocus(
-                focusNode: actionNode,
-                debugLabel: 'list.emptyaction',
-                onPressed: action,
-                builder: (BuildContext context, TvFocusStatus s) =>
-                    TvFocusRing(
-                  status: s,
-                  radius: 24,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  baseColor: const Color(0x33FFFFFF),
-                  child: Text(
-                    label,
-                    style: const TextStyle(fontSize: 18, color: TvColors.text),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    // ⚠️ V5：这一块原本是「描边大卡片 + 长技术说明」（实机图2/图3）。
+    //    现在统一走 [EmptyState]：低调水印 + 一句短文案 + 可聚焦的操作按钮。
+    return EmptyState(
+      title: text,
+      icon: icon,
+      actionLabel: label,
+      actionFocusNode: actionNode,
+      actionDebugLabel: 'list.emptyaction',
+      onAction: action,
     );
   }
 }

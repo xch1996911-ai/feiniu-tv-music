@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../core/log.dart';
 import '../../domain/track.dart';
+import '../../playback/playback_control.dart';
 import '../../repositories/music_repository.dart';
 import '../../repositories/playback_repository.dart';
 import 'cover_image.dart';
@@ -31,6 +32,21 @@ import 'tv_glass.dart';
 /// 五个 `FocusNode` **由 AppShell 创建并释放**（不在这里建）：
 /// 关闭全屏播放页后要把焦点**恢复**到底部播放条上，
 /// 而 Shell 是唯一知道「播放页刚被关掉」的地方。
+/// 迷你播放器的固定高度（V5：从 86 降到 72）。
+///
+/// 需求 §四-A.4：「底部迷你播放器适度降低高度」—— 它每减少 14px，
+/// 正文列表就多显示近半行内容，在 720p 上尤其明显。
+///
+/// ⚠️ 这是**固定高度行**，里面的每个 `Text` 都必须显式写 `height`：
+/// M3 主题的 `DefaultTextStyle` 行高是 **1.43**（不是 1.0），
+/// 18 号字不写 height 会占 26px 而不是 22px —— 两行文字加起来就把
+/// 72px 撑爆，表现为 `RenderFlex overflowed`（电视上是黄黑条纹）。
+const double _miniHeight = 72;
+
+/// 行高倍率。⚠️ 「字号 × 行高」必须是整数（Flutter 逐行向上取整）。
+/// 18×1.2=21.6→22、14×1.2=16.8→17，剩余 72-22-2-17=31px 余量充足。
+const double _textHeight = 1.2;
+
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({
     super.key,
@@ -62,18 +78,26 @@ class MiniPlayer extends StatelessWidget {
     final bool playing = context.select<PlaybackRepository, bool>(
       (PlaybackRepository p) => p.isPlaying,
     );
+    // 当前模式：四处 UI 状态同步的一部分（只展示，见 [_ModeChip]）。
+    final PlayMode mode = context.select<PlaybackRepository, PlayMode>(
+      (PlaybackRepository p) => p.mode,
+    );
+    // 是否有「上一首」——V5 起由**播放历史**决定（见 `PlaybackRepository.hasPrevious`）。
+    final bool canPrevious = context.select<PlaybackRepository, bool>(
+      (PlaybackRepository p) => p.hasPrevious,
+    );
     final MusicRepository music = context.read<MusicRepository>();
 
     // 没有播放过任何歌曲 → 不渲染（Shell 也会判一次，这里是二道保险）
     if (song == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       child: TvGlass(
-        radius: 18,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        radius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: SizedBox(
-          height: 86,
+          height: _miniHeight,
           child: Row(
             children: <Widget>[
               // ── 封面：默认焦点，OK 打开完整播放页 ──────────────
@@ -92,13 +116,13 @@ class MiniPlayer extends StatelessWidget {
                   child: CoverImage(
                     music: music,
                     coverId: song.effectiveCoverId,
-                    size: 62,
+                    size: 52,
                     radius: 8,
-                    iconScale: 0.42,
+                    iconScale: 0.45,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               // ── 曲目信息：**不可聚焦**（只展示）────────────────
               Expanded(
                 child: Column(
@@ -110,12 +134,13 @@ class MiniPlayer extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
+                        height: _textHeight,
                         fontWeight: FontWeight.w600,
                         color: TvColors.text,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       song.artistNames.isEmpty
                           ? song.album.name
@@ -123,7 +148,8 @@ class MiniPlayer extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
+                        height: _textHeight,
                         color: TvColors.textFaint,
                       ),
                     ),
@@ -135,7 +161,8 @@ class MiniPlayer extends StatelessWidget {
                 node: prevNode,
                 debugLabel: 'mini.prev',
                 icon: Icons.skip_previous,
-                tooltip: '上一首',
+                tooltip: canPrevious ? '上一首' : '没有上一首',
+                enabled: canPrevious,
                 nextLeft: coverNode,
                 nextRight: playNode,
                 onPressed: () {
@@ -184,9 +211,52 @@ class MiniPlayer extends StatelessWidget {
                   onOpenQueue();
                 },
               ),
+              const SizedBox(width: 10),
+              // ── 当前播放模式（**不可聚焦**，只做四处 UI 的状态同步）──
+              // 需求「播放模式补充要求」§7：当前模式必须在迷你播放栏、
+              // 全屏播放器、队列面板、手机遥控四处保持一致。
+              // 这里只展示，不提供切换入口 —— 底部条的焦点链固定是
+              // 封面 → 上一首 → 播放/暂停 → 下一首 → 队列 五段。
+              _ModeChip(mode: mode),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 迷你播放栏右端的模式徽标（只读）。
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({required this.mode});
+
+  final PlayMode mode;
+
+  IconData get _icon => switch (mode) {
+        PlayMode.sequence => Icons.format_list_numbered,
+        PlayMode.repeatAll => Icons.repeat,
+        PlayMode.shuffle => Icons.shuffle,
+        PlayMode.repeatOne => Icons.repeat_one,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: mode.label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(_icon, size: 16, color: TvColors.textFaint),
+          const SizedBox(width: 5),
+          Text(
+            mode.shortLabel,
+            style: const TextStyle(
+              fontSize: 14,
+              height: _textHeight,
+              color: TvColors.textFaint,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -205,6 +275,7 @@ class _MiniButton extends StatelessWidget {
     required this.nextLeft,
     required this.nextRight,
     this.large = false,
+    this.enabled = true,
   });
 
   final FocusNode node;
@@ -223,9 +294,17 @@ class _MiniButton extends StatelessWidget {
   final FocusNode? nextRight;
   final bool large;
 
+  /// 是否「可用」。
+  ///
+  /// ⚠️ 刻意**不**把它接到 `canRequestFocus` 上：那样会让底部条的五段焦点链
+  /// 在「没有上一首」时少一段，用户按方向键会感觉"跳过了一个"；
+  /// 而需求要的是「显示为不可用」—— 置灰 + 按下无操作即可满足，
+  /// 焦点仍然可停靠（不会出现有环无动作的死角）。
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
-    final double box = large ? 60 : 52;
+    final double box = large ? 54 : 46;
     return Tooltip(
       message: tooltip,
       child: TvFocus(
@@ -244,7 +323,11 @@ class _MiniButton extends StatelessWidget {
             width: box,
             height: box,
             baseColor: const Color(0x33FFFFFF),
-            child: Icon(icon, size: large ? 32 : 25, color: TvColors.text),
+            child: Icon(
+              icon,
+              size: large ? 28 : 22,
+              color: enabled ? TvColors.text : TvColors.textFaint,
+            ),
           ),
         ),
       ),

@@ -7,6 +7,7 @@ import '../../domain/track.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/music_repository.dart';
 import 'cover_image.dart';
+import 'empty_state.dart';
 import 'tv_focus.dart';
 import 'tv_glass.dart';
 
@@ -273,41 +274,47 @@ class TrackGroupHeader extends StatelessWidget {
 
 /// 列表里的空态提示（毛玻璃卡片，与全局视觉一致）。
 class TrackListEmpty extends StatelessWidget {
-  const TrackListEmpty({super.key, required this.text, this.icon});
+  const TrackListEmpty({
+    super.key,
+    required this.text,
+    this.icon,
+    this.hint,
+    this.actionLabel,
+    this.onAction,
+    this.actionNode,
+    this.actionAutofocus = false,
+  });
 
+  /// 主文案（**必须短**，例如「暂无最近播放」）。
   final String text;
 
   /// 可选的图标（收藏空态用「心」、最近空态用「时钟」等）。
   final IconData? icon;
 
+  /// 第二行短提示（例如「从音乐库挑一首开始播放」）。可为空。
+  final String? hint;
+
+  /// 操作按钮文案与回调（可聚焦）。
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final FocusNode? actionNode;
+  final bool actionAutofocus;
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: TvGlass(
-          radius: 20,
-          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (icon != null) ...<Widget>[
-                Icon(icon, size: 46, color: TvColors.textFaint),
-                const SizedBox(height: 16),
-              ],
-              Text(
-                text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 19,
-                  height: 1.6,
-                  color: TvColors.textFaint,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    // ⚠️ V5：这里曾经是一个「描边圆角大框 + 居中技术说明」的卡片。
+    //    实机（图2）效果是：一个几乎占满内容区的大框，把「这里是空的」
+    //    渲染成了「这里出错了」，框线比页面标题还抢眼。
+    //    现在统一收敛到 [EmptyState]（低调水印 + 短文案 + 可选操作）。
+    return EmptyState(
+      title: text,
+      icon: icon ?? Icons.inbox_outlined,
+      hint: hint,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      actionFocusNode: actionNode,
+      actionDebugLabel: 'empty.action',
+      actionAutofocus: actionAutofocus,
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +8,7 @@ import '../../app/theme.dart';
 import '../../core/log.dart';
 import '../../domain/track.dart';
 import '../../playback/playback_control.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/playback_repository.dart';
 import '../widgets/track_row.dart';
@@ -19,7 +22,8 @@ import '../widgets/tv_focus.dart';
 ///
 /// 因此本页必须：
 /// - 顶部常驻显示「已索引 N 首」（或 `已索引 N/总数`）；
-/// - 后台自动把曲库分页拉完（[LibraryRepository.buildFullIndex]），
+/// - 全库整理由 `LibraryRepository.startSync()` 统一负责（登录后即开始，
+///   不依赖用户打开本页），本页只负责保证「打开时曲库已在整理」，
 ///   让搜索最终能覆盖全库 —— 用户在输入时不必等待；
 /// - **绝不能**让用户以为「搜不到 = 曲库里没有」。
 ///
@@ -56,7 +60,11 @@ class _SearchPageState extends State<SearchPage> {
     // 进页面就开始建全库索引（后台进行，用户可立即开始输入）
     WidgetsBinding.instance.addPostFrameCallback((Duration _) {
       if (!mounted) return;
-      context.read<LibraryRepository>().buildFullIndex(); // 不 await：后台慢慢拉
+      // 全库整理由 `LibraryRepository.startSync()` 在登录后统一负责，
+      // 搜索页不再需要自己触发 —— 它只是保证「打开搜索时曲库已在整理」。
+      unawaited(context.read<LibraryRepository>().startSync(
+            context.read<AuthRepository>().catalogueIdentity,
+          ));
     });
   }
 
@@ -119,7 +127,7 @@ class _SearchPageState extends State<SearchPage> {
             inputNode: _inputNode,
             backNode: _backNode,
             scopeLabel: library.indexProgressLabel,
-            indexing: library.isIndexing,
+            indexing: library.syncStatus.syncing,
             onBack: widget.onBack,
             onSubmit: _doSearch,
             onChanged: _doSearch,
@@ -132,14 +140,14 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildBody(LibraryRepository library, String? currentGuid) {
     // 首屏曲库都还没来 → 提示正在建索引
-    if (library.tracks.isEmpty && library.isIndexing) {
+    if (library.tracks.isEmpty && library.syncStatus.syncing) {
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('正在建立曲库索引…',
+            Text('正在整理曲库…',
                 style: TextStyle(fontSize: 18, color: TvColors.textFaint)),
           ],
         ),
@@ -147,14 +155,19 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     if (!_searched) {
-      return const TrackListEmpty(text: '输入歌名 / 歌手 / 专辑开始搜索');
+      return const TrackListEmpty(
+        text: '输入歌名 / 歌手 / 专辑',
+        hint: '按 OK 打开键盘',
+        icon: Icons.search,
+      );
     }
 
     if (_results.isEmpty) {
       return TrackListEmpty(
-        text: '没有匹配「$_keyword」的歌曲\n\n'
-            '当前已索引 ${library.tracks.length} 首，'
-            '${library.isIndexing ? '索引仍在进行，可稍后再试' : '索引已完成'}。',
+        icon: Icons.search_off,
+        text: '没有找到匹配的歌曲',
+        hint: '已搜索 ${library.tracks.length} 首'
+            '${library.syncStatus.complete ? '' : '（曲库仍在整理）'}',
       );
     }
 

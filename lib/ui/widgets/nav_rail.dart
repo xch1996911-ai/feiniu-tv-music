@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import '../../core/branding.dart';
 import '../../core/log.dart';
 import 'tv_confirm_dialog.dart';
 import 'tv_focus.dart';
@@ -45,9 +46,11 @@ class NavRail extends StatelessWidget {
     required this.selected,
     required this.nodes,
     required this.logoutNode,
+    required this.diagnosticsNode,
     required this.onSelected,
     required this.onLogout,
-    this.width = 226,
+    required this.onDiagnostics,
+    this.width = 206,
   });
 
   final List<NavRailItem> items;
@@ -58,8 +61,14 @@ class NavRail extends StatelessWidget {
 
   final FocusNode logoutNode;
 
+  /// 「诊断与帮助」入口的焦点节点（V5）。
+  final FocusNode diagnosticsNode;
+
   final ValueChanged<int> onSelected;
   final VoidCallback onLogout;
+
+  /// 打开诊断与帮助页（技术细节的唯一入口）。
+  final VoidCallback onDiagnostics;
   final double width;
 
   @override
@@ -76,10 +85,15 @@ class NavRail extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const _RailLogo(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                // ⚠️ V5：底部留 10px。焦点环是 `TvFocusRing` 画的
+                //    **3px 描边 + 14px 外发光**，它们绘制在控件自身 bounds
+                //    之外；视图口贴着最后一项时，外发光会被裁掉一半，
+                //    实机（图6）看起来就是「最近这一项的焦点框被下面切了」。
+                //    留出边距后，滚到最底时整个焦点环都在可视区内。
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
                 itemCount: items.length,
                 itemBuilder: (BuildContext context, int i) => _NavTile(
                   item: items[i],
@@ -94,8 +108,25 @@ class NavRail extends StatelessWidget {
             ),
             const Divider(height: 1, color: TvColors.glassLine),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
-              child: _LogoutTile(node: logoutNode, onLogout: onLogout),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  _LogoutTile(
+                    node: logoutNode,
+                    onLogout: onLogout,
+                    // 焦点链：退出登录 ⇄ 诊断（两个都在底部固定区）
+                    nextDown: diagnosticsNode,
+                    nextUp: items.isNotEmpty ? nodes[items.length - 1] : null,
+                  ),
+                  const SizedBox(height: 2),
+                  _DiagnosticsTile(
+                    node: diagnosticsNode,
+                    onOpen: onDiagnostics,
+                    nextUp: logoutNode,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -110,23 +141,23 @@ class _RailLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
       child: Row(
         children: <Widget>[
           Container(
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             decoration: const BoxDecoration(
               color: TvColors.brand,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.music_note, size: 20, color: Colors.white),
+            child: const Icon(Icons.music_note, size: 18, color: Colors.white),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           const Text(
-            '飞牛音乐',
+            kAppName,
             style: TextStyle(
-              fontSize: 21,
+              fontSize: 19,
               fontWeight: FontWeight.w700,
               color: TvColors.text,
             ),
@@ -158,7 +189,7 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 1),
       child: TvFocus(
         focusNode: node,
         debugLabel: 'nav.${item.label}',
@@ -168,25 +199,26 @@ class _NavTile extends StatelessWidget {
         builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
           status: s,
           radius: 10,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           // 选中项用底色区分（与参考图一致），焦点另有描边，两者互不干扰。
           baseColor: selected ? TvColors.panelHi : Colors.transparent,
           child: Row(
             children: <Widget>[
               Icon(
                 item.icon,
-                size: 22,
+                size: 20,
                 // 选中项图标用强调色，一眼看出「现在在哪一页」
                 color: selected ? TvColors.accent : TvColors.textDim,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
+                    height: 1.2,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     color: selected ? TvColors.text : TvColors.textDim,
                   ),
@@ -212,10 +244,17 @@ class _NavTile extends StatelessWidget {
 /// ⚠️ 弹窗用 `showDialog` 承载，所以 BACK 由 Navigator 优先关闭弹窗，
 /// 不会穿透到底下 Shell 的 `PopScope` 去执行「回首页」。
 class _LogoutTile extends StatelessWidget {
-  const _LogoutTile({required this.node, required this.onLogout});
+  const _LogoutTile({
+    required this.node,
+    required this.onLogout,
+    this.nextUp,
+    this.nextDown,
+  });
 
   final FocusNode node;
   final VoidCallback onLogout;
+  final FocusNode? nextUp;
+  final FocusNode? nextDown;
 
   Future<void> _confirm(BuildContext context) async {
     final bool? ok = await showDialog<bool>(
@@ -224,7 +263,7 @@ class _LogoutTile extends StatelessWidget {
       builder: (BuildContext ctx) => const TvConfirmDialog(
         title: '退出登录',
         message: '退出后需要重新输入服务器地址与账号密码。\n\n'
-            '本机的「最近播放」与「收藏」记录**不会**被清除。',
+            '本机的「最近播放」「收藏」「风格确认」与播放偏好**不会**被清除。',
         confirmLabel: '退出登录',
         cancelLabel: '取消',
       ),
@@ -245,20 +284,69 @@ class _LogoutTile extends StatelessWidget {
       focusNode: node,
       debugLabel: 'nav.logout',
       onPressed: () => _confirm(context),
+      nextUp: nextUp,
+      nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
         radius: 10,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: const Row(
           children: <Widget>[
-            Icon(Icons.logout, size: 22, color: TvColors.textFaint),
-            SizedBox(width: 14),
+            Icon(Icons.logout, size: 20, color: TvColors.textFaint),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 '退出登录',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 17, color: TvColors.textFaint),
+                style: TextStyle(fontSize: 16, color: TvColors.textFaint),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 「诊断与帮助」入口（V5）。
+///
+/// 需求 §一.4 / §二.3 要求「原始异常、堆栈、版本、请求地址、初始化阶段等
+/// 写入日志或**专门诊断入口**，正常用户流程只显示简短且可操作的提示」。
+/// 这就是那个「专门入口」：侧栏最底部、与「退出登录」并列，
+/// 正常使用时完全不起眼，需要取证时一按就到。
+class _DiagnosticsTile extends StatelessWidget {
+  const _DiagnosticsTile({
+    required this.node,
+    required this.onOpen,
+    this.nextUp,
+  });
+
+  final FocusNode node;
+  final VoidCallback onOpen;
+  final FocusNode? nextUp;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocus(
+      focusNode: node,
+      debugLabel: 'nav.diagnostics',
+      onPressed: onOpen,
+      nextUp: nextUp,
+      builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
+        status: s,
+        radius: 10,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: const Row(
+          children: <Widget>[
+            Icon(Icons.help_outline, size: 19, color: TvColors.textFaint),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '诊断与帮助',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 15, color: TvColors.textFaint),
               ),
             ),
           ],

@@ -19,6 +19,23 @@ import 'playback_port.dart';
 /// 队列 / 上一首下一首 / 自动切歌全部在 `PlaybackRepository`。
 /// 两者之间只通过 [PlaybackCommandListener] 回调通信（见 [commandListener]），
 /// 因此页面按钮与 MediaSession 媒体键最终走**同一套**队列逻辑，不会出现两套状态。
+///
+/// ## 循环与随机**由应用层独占**（V5 明确决定）
+///
+/// 需求要求「统一决定循环/随机由底层还是应用层负责，不能两层都生效」。
+/// 本项目的决定是：**全部由 `PlaybackRepository` 负责**。
+///
+/// 因此这里**刻意不设置**：
+/// - `AudioPlayer.setLoopMode(...)` —— 保持默认 `LoopMode.off`；
+/// - `BaseAudioHandler.setRepeatMode(...)` / `setShuffleMode(...)`
+///   —— 一律不响应（MediaSession 下发这两种模式时不做任何事）。
+///
+/// 理由是队列状态只有 `PlaybackRepository` 持有：若底层自己 loop，
+/// 「单曲循环」会变成底层重复而应用层不知道（历史/索引全乱）；
+/// 若底层自己 shuffle，就会与应用层的随机遍历计划**各洗一次牌**，
+/// 表现为「随机的顺序和界面对不上」。
+/// 底层只做一件事：把「这首播完了」以 [PlaybackCommandListener.onTrackCompleted]
+/// 的形式上报一次（且只上报 `非 completed → completed` 这一次跃迁）。
 class PlaybackHandler extends BaseAudioHandler with SeekHandler implements PlaybackEngine {
   final AudioPlayer _player = AudioPlayer();
 
@@ -99,6 +116,30 @@ class PlaybackHandler extends BaseAudioHandler with SeekHandler implements Playb
       return;
     }
     await l.onSkipToPrevious();
+  }
+
+  /// MediaSession「重复模式」→ **刻意忽略**（见类文档「循环与随机由应用层独占」）。
+  ///
+  /// 若这里转成 `_player.setLoopMode(...)`，就会与应用层的自动下一首**同时生效**：
+  /// 单曲循环下底层自己重播一次、应用层又按模式推进一次，结果是一首歌播两遍
+  /// 或者干脆跳下一首 —— 这正是需求点名要避免的「两边都生效」。
+  ///
+  /// 播放模式的唯一入口是 `PlaybackRepository.setMode()`（UI 按钮 / 遥控器 /
+  /// 手机遥控都走它）。
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    Log.i('MediaSession setRepeatMode(${repeatMode.name}) 已忽略：'
+        '循环统一由 PlaybackRepository 决定');
+  }
+
+  /// MediaSession「随机模式」→ **刻意忽略**（同上）。
+  ///
+  /// 应用层的随机是「一轮不重复的遍历计划」，底层再来一次 shuffle
+  /// 会让界面上显示的随机顺序与实际播放顺序对不上。
+  @override
+  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
+    Log.i('MediaSession setShuffleMode(${shuffleMode.name}) 已忽略：'
+        '随机统一由 PlaybackRepository 决定');
   }
 
   void _onDuration(Duration? duration) {

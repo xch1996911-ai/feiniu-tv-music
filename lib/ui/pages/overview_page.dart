@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
 import '../../core/log.dart';
+import '../../domain/genre.dart';
+import '../../domain/genre_inferencer.dart';
 import '../../domain/track.dart';
 import '../../playback/playback_control.dart';
 import '../../repositories/library_repository.dart';
@@ -141,7 +143,9 @@ class _OverviewPageState extends State<OverviewPage> {
   /// - 风格行：可用 78-4-4-14-14-3-3 = 36；最高子项（箭头图标 26）≤ 36 ✅
   static const double _artistRowExtent = 92;
   static const double _genreRowExtent = 78;
-  static const double _albumSpacing = 18;
+  // 间距从 18 收到 12：960 逻辑宽下 (714-3×12)/4 ≈ 169px 瓦片宽，
+  // 刚好稳稳放下 4 列（18 会退化成 3 列）。
+  static const double _albumSpacing = 12;
 
   final ScrollController _scroll = ScrollController();
 
@@ -183,6 +187,9 @@ class _OverviewPageState extends State<OverviewPage> {
 
   List<LibraryOverview> _overviews = const <LibraryOverview>[];
   List<Track>? _source;
+
+  /// 上次用于计算 [_overviews] 的风格归纳结果（见 [_compute] 的说明）。
+  GenreInferenceResult? _inferenceSource;
 
   @override
   void didUpdateWidget(covariant OverviewPage oldWidget) {
@@ -233,13 +240,28 @@ class _OverviewPageState extends State<OverviewPage> {
 
   /// 概览列表（按曲库实例做缓存 —— `LibraryRepository` 每合并一页都会换新
   /// List 实例，用 `identical` 判断「变了没」比比较几千条内容便宜得多）。
-  List<LibraryOverview> _compute(List<Track> catalogue) {
-    if (identical(_source, catalogue)) return _overviews;
+  ///
+  /// ⚠️ V5：风格概览的缓存键**多了一个** [GenreInferenceResult] ——
+  /// 归纳结果会在「用户手动确认风格」或「规则版本变化」时换成新对象，
+  /// 而曲目列表可能完全没变（`identical` 判定为「没变」），
+  /// 只按列表缓存会导致用户改完风格后页面纹丝不动。
+  List<LibraryOverview> _compute(
+    LibraryRepository library,
+    LocalLibraryRepository local,
+  ) {
+    final List<Track> catalogue = library.tracks;
+    final GenreInferenceResult? inference = library.genreInference;
+    if (identical(_source, catalogue) &&
+        identical(_inferenceSource, inference)) {
+      return _overviews;
+    }
     _source = catalogue;
+    _inferenceSource = inference;
     _overviews = switch (widget.kind) {
       OverviewKind.artist => LocalLibraryRepository.artistOverviews(catalogue),
       OverviewKind.album => LocalLibraryRepository.albumOverviews(catalogue),
-      OverviewKind.genre => LocalLibraryRepository.genreOverviews(catalogue),
+      OverviewKind.genre =>
+        local.genreOverviewsOf(catalogue, inference: inference),
     };
     return _overviews;
   }
@@ -258,6 +280,7 @@ class _OverviewPageState extends State<OverviewPage> {
   @override
   Widget build(BuildContext context) {
     final LibraryRepository library = context.watch<LibraryRepository>();
+    final LocalLibraryRepository local = context.watch<LocalLibraryRepository>();
     final String? currentGuid = context.select<PlaybackRepository, String?>(
       (PlaybackRepository p) => p.current?.guid,
     );
@@ -267,7 +290,7 @@ class _OverviewPageState extends State<OverviewPage> {
       return _buildDetail(detail, currentGuid);
     }
 
-    final List<LibraryOverview> items = _compute(library.tracks);
+    final List<LibraryOverview> items = _compute(library, local);
 
     if (items.isEmpty) {
       if (library.phase == LibraryPhase.loading && library.tracks.isEmpty) {
@@ -300,9 +323,7 @@ class _OverviewPageState extends State<OverviewPage> {
       children: <Widget>[
         _SectionHeader(
           title: widget.title,
-          subtitle: isArtist
-              ? '共 ${items.length} 位歌手'
-              : '共 ${items.length} 种风格',
+          subtitle: _listSubtitle(items, isArtist: isArtist),
         ),
         Expanded(
           child: ListView.builder(
@@ -334,6 +355,20 @@ class _OverviewPageState extends State<OverviewPage> {
     );
   }
 
+  /// 行列表副标题。
+  ///
+  /// ⚠️ 风格页必须如实提示「部分歌曲待分类」（需求 §三.4）：
+  /// 「待分类」是一个**真实的分类条目**而不是失败态，
+  /// 在副标题里说清楚，用户才不会以为风格功能坏了。
+  String _listSubtitle(List<LibraryOverview> items, {required bool isArtist}) {
+    if (isArtist) return '共 ${items.length} 位歌手';
+    final bool hasPending =
+        items.any((LibraryOverview o) => o.title == GenreRules.unclassified);
+    return hasPending
+        ? '共 ${items.length} 种风格 · 部分歌曲待分类'
+        : '共 ${items.length} 种风格';
+  }
+
   // ── 概览：专辑网格 ────────────────────────────────────────
 
   Widget _buildAlbumGrid(List<LibraryOverview> items) {
@@ -341,10 +376,21 @@ class _OverviewPageState extends State<OverviewPage> {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
         // 列数按可用宽度自适应。
-        const double tileMin = 250;
+        //
+        // ⚠️ V5 标定依据（实机图4）：Android TV 盒子在 1080p 面板上通常上报
+        //    **density 2.0**，也就是 Flutter 侧只有 **960×540 逻辑像素**。
+        //    用 250 当最小瓦片宽时：usable ≈ 960-206(侧栏)-40 = 714，
+        //    `floor(714/266) = 2` —— 正好就是用户看到的「一屏只有两张巨大的卡」。
+        //    所以问题不是「宽屏没铺满」，而是**设计时按 1920 逻辑宽算的阈值，
+        //    在电视的实际逻辑视口下退化成 2 列**。
+        //    取 150 后：960 宽 → 4 列；1280 宽 → 6 列；1920 宽 → 上限 6 列。
+        const double tileMin = 150;
+        const int maxColumns = 6;
+        const int minColumns = 3;
         final double usable = c.maxWidth - 40;
-        final int columns =
-            (usable / (tileMin + _albumSpacing)).floor().clamp(2, 8);
+        final int columns = (usable / (tileMin + _albumSpacing))
+            .floor()
+            .clamp(minColumns, maxColumns);
 
         // ⚠️ 行高**由瓦片宽度反推**，不能写死：
         //    封面是「瓦片内宽的正方形」，宽屏上封面更大，
@@ -661,6 +707,10 @@ class _AlbumTile extends StatelessWidget {
 }
 
 /// 风格概览行。
+/// 风格行图标：待分类用「问号」，其余用默认图标。
+IconData _genreIconFor(LibraryOverview o) =>
+    o.title == GenreRules.unclassified ? Icons.help_outline : Icons.grid_view;
+
 class _GenreRow extends StatelessWidget {
   const _GenreRow({
     required this.overview,
@@ -694,7 +744,11 @@ class _GenreRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: <Widget>[
-              const Icon(Icons.grid_view, size: 24, color: TvColors.accent),
+              Icon(
+                _genreIconFor(overview),
+                size: 24,
+                color: overview.inferred ? TvColors.warn : TvColors.accent,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
@@ -709,6 +763,28 @@ class _GenreRow extends StatelessWidget {
                   ),
                 ),
               ),
+              // 需求 §三.4：「风格概览可显示『推断』标识，
+              // 避免把推断当作原始标签」。只有**整类都由推断得出**时才标 ——
+              // 只要有一首是服务端标签或用户确认，就不该整类被标成推断。
+              if (overview.inferred) ...<Widget>[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: TvColors.warn.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    '推断',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: _textHeight,
+                      color: TvColors.warn,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
               Text(
                 '${overview.trackCount} 首',
                 style: const TextStyle(
