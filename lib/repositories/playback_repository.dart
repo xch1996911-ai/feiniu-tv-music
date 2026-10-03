@@ -49,6 +49,14 @@ class PlaybackRepository extends ChangeNotifier implements PlaybackCommandListen
   /// 队列里是否还有上一首。
   bool get hasPrevious => _index > 0;
 
+  /// 当前排队的加载全部结束时完成。
+  ///
+  /// 仅供测试等待「串行链排空」用。`next()` 是 `async` 但**不同步等待加载完成**
+  /// （它只把任务排进 [_loadChain] 就返回），所以测试里 `await next()` 之后
+  /// 引擎侧可能**什么都没发生**，必须额外 await 这个 Future 才能断言结果。
+  @visibleForTesting
+  Future<void> get pendingLoads => _loadChain;
+
   PlaybackRepository({
     required MusicRepository music,
     required PlaybackEngine handler,

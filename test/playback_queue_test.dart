@@ -25,10 +25,14 @@ void main() {
 
   /// 等待串行加载链与微任务全部结束。
   ///
-  /// 串行链是纯 Future 链（零延时的 `Future.delayed`），若干次让出事件循环
-  /// 即可让链上的任务与 `loadAndPlay` 真正跑完。
+  /// ⚠️ 必须 `await repo.pendingLoads`：`next()` 只把加载任务**排进链**就返回，
+  /// 自身不等加载完成，因此 `await next()` 之后引擎侧可能什么都还没发生。
+  /// 只用零延时 `Future.delayed` 是不够的 —— 慢加载（几十毫秒）期间
+  /// 零延时会全部立刻返回，导致断言跑在加载完成之前（真实踩过：
+  /// 断言 `ids.last == 'guid_c'` 实际拿到 `'guid_a'`）。
   Future<void> settle() async {
-    for (var i = 0; i < 8; i++) {
+    await repo.pendingLoads;
+    for (var i = 0; i < 4; i++) {
       await Future<void>.delayed(Duration.zero);
     }
   }
@@ -275,21 +279,22 @@ void main() {
       ];
       await givenQueue(tracks);
 
-      // b 的加载很慢（60ms）。在它还在飞的时候跳到 c。
+      // b 的加载很慢（60ms）。在它还在飞的时候请求 c。
       // 串行链保证 c 一定排在 b 之后下发 —— 这正是「旧请求不能覆盖新请求」的核心。
       engine.loadDelays['guid_b'] = const Duration(milliseconds: 60);
 
-      final pendingNext = repo.next(); // → b（慢）
-      await settle();
-      final afterNext = repo.next(); // → c（快）
+      final pendingNext = repo.next(); // → b（慢），已排进链
+      // 不等 b 完成，立刻请求 c（复现「用户手快」）。
+      final afterNext = repo.next(); // → c（快），排在 b 之后
       await Future.wait(<Future<void>>[pendingNext, afterNext]);
+      // 关键：等整条串行链排空，b 与 c 都真正下发过。
       await settle();
 
       final ids = engine.loads.map((l) => l.item.id).toList();
       expect(
         ids.last,
         'guid_c',
-        reason: '最后一次下发的必须是最新曲目',
+        reason: '最后一次下发的必须是最新曲目，实际下发顺序: $ids',
       );
       expect(
         ids.indexOf('guid_b') < ids.indexOf('guid_c'),
