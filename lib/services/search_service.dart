@@ -108,6 +108,7 @@ class SearchService extends ChangeNotifier {
   bool _pendingComplete = false;
   bool _pendingForce = false;
   Future<void>? _runner;
+  Future<void>? _persisting;
 
   // ── 只读状态 ──────────────────────────────────────────────
 
@@ -132,8 +133,17 @@ class SearchService extends ChangeNotifier {
   /// 本次启动是否用上了磁盘缓存。
   bool get restoredFromCache => _cacheHit;
 
-  /// 等所有排队的构建结束（测试与诊断用）。
-  Future<void> get settled => _runner ?? Future<void>.value();
+  /// 等所有排队的构建**与落盘**结束（测试与诊断用）。
+  ///
+  /// ⚠️ 必须把落盘也等进来：落盘是 `unawaited` 的（不能拖慢搜索），
+  /// 如果 `settled` 只等构建，紧接着 `dispose()` / 新建实例读缓存时
+  /// 文件可能还没写完 —— 那是一种极难复现的时序性测试失败。
+  Future<void> get settled async {
+    final Future<void>? running = _runner;
+    if (running != null) await running;
+    final Future<void>? writing = _persisting;
+    if (writing != null) await writing;
+  }
 
   int get querySeq => _querySeq;
 
@@ -331,10 +341,11 @@ class SearchService extends ChangeNotifier {
       trackCount: b.tracks.length,
       docs: b.next,
     );
-    // 落盘失败只影响下次启动要重算，不该让本次搜索不可用。
-    unawaited(_store.save(snap).catchError((Object e) {
+    // 落盘失败只影响下次启动要重算，不该让本次搜索不可用 ——
+    // 因此不 await；但把 Future 记下来，供 `settled` 等待。
+    _persisting = _store.save(snap).catchError((Object e) {
       Log.w('SEARCH_INDEX 缓存落盘失败（内存索引仍可用）：$e');
-    }));
+    });
     _cacheHit = true;
   }
 
@@ -399,7 +410,7 @@ class SearchService extends ChangeNotifier {
   /// 清空（退出登录 / 切换账户时由装配层调用）。
   void reset() {
     _index = SearchIndex.emptyIndex;
-    _cache = <CachedSearchDoc>{};
+    _cache = <String, CachedSearchDoc>{};
     _cacheLoaded = false;
     _cacheHit = false;
     _identity = '';

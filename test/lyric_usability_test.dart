@@ -26,9 +26,9 @@ void main() {
         guid: 'g1',
         title: '勇气',
         durationMs: 240000,
-        album: const AlbumRef(guid: 'al1', name: '专辑'),
-        artists: const <ArtistRef>[ArtistRef(guid: 'ar1', name: '歌手')],
-        audioSpec: const AudioSpec(format: 'flac'),
+        album: AlbumRef(guid: 'al1', name: '专辑'),
+        artists: <ArtistRef>[ArtistRef(guid: 'ar1', name: '歌手')],
+        audioSpec: AudioSpec(format: 'flac'),
       );
 
   LyricDoc docOf(String raw) {
