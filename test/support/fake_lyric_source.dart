@@ -25,8 +25,8 @@ class FakeLyricSource extends MusicRepository {
   Future<Result<LyricDoc>> getLyrics(String trackGuid) async {
     requestedGuids.add(trackGuid);
     if (fail) {
-      return Result<LyricDoc>.err(
-        const AppError('歌词接口失败', kind: ErrorKind.network),
+      return const Result<LyricDoc>.err(
+        AppError('歌词接口失败', kind: ErrorKind.network),
       );
     }
     return Result<LyricDoc>.ok(_doc);

@@ -81,8 +81,8 @@ class PlaybackRepository extends ChangeNotifier
   final Random _random = Random();
 
   /// 统一状态流（供 [PlaybackControl.states]）。用同步广播以免漏掉首个订阅者。
-  final StreamController<PlaybackState> _states =
-      StreamController<PlaybackState>.broadcast(sync: true);
+  final StreamController<PlaybackSnapshot> _states =
+      StreamController<PlaybackSnapshot>.broadcast(sync: true);
 
   PlaybackRepository({
     required MusicRepository music,
@@ -252,7 +252,7 @@ class PlaybackRepository extends ChangeNotifier
   /// 组装当前状态快照。
   ///
   /// 每次都构造**新对象**（不可变），保证订阅者拿到一致的一帧。
-  PlaybackState buildState() => PlaybackState(
+  PlaybackSnapshot buildState() => PlaybackSnapshot(
         source: _source,
         sourceLabel: sourceLabelOf(_source),
         queue: _queue,
@@ -274,10 +274,10 @@ class PlaybackRepository extends ChangeNotifier
   String? _lastError;
 
   @override
-  Stream<PlaybackState> get states => _states.stream;
+  Stream<PlaybackSnapshot> get states => _states.stream;
 
   @override
-  PlaybackState get state => buildState();
+  PlaybackSnapshot get state => buildState();
 
   @override
   PlayMode get mode => _mode;
@@ -521,16 +521,19 @@ class PlaybackRepository extends ChangeNotifier
     await next();
   }
 
+  @override
   Future<void> play() async {
     await _handler.play();
     _safeNotify();
   }
 
+  @override
   Future<void> pause() async {
     await _handler.pause();
     _safeNotify();
   }
 
+  @override
   Future<void> togglePlay() async {
     if (_handler.isPlaying) {
       await _handler.pause();

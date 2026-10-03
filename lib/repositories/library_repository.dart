@@ -242,7 +242,7 @@ class LibraryRepository extends ChangeNotifier {
         if (!ok) break; // 已在加载 / 无更多 / 出错 —— 都停
       }
       Log.i('LIBRARY_INDEX 完成，共 ${_tracks.length} '
-          '($page 页) hasMore=$_hasMore');
+          '($_page 页) hasMore=$_hasMore');
     } finally {
       _indexing = false;
       _safeNotify();

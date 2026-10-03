@@ -120,7 +120,7 @@ void main() {
       await settle();
 
       final seen = <int>[];
-      final sub = playback.states.listen((s) => seen.add(s?.currentIndex ?? -1));
+      final sub = playback.states.listen((PlaybackSnapshot? s) => seen.add(s?.currentIndex ?? -1));
       addTearDown(sub.cancel);
 
       await playback.next();
@@ -216,7 +216,7 @@ void main() {
     });
 
     test('L seek 后高亮行同步跳转', () async {
-      lyrics.applyForTest('g1', docOf(<LyricLine>[
+      lyrics.applyForTest('g1', docOf(const <LyricLine>[
         LyricLine(text: 'A', time: Duration.zero),
         LyricLine(text: 'B', time: const Duration(seconds: 30)),
         LyricLine(text: 'C', time: const Duration(minutes: 1)),
@@ -229,8 +229,8 @@ void main() {
     });
 
     test('N 换歌时旧歌词被清空（不残留上一首）', () async {
-      lyrics.applyForTest('g1', docOf(<LyricLine>[
-        const LyricLine(text: 'A', time: Duration.zero),
+      lyrics.applyForTest('g1', docOf(const <LyricLine>[
+        LyricLine(text: 'A', time: Duration.zero),
       ]));
       expect(lyrics.doc.isNotEmpty, isTrue);
 
@@ -245,7 +245,7 @@ void main() {
     });
 
     test('M 同一行内高亮不变（不会每 500ms 抖一次）', () async {
-      lyrics.applyForTest('g1', docOf(<LyricLine>[
+      lyrics.applyForTest('g1', docOf(const <LyricLine>[
         LyricLine(text: '第一行', time: Duration.zero),
         LyricLine(text: '第二行', time: const Duration(seconds: 30)),
       ]));

@@ -214,9 +214,9 @@ class _ProgressSection extends StatelessWidget {
     // ⚠️ 电视端关键：Slider 默认会用左右键改变值，导致「进度条抢死焦点」，
     // 方向键在进度条上完全失效。这里显式覆盖为「±5 秒」。
     return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): const _SeekIntent(-1),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): const _SeekIntent(1),
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.arrowLeft): _SeekIntent(-1),
+        SingleActivator(LogicalKeyboardKey.arrowRight): _SeekIntent(1),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{

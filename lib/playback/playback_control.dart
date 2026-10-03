@@ -111,7 +111,7 @@ extension QueueSourceX on QueueSource {
 /// 只要 UI 与未来的手机控制都走同一个接口，
 /// V3 只需再加一个 HTTP / WebSocket 适配器（把 JSON 映射到这些方法），
 /// **UI 与业务层一行都不用改**。
-class PlaybackState {
+class PlaybackSnapshot {
   final QueueSource source;
 
   /// 队列来源在 UI 上显示的名字（如「搜索结果」）。
@@ -134,7 +134,7 @@ class PlaybackState {
   /// 非 null 表示当前处于错误态（如整队不可播放、网络持续失败）。
   final String? error;
 
-  const PlaybackState({
+  const PlaybackSnapshot({
     required this.source,
     required this.sourceLabel,
     required this.queue,
@@ -147,7 +147,7 @@ class PlaybackState {
     this.error,
   });
 
-  static const PlaybackState empty = PlaybackState(
+  static const PlaybackSnapshot empty = PlaybackSnapshot(
     source: QueueSource.library,
     sourceLabel: '全部歌曲',
     queue: <Track>[],
@@ -171,7 +171,7 @@ class PlaybackState {
 
   @override
   String toString() =>
-      'PlaybackState(${sourceLabel} ${currentIndex + 1}/$length '
+      'PlaybackSnapshot($sourceLabel ${currentIndex + 1}/$length '
       'playing=$isPlaying mode=${mode.storageKey})';
 }
 
@@ -185,10 +185,10 @@ class PlaybackState {
 /// - 方法全部是「命令式」的，不返回 UI 需要自己解释的复杂结构。
 abstract class PlaybackControl {
   /// 状态流。每次播放状态变化都会发出**新的完整快照**。
-  Stream<PlaybackState> get states;
+  Stream<PlaybackSnapshot> get states;
 
   /// 当前状态快照（同步读取，避免 UI 首次构建时空窗）。
-  PlaybackState get state;
+  PlaybackSnapshot get state;
 
   // ── 传输控制 ──────────────────────────────────────────────
   Future<void> play();
