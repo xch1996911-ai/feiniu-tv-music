@@ -471,24 +471,29 @@ void main() {
       expect(repo.current, isNotNull);
     });
 
-    test('失败后切到下一首能恢复正常播放', () async {
+    test('网络恢复后按播放能重新加载并继续听（V2 §15）', () async {
       final tracks = <Track>[makeTrack('guid_a'), makeTrack('guid_b')];
       engine.failLoad = true;
       repo.setQueue(tracks, startIndex: 0);
       await settle();
 
-      // a 加载失败 → V2 自动跳到 b（此时 failLoad 仍为 true，b 也失败 → 停止）
+      // 两首都加载失败 → 自动跳过到达上限后停止，队列停在最后一首。
+      expect(repo.current?.guid, 'guid_b');
+      expect(engine.playingId, isNull, reason: '失败时不应有音源在播');
+
+      // 网络恢复：用户按「播放」。
+      // ⚠️ 此时引擎里**没有音源**，若 play() 只是转发给引擎就会毫无反应，
+      // 用户会以为按钮坏了 —— 这正是本用例要钉住的行为。
       engine.failLoad = false;
-      // 手动再点一次下一首，确认引擎恢复正常
-      await repo.next();
+      await repo.play();
       await settle();
 
       expect(
         engine.playingId,
-        isNotNull,
-        reason: '恢复网络后应能继续播放（不崩溃）',
+        'guid_b',
+        reason: '网络恢复后按播放应重新加载当前曲目',
       );
-      expect(repo.currentIndex, inInclusiveRange(0, 1));
+      expect(repo.state.error, isNull, reason: '恢复后错误态应清除');
     });
 
     test('togglePlay 走引擎的 play/pause', () async {

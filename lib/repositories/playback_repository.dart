@@ -74,6 +74,14 @@ class PlaybackRepository extends ChangeNotifier
   /// 连续播放失败的曲目数（用于错误自动跳过的死循环保护）。
   int _consecutiveFailures = 0;
 
+  /// 当前曲目**上次加载是否失败**。
+  ///
+  /// 用途：网络恢复后用户按「播放」时，引擎里**没有音源**，
+  /// 直接 `_handler.play()` 什么也不会发生 —— 用户会卡住。
+  /// 有了这个标记就能在 [play] 里重新下发一次加载（V2 §15
+  /// 「网络恢复后用户重新播放应能够继续使用」）。
+  bool _loadFailed = false;
+
   /// 单次自动跳过的最大尝试次数。
   static const int _maxAutoSkip = 5;
 
@@ -495,6 +503,7 @@ class PlaybackRepository extends ChangeNotifier
         return;
       }
       Log.e('PLAY_ERROR gen=$gen guid=${item.id}', e, st);
+      _loadFailed = true;
       _lastError = '播放失败：正在跳过这首';
       _safeNotify();
       // 加载失败也自动跳过，但有次数上限（见 [_handleLoadFailure]）。
@@ -508,6 +517,7 @@ class PlaybackRepository extends ChangeNotifier
     }
     Log.i('PLAY_START gen=$gen guid=${item.id}');
     _consecutiveFailures = 0;
+    _loadFailed = false;
     _lastError = null;
     _safeNotify();
   }
@@ -534,6 +544,15 @@ class PlaybackRepository extends ChangeNotifier
 
   @override
   Future<void> play() async {
+    // 上次加载失败过（网络/文件问题）→ 引擎里没有音源，
+    // 直接 play() 不会有任何声音，用户会以为按钮坏了。
+    // 这里重新下发一次加载，让「网络恢复后按播放」真的能继续听。
+    if (_loadFailed && current != null) {
+      final t = current!;
+      Log.i('PLAY_RETRY 重新加载当前曲目 guid=${t.guid}');
+      _playCurrent();
+      return;
+    }
     await _handler.play();
     _safeNotify();
   }
