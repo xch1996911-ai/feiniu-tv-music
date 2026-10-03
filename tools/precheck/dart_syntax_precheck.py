@@ -8,12 +8,24 @@
   3. 字符串插值 `$` 后必须跟标识符或 `{`（`$/` 这类会直接
      `Expected an identifier` 编译失败 —— 2026-10-02 CI 真实踩过）
   4. 同类引号嵌套（如 '...${x ?? 'a'}'）
-  5. ⚠️ 构造函数体里以**裸名**引用了「同名的形参」——
+  5. ⚠️ 枚举值列表末尾漏 `;`（增强枚举）—— analyzer 会报一堆**与分号
+     毫不相关**的错（`constant_identifier_names: The constant name 'String'
+     isn't a lowerCamelCase identifier` + 若干 `expected_token`），
+     2026-10-03 CI 真实白烧一轮。
+  6. ⚠️ 构造函数体里以**裸名**引用了「同名的形参」——
      形参在构造函数体内可见并**遮蔽同名字段**，于是「初始化列表里的归一化」
-     看起来生效、实际构造体内拿到的还是原始值。analyzer 与以上 4 项都查不出来，
+     看起来生效、实际构造体内拿到的还是原始值。analyzer 与以上 5 项都查不出来，
      只能靠测试抓（2026-10-03 CI 真实白烧一轮）。本项是 WARN 级提醒，不改变退出码。
+  7. ⚠️ 同一个 `Column` 里堆了两行 `Text`，却没有显式 `TextStyle.height`。
+     M3 主题给 `DefaultTextStyle` 的行高是 20/14 ≈ 1.43（不是直觉的 1.0），
+     在 `ListView.itemExtent` / 网格 `mainAxisExtent` 这类**固定行高**里
+     必然 `RenderFlex overflowed`（电视上就是黄黑条纹）。
+     另外「字号 × height 必须落在整数上」—— Flutter 逐行把行盒高度**向上取整**，
+     `19 × 1.2 = 22.8 → 23`，算式上「刚好等于行高」也会被判溢出 `0.400 pixels`。
+     本项是 WARN 级提醒，不改变退出码。
 
-这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合、`$/` 插值、形参遮蔽）。
+这些是本项目历史上真实踩过的坑（单引号嵌套、字符串未闭合、`$/` 插值、
+形参遮蔽、枚举漏分号、固定行高溢出）。
 不替代 dart analyze，只用于在推送 CI 前拦掉最蠢的错误。
 """
 from __future__ import annotations
@@ -40,7 +52,13 @@ def _is_raw_prefix(text: str, quote_index: int) -> bool:
 
 
 def strip_code(text: str) -> tuple[str, list[str]]:
-    """把字符串内容和注释替换成占位符，只留下结构字符。返回 (结构文本, 错误列表)。"""
+    """把字符串内容和注释替换成占位符，只留下结构字符。返回 (结构文本, 错误列表)。
+
+    ⚠️ **行数必须与原文一致**：每个占位符后面会把该 token 内部吃掉的换行补回来
+    （块注释、三引号字符串都可能跨行）。否则结构文本里的行列号全部错位，
+    [check_fixed_height_text] 报出来的行号就是假的。
+    [main] 里有 `structure.count('\\n') == text.count('\\n')` 的自检。
+    """
     errors: list[str] = []
     out: list[str] = []
     i = 0
@@ -53,6 +71,8 @@ def strip_code(text: str) -> tuple[str, list[str]]:
             out.append(c)
             i += 1
             continue
+
+        line0 = line  # 本 token 起始行：token 内吃掉的换行要在收尾时补回
 
         # 行注释
         if c == '/' and i + 1 < n and text[i + 1] == '/':
@@ -78,7 +98,7 @@ def strip_code(text: str) -> tuple[str, list[str]]:
                 i += 1
             if depth != 0:
                 errors.append(f'L{line}: 块注释未闭合')
-            out.append(' ')
+            out.append(' ' + '\n' * (line - line0))
             continue
 
         # 字符串
@@ -146,7 +166,7 @@ def strip_code(text: str) -> tuple[str, list[str]]:
                 i += 1
             if not closed:
                 errors.append(f'L{start_line}: 字符串字面量未闭合（引号 {quote}）')
-            out.append('""')
+            out.append('""' + '\n' * (line - line0))
             continue
 
         out.append(c)
@@ -364,6 +384,98 @@ def check_enum_semicolon(structure: str, path: Path) -> list[str]:
     return errors
 
 
+def _direct_text_children(inner: str) -> list[str]:
+    """取出 `children: <Widget>[ ... ]` 里**直接就是 `Text(...)`** 的子项文本。
+
+    只看直接子项：嵌套 widget（如 `_SectionHeader(...)`）里的 Text 不算 ——
+    它们的行高不由这个 Column 决定，算进来就是误报。
+    """
+    idx = inner.find('children:')
+    if idx < 0:
+        return []
+    lb = inner.find('[', idx)
+    if lb < 0:
+        return []
+    rb = _match_pair(inner, lb, '[', ']')
+    if rb >= len(inner):
+        return []
+
+    out: list[str] = []
+    for raw in _split_top_level(inner[lb + 1:rb]):
+        stripped = re.sub(r'^const\s+', '', raw.strip())
+        if stripped.startswith('Text('):
+            out.append(stripped)
+    return out
+
+
+def check_fixed_height_text(structure: str, path: Path) -> list[str]:
+    """`Column` 里堆了两行 `Text` 却没写 `style.height` —— 固定行高里必溢出。
+
+    真实案例（2026-10-03，两条用例连续烧掉两轮 CI）：
+
+      a. `queue_sheet.dart` 的队列行（`ListView.itemExtent = 74`）：
+         18 号字继承 M3 的 1.43 行高 → 占 26px，14 号字占 20px，
+         加 2px 间距共 48px，而行内容区只有 46px
+         → `RenderFlex overflowed by 2.0 pixels`。
+
+      b. `overview_page.dart` 的专辑瓦片：写对了 `height: 1.2`，但
+         19 × 1.2 = 22.8、14 × 1.2 = 16.8 → Flutter 逐行**向上取整**成 23 / 17，
+         于是「算式上刚好等于行高」的布局被判
+         `RenderFlex overflowed by 0.400 pixels`（0.2 + 0.2）。
+
+    因此本项同时提醒两件事：① 必须显式写 `height`（M3 默认 1.43，不是 1.0）；
+    ② 字号 × height 应落在整数上。
+
+    启发式规则（**两道门都要过**才报，否则这种「两行文字堆叠」的写法满仓库都是）：
+      1. 文件里出现了固定行高的写法 —— `ListView.itemExtent:` 或
+         网格 / `SliverGridDelegateWithFixedCrossAxisCount` 的 `mainAxisExtent:`；
+      2. 某个 `Column` 的**直接**子项里 ≥2 个是 `Text(...)`，
+         且其中有 `TextStyle` 写了 `fontSize` 却没有 `height`。
+
+    仍无法判断那个 Column 是否真的落在固定行高里，所以只报 WARN。
+    传入的是 [strip_code] 处理过的结构文本：字符串已变成 `""`，
+    数字（`fontSize: 21` / `height: 1.2`）仍然可见，也不会被引号干扰配对。
+    """
+    # 门 1：整个文件都没有固定行高写法 → 不可能触发本类溢出，直接不查。
+    if not re.search(r'\b(?:itemExtent|mainAxisExtent)\s*:', structure):
+        return []
+
+    warnings: list[str] = []
+    for m in re.finditer(r'\bColumn\s*\(', structure):
+        open_paren = m.end() - 1
+        close_paren = _match_pair(structure, open_paren, '(', ')')
+        if close_paren >= len(structure):
+            continue
+        inner = structure[open_paren + 1:close_paren]
+
+        texts = _direct_text_children(inner)
+        if len(texts) < 2:
+            continue
+
+        missing = False
+        for child in texts:
+            for sm in re.finditer(r'TextStyle\s*\(', child):
+                sp = sm.end() - 1
+                se = _match_pair(child, sp, '(', ')')
+                body = child[sp + 1:se]
+                if 'fontSize' in body and 'height' not in body:
+                    missing = True
+                    break
+            if missing:
+                break
+        if not missing:
+            continue
+
+        line = structure.count('\n', 0, open_paren) + 1
+        warnings.append(
+            f'L{line}: 该 Column 叠了 {len(texts)} 行 Text，且本文件用了固定行高'
+            f'（itemExtent / mainAxisExtent）—— 若它落在那个固定行高的行/瓦片里，'
+            f'就必须显式写 TextStyle.height：M3 默认行高是 1.43，'
+            f'且「字号 × height」要为整数（Flutter 逐行向上取整）。'
+            f'（确认不在固定行高内可忽略本条 —— 词法上无法判断，故只提醒）')
+    return warnings
+
+
 def main() -> int:
     if len(sys.argv) == 1:
         targets = [ROOT]
@@ -380,6 +492,7 @@ def main() -> int:
     total_errors = 0
     total_warnings = 0
     checked = 0
+    parity_broken: list[str] = []
     for f in files:
         posix = f.as_posix()
         if '/build/' in posix or '/.dart_tool/' in posix:
@@ -387,9 +500,15 @@ def main() -> int:
         checked += 1
         text = f.read_text(encoding='utf-8')
         structure, errs = strip_code(text)
+        # 自检：结构文本必须与原文行数一致，否则报出来的行号全是假的。
+        if structure.count('\n') != text.count('\n'):
+            parity_broken.append(
+                f'{f}: 结构文本 {structure.count(chr(10))} 行 '
+                f'!= 原文 {text.count(chr(10))} 行')
         errs += check_balance(structure, f)
         errs += check_enum_semicolon(structure, f)
         warns = check_ctor_param_shadowing(text, f)
+        warns += check_fixed_height_text(structure, f)
         if errs:
             total_errors += len(errs)
             print(f'[FAIL] {f}')
@@ -401,6 +520,12 @@ def main() -> int:
             total_warnings += len(warns)
             for w in warns:
                 print(f'       [WARN] {w}')
+    if parity_broken:
+        total_errors += len(parity_broken)
+        print()
+        print('[FAIL] 预检脚本自身失准：结构文本与原文行数不一致（行号会错位）')
+        for p in parity_broken:
+            print(f'       {p}')
     print()
     suffix = f'，另有 {total_warnings} 条提醒（不阻断）' if total_warnings else ''
     print(f'扫描 {checked} 个文件，问题 {total_errors} 处{suffix}')
