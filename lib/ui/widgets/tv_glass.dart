@@ -140,7 +140,7 @@ class TvScrim extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget box = const ColoredBox(color: TvColors.scrim);
+    const Widget box = ColoredBox(color: TvColors.scrim);
     if (onTap == null) return box;
     return GestureDetector(onTap: onTap, child: box);
   }

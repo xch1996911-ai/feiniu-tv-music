@@ -34,15 +34,12 @@ class _FakeOnline implements OnlineLyricSource {
   _FakeOnline({
     this.candidates = const <OnlineLyricCandidate>[],
     this.error,
-    this.delay = Duration.zero,
   });
 
   final List<OnlineLyricCandidate> candidates;
 
   /// 非 null 时 `search` 直接抛这个异常（模拟断网 / 限流 / 服务异常）。
   final Object? error;
-
-  final Duration delay;
 
   int calls = 0;
   OnlineLyricQuery? lastQuery;
@@ -54,7 +51,6 @@ class _FakeOnline implements OnlineLyricSource {
   Future<List<OnlineLyricCandidate>> search(OnlineLyricQuery query) async {
     calls++;
     lastQuery = query;
-    if (delay > Duration.zero) await Future<void>.delayed(delay);
     final Object? e = error;
     if (e != null) throw e;
     return candidates;
@@ -121,11 +117,11 @@ void main() {
     });
 
     test('标题 + 歌手 + 时长全中 → 满分（≥ 阈值，可自动绑定）', () {
-      final q = OnlineLyricQuery(
+      const q = OnlineLyricQuery(
         title: '晴天',
         artist: '周杰伦',
         album: '叶惠美',
-        duration: const Duration(seconds: 269),
+        duration: Duration(seconds: 269),
       );
       final s = OnlineLyricMatcher.score(
         q,
@@ -136,10 +132,10 @@ void main() {
     });
 
     test('歌手写法有差异（Live / feat.）仍然能匹配上', () {
-      final q = OnlineLyricQuery(
+      const q = OnlineLyricQuery(
         title: '晴天',
         artist: '周杰伦',
-        duration: const Duration(seconds: 269),
+        duration: Duration(seconds: 269),
       );
       final s = OnlineLyricMatcher.score(
         q,
@@ -150,7 +146,7 @@ void main() {
     });
 
     test('标题完全不沾边 → 直接判 0（错误候选必须被拒绝）', () {
-      final q = OnlineLyricQuery(title: '晴天', artist: '周杰伦');
+      const q = OnlineLyricQuery(title: '晴天', artist: '周杰伦');
       expect(
         OnlineLyricMatcher.score(q, cand('稻香', artist: '周杰伦')),
         0,
@@ -167,10 +163,10 @@ void main() {
     });
 
     test('同名但是翻唱 / 时长差很远 → 置信度不足（不给自动绑定）', () {
-      final q = OnlineLyricQuery(
+      const q = OnlineLyricQuery(
         title: '晴天',
         artist: '周杰伦',
-        duration: const Duration(seconds: 269),
+        duration: Duration(seconds: 269),
       );
       final s = OnlineLyricMatcher.score(
         q,
@@ -181,9 +177,9 @@ void main() {
     });
 
     test('查询缺少歌手时不倒扣分（有信息就用，没有就不猜）', () {
-      final q = OnlineLyricQuery(
+      const q = OnlineLyricQuery(
         title: '晴天',
-        duration: const Duration(seconds: 269),
+        duration: Duration(seconds: 269),
       );
       final s = OnlineLyricMatcher.score(
         q,
@@ -193,11 +189,11 @@ void main() {
     });
 
     test('标题为空的一侧 → 0（不能靠空串「匹配成功」）', () {
-      final q = OnlineLyricQuery(title: '', artist: '周杰伦');
+      const q = OnlineLyricQuery(title: '', artist: '周杰伦');
       expect(OnlineLyricMatcher.score(q, cand('晴天', artist: '周杰伦')), 0);
       expect(
         OnlineLyricMatcher.score(
-          OnlineLyricQuery(title: '晴天', artist: '周杰伦'),
+          const OnlineLyricQuery(title: '晴天', artist: '周杰伦'),
           cand('', artist: '周杰伦'),
         ),
         0,

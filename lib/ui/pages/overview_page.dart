@@ -799,7 +799,6 @@ class _HeaderAction extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
-    this.nextDown,
   });
 
   final FocusNode node;
@@ -808,7 +807,6 @@ class _HeaderAction extends StatelessWidget {
   final VoidCallback onPressed;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  final FocusNode? nextDown;
 
   @override
   Widget build(BuildContext context) {
@@ -818,7 +816,6 @@ class _HeaderAction extends StatelessWidget {
       onPressed: onPressed,
       nextLeft: nextLeft,
       nextRight: nextRight,
-      nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
         radius: 22,

@@ -21,7 +21,7 @@ enum LyricOrigin {
   online,
 
   /// 用户从候选里**手动选择**的。
-  manual,
+  manual;
 
   /// 展示名。
   String get label => switch (this) {
