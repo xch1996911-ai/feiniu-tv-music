@@ -218,8 +218,8 @@ void main() {
     test('L seek 后高亮行同步跳转', () async {
       lyrics.applyForTest('g1', docOf(const <LyricLine>[
         LyricLine(text: 'A', time: Duration.zero),
-        LyricLine(text: 'B', time: const Duration(seconds: 30)),
-        LyricLine(text: 'C', time: const Duration(minutes: 1)),
+        LyricLine(text: 'B', time: Duration(seconds: 30)),
+        LyricLine(text: 'C', time: Duration(minutes: 1)),
       ]));
 
       // 模拟 seek 到 1:05
@@ -247,7 +247,7 @@ void main() {
     test('M 同一行内高亮不变（不会每 500ms 抖一次）', () async {
       lyrics.applyForTest('g1', docOf(const <LyricLine>[
         LyricLine(text: '第一行', time: Duration.zero),
-        LyricLine(text: '第二行', time: const Duration(seconds: 30)),
+        LyricLine(text: '第二行', time: Duration(seconds: 30)),
       ]));
       // 同一行内不同时间点应得到同一行号
       expect(lyrics.activeLineIndex(const Duration(seconds: 1)),
