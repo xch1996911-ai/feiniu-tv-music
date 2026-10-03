@@ -136,7 +136,7 @@ void main() {
       // 标题区
       expect(find.text('还没有收藏的歌曲'), findsOneWidget);
       // 空态说明（引导用户怎么收藏）
-      expect(find.textContaining('把焦点移到歌曲行上'), findsOneWidget);
+      expect(find.textContaining('在歌曲行上按右键即可收藏'), findsOneWidget);
       // 明确的操作出口
       expect(find.text('去音乐库'), findsOneWidget);
 

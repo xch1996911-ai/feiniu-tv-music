@@ -276,16 +276,19 @@ void main() {
       await pumpHost(
         tester,
         kind: OverviewKind.genre,
-        emptyHint: '暂无风格标签\n\n飞牛曲目的 genres 字段在当前曲库里是空的。',
+        emptyHint: '暂无歌曲',
         catalogue: artistCatalogue, // 三首歌的 genres 都是空数组
       );
 
-      expect(find.textContaining('暂无风格标签'), findsOneWidget);
+      // ⚠️ V5 之后「没有标签」不再等价于「空页」：归纳会把它们放进
+      //    **「待分类」**（带真实曲目列表，用户能点进去手动指定）。
+      //    所以这里接受两种正确形态之一，但**绝不接受**伪造分类。
+      final bool hasPending = find.textContaining('待分类').evaluate().isNotEmpty;
+      final bool hasEmptyHint = find.textContaining('暂无歌曲').evaluate().isNotEmpty;
+      expect(hasPending || hasEmptyHint, isTrue,
+          reason: '没有标签时必须给出「待分类」桶，或如实空态');
       // 不能出现「未知风格」这种凭空造出来的分类
       expect(find.textContaining('未知风格'), findsNothing);
-      // 也不能退化成把全部曲目列出来
-      expect(find.text('遇见'), findsNothing);
-      expect(find.text('晴天'), findsNothing);
 
       await tearDownTree(tester);
     });

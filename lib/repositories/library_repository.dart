@@ -285,12 +285,16 @@ class LibraryRepository extends ChangeNotifier {
 
   Future<void> _startSync(String identity, {required bool force}) async {
     _syncing = true;
+    // ⚠️ 只有「从一个已绑定的身份切到另一个」才清空内存索引。
+    //    `_identity == null`（本次会话第一次绑定）时不清空：首屏 `loadFirst()`
+    //    可能已经把 50 首显示给用户了，此时后台整理一旦失败，
+    //    用户会看到列表**凭空清空**（测试 `索引失败时停止，不无限重试` 就是这么红的）。
+    final bool switchedAccount = _identity != null && _identity != identity;
     if (_identity != identity) {
-      // 换了账户 / NAS：先清空上一份索引，避免串数据。
-      if (_identity != null) {
+      if (switchedAccount) {
         Log.i('LIBRARY_SYNC 身份变更 $_identity → $identity，清空上一份索引');
       }
-      _tracks = const <Track>[];
+      _tracks = switchedAccount ? const <Track>[] : _tracks;
       _page = 0;
       _total = null;
       _hasMore = true;

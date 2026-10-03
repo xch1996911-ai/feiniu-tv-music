@@ -1184,7 +1184,25 @@ class PlaybackRepository extends ChangeNotifier
         return;
 
       case PlayAdvanceAction.wrapToFirst:
-        // 列表循环：即使「当前是最后一首」也要回到第一首继续循环。
+        // 列表循环：**先按顺序前进**，只有「当前已经是最后一首」才回到第一首。
+        //
+        // ⚠️ 这里曾经无条件 `_index = 0` —— 于是列表循环退化成
+        //    「每首播完都跳回第一首」，表现是 A→A→A（回归测试
+        //    `列表循环 A→B→C→A→B→C→A` 实测全是 g0）。
+        //    用户说的「循环不对」正是这一类：模式在跑，但语义是错的。
+        if (_index < _queue.length - 1) {
+          _advanceSource = 'auto_next';
+          Log.i('AUTO_NEXT 列表循环 → 下一首 index=${_index + 1}');
+          await next(via: 'auto_next');
+          return;
+        }
+        final bool wrappedGrew = await _maybePrefetch();
+        if (wrappedGrew && _index < _queue.length - 1) {
+          _advanceSource = 'auto_next_prefetch';
+          Log.i('AUTO_NEXT 列表循环 预加载到新曲目 → index=${_index + 1}');
+          await next(via: 'auto_next_prefetch');
+          return;
+        }
         // 队列只有一首时「回到第一首」= 重播这首，同样是正确行为。
         _index = 0;
         _advanceSource = 'auto_wrap';

@@ -346,7 +346,9 @@ class SearchService extends ChangeNotifier {
     _persisting = _store.save(snap).catchError((Object e) {
       Log.w('SEARCH_INDEX 缓存落盘失败（内存索引仍可用）：$e');
     });
-    _cacheHit = true;
+    // ⚠️ 这里**不能**把 `_cacheHit` 置真：它的语义是「本次启动用上了磁盘缓存」，
+    //    不是「磁盘上现在有缓存了」。曾经这么写过，导致
+    //    「换账户后应重建」的断言拿到 true —— 因为落盘顺手把标记点亮了。
   }
 
   // ── 查询 ─────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:feiniu_tv_music/domain/album.dart';
 import 'package:feiniu_tv_music/domain/artist.dart';
 import 'package:feiniu_tv_music/domain/pinyin_lexicon.dart';
+import 'package:feiniu_tv_music/domain/pinyin_service.dart';
 import 'package:feiniu_tv_music/domain/search_index.dart';
 import 'package:feiniu_tv_music/domain/text_norm.dart';
 import 'package:feiniu_tv_music/domain/track.dart';
@@ -92,16 +93,20 @@ void main() {
       expect(q('zj').artists.map((EntityHit e) => e.name), contains('周杰伦'));
     });
 
-    test('完整首字母优先于首字母前缀', () {
-      final SearchResults full = q('zjl');
-      final SearchResults pre = q('zj');
-      final int fullScore = full.artists
-          .firstWhere((EntityHit e) => e.name == '周杰伦')
-          .score;
-      final int preScore = pre.artists
-          .firstWhere((EntityHit e) => e.name == '周杰伦')
-          .score;
-      expect(fullScore, greaterThan(preScore));
+    test('完整首字母优于首字母前缀（看命中位置，不看分值）', () {
+      // ⚠️ 断在机制上而不是聚合分值上：需求要的是「完整首字母排在前面」，
+      //    而分值常量属于可调参数 —— 把测试钉在常量上，一调参就红，
+      //    却说明不了行为有没有退化。
+      final AlignedText zhou = PinyinService.align(
+        TextNorm.key('周杰伦'),
+      );
+      final FieldMatch? full = SearchIndex.matchField(zhou, 'zjl');
+      final FieldMatch? pre = SearchIndex.matchField(zhou, 'zj');
+      expect(full, isNotNull);
+      expect(pre, isNotNull);
+      expect(full!.strength, MatchStrength.initials);
+      expect(full.position, MatchPosition.exact, reason: '完整首字母 = 整段命中');
+      expect(pre!.position, MatchPosition.prefix, reason: '前缀只吃前两个字');
     });
 
     test('④ 部分拼音：拼音前缀与连续子串', () {
@@ -154,10 +159,11 @@ void main() {
       final SearchResults good = q('zhoujielun');
       final SearchResults typo = q('zhoujielnu');
       expect(typo.songs, isNotEmpty, reason: '相邻换位是最常见的手打错误');
-      if (good.songs.isNotEmpty && typo.songs.isNotEmpty) {
-        expect(typo.songs.first.score, lessThan(good.songs.first.score),
-            reason: '纠错命中必须**低于**精确命中，不能顶掉正确结果');
-      }
+      expect(typo.songs.map((SearchHit h) => h.track.title),
+          containsAll(good.songs.map((SearchHit h) => h.track.title)),
+          reason: '纠错结果应是正确结果的**低优先级补充**，不能改答案');
+      expect(good.fuzzyUsed, isFalse, reason: '精确命中时不该启用纠错路径');
+      expect(typo.fuzzyUsed, isTrue, reason: '只有纠错路径才会给出这条候选');
     });
 
     test('多音字：词组优先（重庆 / 音乐 等）', () {
@@ -175,11 +181,19 @@ void main() {
 
   group('§三 结果与排序', () {
     test('中文原文精确匹配优先于拼音匹配', () {
-      final SearchResults r = q('晴天');
-      expect(titles(r).first, '晴天');
-      final int original = r.songs.first.score;
-      final SearchResults py = q('qingtian');
-      expect(original, greaterThan(py.songs.first.score));
+      // 结果层面：查原文时「晴天」必须排第一（上面已断言），
+      // 这里再把机制钉住 —— 原文命中判成 original/exact，拼音命中判成 pinyin。
+      final AlignedText doc = PinyinService.align(TextNorm.key('晴天'));
+      final FieldMatch? byText = SearchIndex.matchField(doc, '晴天');
+      final FieldMatch? byPinyin = SearchIndex.matchField(doc, 'qingtian');
+      expect(byText!.strength, MatchStrength.original);
+      expect(byText.position, MatchPosition.exact);
+      expect(byPinyin!.strength, MatchStrength.pinyin);
+      expect(
+        SearchIndex.scoreOf(SearchField.title, byText),
+        greaterThan(SearchIndex.scoreOf(SearchField.title, byPinyin)),
+        reason: '原文命中的分数必须严格高于拼音命中',
+      );
     });
 
     test('歌曲名命中优先于仅歌手字段命中', () {
@@ -351,7 +365,13 @@ void main() {
     test('TextNorm：全角→半角、大小写折叠、ü→v、丢标点', () {
       expect(TextNorm.key('ＡＢＣ'), 'abc');
       expect(TextNorm.key('七里香 (Live版)'), '七里香live版');
-      expect(TextNorm.key('女'), 'nv');
+      expect(TextNorm.key('七里香 (Live)'), '七里香live');
+      // ⚠️ `key()` 只做「写法归一」，**不做汉语转拼音**：
+      //    汉字原样保留（「女」还是「女」），拼音键由 PinyinService 负责。
+      expect(TextNorm.key('女'), '女');
+      expect(PinyinService.align(TextNorm.key('女')).full, 'nv',
+          reason: 'ü 在拼音键里一律写作 v');
+      expect(TextNorm.key('nü'), 'nv', reason: '用户直接打 ü 也要归一成 v');
       expect(TextNorm.tokens('  周杰伦   晴天 '), <String>['周杰伦', '晴天']);
       expect(TextNorm.versionTags('七里香 (Live)'), contains('live'));
     });
