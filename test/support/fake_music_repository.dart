@@ -8,6 +8,7 @@ import 'package:feiniu_tv_music/domain/paged_result.dart';
 import 'package:feiniu_tv_music/domain/track.dart';
 import 'package:feiniu_tv_music/repositories/auth_repository.dart';
 import 'package:feiniu_tv_music/repositories/music_repository.dart';
+import 'package:feiniu_tv_music/servers/music_server_provider.dart';
 
 /// 曲目构造糖：测试里只关心 guid / 可播性 / 标题。
 Track makeTrack(
