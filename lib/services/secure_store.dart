@@ -133,6 +133,52 @@ class SecureStore {
     await _delete(_kPwHash);
   }
 
+  // ================================================================
+  //  播放偏好（非机密）
+  //
+  //  刻意**不**引入 shared_preferences：pubspec 里没有该依赖，
+  //  而本类已封装了「加密可用则加密、不可用自动降级」的容错逻辑
+  //  （部分 Android TV ROM 的 EncryptedSharedPreferences 会在原生层崩溃）。
+  //  复用它比新增一个依赖更稳，也避免为偏好数据再冒一次 native crash 的风险。
+  //
+  //  这里存的东西**丢了不影响登录**，因此与上面的凭据区严格分开：
+  //  `clearSession()` 不碰这里，用户登出后播放模式应当保留。
+  // ================================================================
+
+  static const String _kPlayMode = 'feiniu.playmode';
+  static const String _kLastTrackGuid = 'feiniu.last.guid';
+  static const String _kLastPositionMs = 'feiniu.last.pos';
+
+  /// 读取上次播放模式；从未设置或值非法时返回 null。
+  ///
+  /// 返回 null 而不是给默认值，是为了让调用方区分「用户主动选过」
+  /// 与「默认顺序播放」—— 前者不该被后续默认值变更覆盖。
+  Future<String?> readPlayModeKey() => _read(_kPlayMode);
+
+  Future<void> writePlayModeKey(String value) => _write(_kPlayMode, value);
+
+  /// 上次播放的曲目 guid（V2 状态恢复用）。
+  Future<String?> readLastTrackGuid() => _read(_kLastTrackGuid);
+
+  Future<void> writeLastTrackGuid(String guid) => _write(_kLastTrackGuid, guid);
+
+  /// 上次播放进度（**毫秒**）。
+  Future<int?> readLastPositionMs() async {
+    final v = await _read(_kLastPositionMs);
+    if (v == null) return null;
+    return int.tryParse(v);
+  }
+
+  Future<void> writeLastPositionMs(int ms) =>
+      _write(_kLastPositionMs, ms.toString());
+
+  /// 清除播放恢复信息（曲目 / 进度），**保留播放模式**。
+  Future<void> clearLastPlayback() async {
+    await _delete(_kLastTrackGuid);
+    await _delete(_kLastPositionMs);
+  }
+
+
   /// 读取 deviceId；不存在或形态非法（非 32 位 hex）时**生成并持久化**一个新的。
   ///
   /// 契约依据（`fnOS_API_真实契约.md` §1.2）：官方前端
