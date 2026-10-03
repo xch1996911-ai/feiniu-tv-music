@@ -82,11 +82,11 @@
 | 封面接口 | ✅ REAL_NAS | `static/cover?coverId=<含前缀>`，前缀不可拆 |
 | 音频流 + Range | ✅ REAL_NAS | 200 全量 / **206 分段**（1024 字节）|
 | 平均 API 响应时间 | ✅ REAL_NAS | 音频全量 2370ms（26MB FLAC，局域网） |
-| **选择真实 NAS 音乐并在电视播放** | ⏳ **TV_PENDING** | 需把新 APK 装到电视后实测 |
-| 播放成功 / 失败格式 | ⏳ TV_PENDING | 计划覆盖 MP3 / FLAC / AAC |
-| 首曲播放启动时间 | ⏳ TV_PENDING | 待电视实测 |
-| 遥控 Play/Pause | ⏳ TV_PENDING | MediaSession 已接入，待真机 |
-| 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现，待真机 |
+| **选择真实 NAS 音乐并在电视播放** | ✅ **TV_REAL** | 2026-10-03 海信 E7N Pro 实机播放成功（见 §8） |
+| 播放成功 / 失败格式 | 🟡 部分 TV_REAL | **FLAC 16bit/44kHz 已验证成功**；MP3 / AAC 尚未覆盖 |
+| 首曲播放启动时间 | ⏳ TV_PENDING | 待电视实测（播放页已出现进度与秒数，但未计时） |
+| 遥控 Play/Pause | ⏳ TV_PENDING | 三键已出现且焦点态正确；**暂停后再继续**待确认 |
+| 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现；**返回上级页面后是否继续出声**待确认 |
 
 ---
 
@@ -126,18 +126,45 @@
 | 1 | Flutter 工程正常编译 | ✅ CI | `flutter pub get` + `build apk --debug` 成功 |
 | 2 | `flutter analyze` 无 error | ✅ CI | No issues found! |
 | 3 | `flutter test` 通过 | ✅ CI | 契约测试已按真实 NAS 样本扩写 |
-| 4 | Android TV / 模拟设备可启动 | ⏳ TV_PENDING | 待安装新 APK 到电视 |
+| 4 | Android TV / 模拟设备可启动 | ✅ TV_REAL | 2026-10-03 海信 E7N Pro 实机：安装、启动、进入登录页并登录成功（见 §8） |
 | 5 | 连接真实飞牛 NAS | ✅ REAL_NAS | `initialization/state` |
 | 6 | 可以登录 | ✅ REAL_NAS | SHA256 + deviceId → `data.userToken` |
 | 7 | 读取歌曲列表 | ✅ REAL_NAS | `track/list?page=&size=` |
 | 8 | 读取专辑列表 | ✅ REAL_NAS | `album/list?page=&size=` |
 | 9 | 读取歌手列表 | ✅ REAL_NAS | `artist/list?page=&size=` |
-| 10 | 选择真实 NAS 音乐并播放 | ⏳ TV_PENDING | 待电视实测 |
-| 11 | Play/Pause 可用 | ⏳ TV_PENDING | MediaSession 已接入 |
-| 12 | 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现 |
+| 10 | 选择真实 NAS 音乐并播放 | ✅ TV_REAL | 2026-10-03 实机播放 `FLAC · 16bit / 44kHz`，进度条与秒数走动（见 §8） |
+| 11 | Play/Pause 可用 | ⏳ TV_PENDING | 播放页已出现「上一首 / 暂停 / 下一首」三键且焦点态正确，**暂停后再继续**待用户实机确认 |
+| 12 | 退出播放页不中断 | ⏳ TV_PENDING | 后台 MediaSession 已实现，**返回上级页面后是否继续出声**待用户实机确认 |
 | 13 | 凭据无明文泄漏 | ✅ | `flutter_secure_storage` + 仅存 sha256 哈希 + 日志/报告脱敏 + `.gitignore` |
 | 14 | 完成 fnos_api_verified.md | ✅ | 9 个 Phase 1 接口全部 **VERIFIED**，IP 已脱敏 |
 | 15 | 完成 phase1_test_report.md | ✅ | 即本文件 |
 
-> 结论：**代码、CI、真实 API 契约（1–3、5–9、13–15）已达标**；**4、10–12 需用户把新 APK 装到电视并完成真实播放测试**。
-> **在电视真实播放验证通过之前，不进入 Phase 2。**
+> 结论：**15 项中 13 项已达标** —— 1–3、5–9、13–15 由 CI 与真实 NAS 验证；
+> **4、10 已于 2026-10-03 由电视实机验证**（见 §8）。
+> 仅剩 **11（暂停后再继续）、12（退出播放页不中断）** 待用户实机确认，
+> 二者都是播放控制项，不影响「能启动 / 能登录 / 能播放」这一主干结论。
+>
+> **「在电视真实播放验证通过之前，不进入 Phase 2」—— 该门槛已于 2026-10-03 满足。**
+> 是否进入 Phase 2 由用户决定。
+
+---
+
+## 8. 电视端实测记录（2026-10-03 · 海信 E7N Pro）
+
+用户实机安装 **G = `app-hisense-release.apk`**（构建自 commit `ad2ea97`），结果：
+
+1. **服务器状态页**：显示 NAS 地址与登录用户，绿勾 **可达**
+   （HTTP `/initialization/state`），并显示健康检查返回体 `{"initialized": true}`；
+2. **播放页**：曲目 / 艺人 · 专辑 / `FLAC · 16bit / 44kHz` / `0:11 / 4:05`，
+   进度条与计秒走动；`上一首 / 暂停 / 下一首` 三键齐备且焦点态正确。
+
+由此**一次性排除**了此前怀疑过的全部设备层因素：Flutter 引擎、渲染后端
+（Impeller / GLES）、ABI 裁剪、插件 native 注册（含 audio_service 前台服务与
+Keystore）、音频解码、MediaSession、时间轴更新。**此后的问题一律属于业务逻辑层。**
+
+> ⚠️ 版本追溯：`ad2ea97` 之后，main 上还有 `1837428`（预检规则 + 排错文档）、
+> `04d418f`（`restore()` / `logout()` 的存储超时加固）、`206877e`（修掉一处
+> 「假通过」的测试）三个提交，CI 全绿（**137 tests passed**），
+> 但**没有重新发布到 `release` 分支** —— 刻意保持发布产物 = 实机上验证过的那个 sha，
+> 避免「同一网址背后的产物被悄悄换掉」导致问题难以追溯。
+> 需要发布加固版时：`git push --force origin main:publish-diag`。
