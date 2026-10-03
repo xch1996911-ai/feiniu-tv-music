@@ -10,6 +10,8 @@ import '../core/log.dart';
 import '../playback/media_session_service.dart';
 import '../playback/playback_engine.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/library_repository.dart';
+import '../repositories/lyric_repository.dart';
 import '../repositories/music_repository.dart';
 import '../repositories/playback_repository.dart';
 
@@ -139,7 +141,35 @@ class _BootAppState extends State<BootApp> {
     try {
       final music = MusicRepository(auth);
       final playback = PlaybackRepository(music: music, handler: handler);
-      final app = App(auth: auth, music: music, playback: playback);
+      final library = LibraryRepository(music);
+      final lyrics = LyricRepository(music);
+
+      // 跨分页连续播放的关键接线：播放队列接近末尾时，让曲库去拉下一页，
+      // 并把新曲目追加进队列（appendToQueue 不会移动 currentIndex）。
+      playback.attachPrefetch(() async {
+        final ok = await library.loadMore();
+        if (ok) {
+          playback.appendToQueue(library.tracks);
+        }
+        return ok;
+      });
+
+      // 恢复播放模式与上次播放点（**不自动播放**，V2 §14）。
+      // 失败一律降级，绝不影响启动。
+      try {
+        await playback.restoreMode();
+        await playback.loadRestorePoint();
+      } catch (e) {
+        Log.w('播放偏好恢复失败，按默认值继续：$e');
+      }
+
+      final app = App(
+        auth: auth,
+        music: music,
+        playback: playback,
+        library: library,
+        lyrics: lyrics,
+      );
       _mark(2, BootStepStatus.ok, null);
       BootLog.mark('引导流程全部完成');
       if (mounted) {
