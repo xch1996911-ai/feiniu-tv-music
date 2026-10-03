@@ -660,7 +660,7 @@ class PlaybackRepository extends ChangeNotifier
         extra[j] = tmp;
       }
       _plan = List<String>.unmodifiable(<String>[..._plan, ...extra]);
-      Log.i('SHUFFLE_PLAN 队列追加 $extra.length 首已并入随机计划 '
+      Log.i('SHUFFLE_PLAN 队列追加 ${extra.length} 首已并入随机计划 '
           '（剩余 $shuffleRemaining）');
     }
 
@@ -953,9 +953,9 @@ class PlaybackRepository extends ChangeNotifier
         return;
       }
       _index = target;
-      _advanceSource = '$via_shuffle';
+      _advanceSource = '${via}_shuffle';
       Log.i('SKIP_NEXT 随机计划 → index=$_index guid=${_queue[_index].guid} '
-          '剩余 ${shuffleRemaining}');
+          '剩余 $shuffleRemaining');
       _playCurrent();
       unawaited(_maybePrefetch());
       return;

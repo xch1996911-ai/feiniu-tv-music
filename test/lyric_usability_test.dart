@@ -22,7 +22,7 @@ import 'support/fake_lyric_source.dart';
 /// 判据放在 `LyricDoc.isUsable`（领域层）+ 仓库的一处收口，
 /// UI 完全不需要知道「占位符」这个概念。
 void main() {
-  Track track() => Track(
+  Track track() => const Track(
         guid: 'g1',
         title: '勇气',
         durationMs: 240000,
@@ -87,11 +87,11 @@ void main() {
 
     test('E NAS 只回占位符 → 在线匹配真正被执行', () async {
       final _RecordingOnline online = _RecordingOnline(<OnlineLyricCandidate>[
-        OnlineLyricCandidate(
+        const OnlineLyricCandidate(
           title: '勇气',
           artist: '歌手',
           album: '专辑',
-          duration: const Duration(seconds: 240),
+          duration: Duration(seconds: 240),
           syncedLyrics: '[00:01.00]终於做了这个决定\n[00:05.00]别人怎么说我不理\n',
           score: 0,
           source: 'test',
@@ -125,11 +125,11 @@ void main() {
 
     test('G 在线候选只有占位符时也不绑定，退回「暂无歌词」', () async {
       final _RecordingOnline online = _RecordingOnline(<OnlineLyricCandidate>[
-        OnlineLyricCandidate(
+        const OnlineLyricCandidate(
           title: '勇气',
           artist: '歌手',
           album: '专辑',
-          duration: const Duration(seconds: 240),
+          duration: Duration(seconds: 240),
           syncedLyrics: '♪♪♪',
           score: 0,
           source: 'test',

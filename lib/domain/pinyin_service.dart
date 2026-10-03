@@ -1,5 +1,6 @@
 import 'package:pinyin/pinyin.dart';
 
+import '../core/log.dart';
 import 'pinyin_lexicon.dart';
 import 'text_norm.dart';
 
@@ -125,23 +126,51 @@ class PinyinService {
   /// 驻留表容量上限：超过之后不再新增（避免异常输入把内存吃满）。
   static const int _internLimit = 6000;
 
+  /// 词组表里**最短 / 最长**词组的字数。由 [_measurePhraseMap] 实测得出。
+  ///
+  /// ⚠️ 刻意**不**使用 `PinyinHelper.minPhraseLength` / `maxPhraseLength`：
+  /// 1. 在 pinyin 3.3.0 里它们是**可空**的 `int?`（直接赋给 `int` 编译不过），
+  ///    而旧名字 `minMultiLength` / `maxMultiLength` 已被标记废弃 ——
+  ///    本项目 analyzer 的 info 也判失败，两条路都不能走；
+  /// 2. 更本质的原因：[align] 里的词组最长匹配是**我们自己**遍历
+  ///    [PinyinHelper.phraseMap] 实现的，用自己的量表才不会出现
+  ///    「库的全局开关被改、而匹配窗口没跟着改」这类隐蔽漂移。
+  static int _minPhraseLength = 1;
+  static int _maxPhraseLength = 1;
+  static bool _phraseMeasured = false;
+
+  /// 实测词组表的最短/最长词组长度（只做一次，约 4 万条键，毫秒级）。
+  static void _measurePhraseMap() {
+    if (_phraseMeasured) return;
+    _phraseMeasured = true;
+    final Map<String, String> map = PinyinHelper.phraseMap;
+    int maxLen = 1;
+    int minLen = 1 << 30;
+    for (final String word in map.keys) {
+      final int len = word.runes.length;
+      if (len > maxLen) maxLen = len;
+      if (len < minLen) minLen = len;
+    }
+    _maxPhraseLength = maxLen;
+    _minPhraseLength = minLen == (1 << 30) ? 1 : minLen;
+    Log.i('PINYIN 词组表就绪：${map.length} 条 · '
+        '最短 $_minPhraseLength 字 · 最长 $_maxPhraseLength 字');
+  }
+
   /// 确保项目词典已注册 `pinyin` 包。失败时静默降级为"只用内置读音"。
   static void ensureReady() {
     if (_dictReady) return;
     _dictReady = true;
     try {
       PinyinHelper.addPhraseMap(PinyinLexicon.entries);
-      // 词典里有 8 字词组（"给我一首歌的时间"），必须保证最长匹配能覆盖到。
-      //
-      // ⚠️ `maxMultiLength` / `minMultiLength` 在 pinyin 3.x 里**已废弃**
-      //    （analyzer 会报 deprecated_member_use，本项目 info 也判失败），
-      //    新名字是 `maxPhraseLength` / `minPhraseLength`。
-      final int need = PinyinLexicon.longestPhraseLength;
-      if (PinyinHelper.maxPhraseLength < need) {
-        PinyinHelper.maxPhraseLength = need;
-      }
-    } catch (_) {
+    } catch (e) {
       // 词典注册失败不该让搜索整体不可用：内置读音仍然可用。
+      Log.w('PINYIN 项目词典注册失败（退回内置读音）：$e');
+    }
+    try {
+      _measurePhraseMap();
+    } catch (e) {
+      Log.w('PINYIN 词组表测量失败（按单字匹配）：$e');
     }
   }
 
@@ -191,8 +220,8 @@ class PinyinService {
     final List<String> syllables = List<String>.filled(n, '');
     final List<String> initials = List<String>.filled(n, '');
     final Map<String, String> phraseMap = PinyinHelper.phraseMap;
-    final int minPhrase = PinyinHelper.minMultiLength;
-    final int maxPhrase = PinyinHelper.maxMultiLength;
+    final int minPhrase = _minPhraseLength;
+    final int maxPhrase = _maxPhraseLength;
 
     int i = 0;
     while (i < n) {

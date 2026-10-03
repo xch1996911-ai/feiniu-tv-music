@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../domain/lyric.dart';
 import '../../repositories/lyric_repository.dart';
 import '../../repositories/playback_repository.dart';
 

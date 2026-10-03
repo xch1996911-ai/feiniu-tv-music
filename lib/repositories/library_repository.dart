@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/diagnostics.dart';
 import '../core/log.dart';
 import '../domain/genre.dart';
 import '../domain/genre_inferencer.dart';
+import '../domain/search_index.dart';
 import '../domain/track.dart';
 import '../services/catalogue_store.dart';
+import '../services/search_service.dart';
 import 'music_repository.dart';
 
 /// 曲库加载阶段。
@@ -128,11 +132,28 @@ class CatalogueSyncStatus {
 ///    播放入口决定（§三-A.10），所以后台整理**不会**调用
 ///    [onPageLoaded]（那是「播放到队列末尾续页」用的钩子）。
 class LibraryRepository extends ChangeNotifier {
-  LibraryRepository(this._music, {CatalogueStore? store})
-      : _store = store ?? CatalogueStore();
+  LibraryRepository(
+    this._music, {
+    CatalogueStore? store,
+    SearchService? searchService,
+  })  : _store = store ?? CatalogueStore(),
+        _search = searchService ?? SearchService();
 
   final MusicRepository _music;
   final CatalogueStore _store;
+
+  /// 全库搜索服务 —— **电视端与手机遥控共用的唯一搜索入口**。
+  ///
+  /// 刻意由曲库层持有并暴露（而不是再往 Provider 树里塞一个新 Provider）：
+  /// 「曲目列表」与「曲目的检索键」必须同进同出，拆到两个 Provider 之后
+  /// 就容易出现「曲库更新了、搜索索引还是旧的」这类不同步。
+  final SearchService _search;
+
+  /// 搜索服务（拼音 / 首字母 / 部分拼音 / 轻微拼错）。
+  SearchService get searchService => _search;
+
+  /// 同步兼容入口的缓存：上一次已经喂给搜索服务的曲目列表实例。
+  List<Track>? _searchSyncSource;
 
   /// 每页条数。服务端对 `pageSize` / `limit` 会忽略，只认 `size`。
   static const int pageSize = 50;
@@ -467,8 +488,9 @@ class LibraryRepository extends ChangeNotifier {
     );
   }
 
-  /// 重算风格归纳（纯本地、无网络）。
+  /// 重算风格归纳（纯本地、无网络），并把曲目列表同步给搜索索引。
   void _recomputeGenres() {
+    _syncSearchIndex();
     try {
       final Map<String, List<String>> overrides =
           _overridesProvider?.call() ?? const <String, List<String>>{};
@@ -487,6 +509,18 @@ class LibraryRepository extends ChangeNotifier {
       Log.e('LIBRARY_GENRE 归纳失败（风格页将显示空态）', e, st);
       Diagnostics.event('风格归纳失败：$e');
     }
+  }
+
+  /// 把当前曲目列表喂给搜索服务（**增量**：指纹没变的条目不重算）。
+  ///
+  /// 刻意用 `unawaited`：建索引是后台慢活，绝不能拖住分页/启动。
+  /// 搜索服务自己会合并重复请求，因此这里每次曲目变化都直接调用即可。
+  void _syncSearchIndex() {
+    unawaited(_search.sync(
+      _tracks,
+      identity: _identity ?? '',
+      complete: _complete,
+    ));
   }
 
   /// 用户改了手动风格后重算。
@@ -666,14 +700,28 @@ class LibraryRepository extends ChangeNotifier {
   /// 全库整理完成后即为全库范围；未完成时 UI 必须如实说明范围
   /// （见 [syncStatus] 的 `complete`）。
   List<Track> search(String keyword) {
-    final String q = keyword.trim().toLowerCase();
+    final String q = keyword.trim();
     if (q.isEmpty) return const <Track>[];
-    return _tracks.where((Track t) {
-      if (t.title.toLowerCase().contains(q)) return true;
-      if (t.artistNames.toLowerCase().contains(q)) return true;
-      if (t.album.name.toLowerCase().contains(q)) return true;
-      return false;
-    }).toList(growable: false);
+    // ⚠️ V5：这里**不再**自己写一遍 `contains` 匹配。
+    //    拼音 / 首字母 / 部分拼音 / 轻微拼错都归 `SearchService`，
+    //    两套算法并存迟早会出现「页面搜得到、手机搜不到」。
+    //
+    //    同步入口需要**保证立刻可搜**（异步建索引可能还没跑完），
+    //    因此先用内存缓存做一次同步对齐；`identical` 判断避免每次按键
+    //    都重复对齐同一个列表实例。
+    if (!identical(_searchSyncSource, _tracks)) {
+      _searchSyncSource = _tracks;
+      _search.ensureSync(
+        _tracks,
+        identity: _identity ?? '',
+        complete: _complete,
+      );
+    }
+    return _search
+        .querySync(q)
+        .songs
+        .map((SearchHit h) => h.track)
+        .toList(growable: false);
   }
 
   // ── 生命周期 ──────────────────────────────────────────────
@@ -695,6 +743,7 @@ class LibraryRepository extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _search.dispose();
     super.dispose();
   }
 }

@@ -187,10 +187,10 @@ void main() {
           guid: 't1',
           title: '混搭',
           durationMs: 1000,
-          album: const AlbumRef(guid: 'al1', name: '专辑'),
-          artists: const <ArtistRef>[],
-          genres: const <String>['rock', 'jazz', 'electronic'],
-          audioSpec: const AudioSpec(),
+          album: AlbumRef(guid: 'al1', name: '专辑'),
+          artists: <ArtistRef>[],
+          genres: <String>['rock', 'jazz', 'electronic'],
+          audioSpec: AudioSpec(),
         ),
       ]);
       expect(r.byGuid['t1']!.length, 3);
