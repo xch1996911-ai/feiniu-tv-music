@@ -64,6 +64,9 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 播放/暂停 ←→ 上一首 / 下一首；左键原路返回
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 底部栏是一条 8 节点的显式闭环：→ 顺序 == 屏幕上的左右顺序
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 底部栏 8 个控件 ↓ 都进进度区，↑ 都回播放/暂停
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 D 从播放/暂停 ↓ 进进度区，↑ 回播放/暂停；连续 10 次不卡死
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 歌词区不参与焦点链（方向键不会被歌词吃掉）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 「返回」按 ↑ 不会把焦点甩丢（顶部控件已全部下沉到底部栏）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 记录后新的在前，重复播放会把它前移到首位
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 当前曲重复触发直接短路（进度刷新会反复回调）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 空 guid 被忽略
@@ -76,6 +79,7 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） 默认没有收藏，空 guid 的切换被忽略
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） toggleFavorite 立即改变内存状态，并返回切换后的结果
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） 收藏与取消收藏都会持久化（新实例 restore 后一致）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活播放/暂停，且焦点留在原按钮上
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） favoriteTracks 只认本机集合，**不认** Track.isFavorite
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） 首次播种：把服务端 isFavorite 一次性导入
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 收藏（飞牛无写接口 → 本机集合是唯一数据源） 空曲库不播种（否则会把「还没加载完」误判成「服务端没收藏」）
@@ -98,7 +102,6 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 歌手概览 空曲库返回空列表
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 专辑概览 计数正确、副标题取首位歌手、无专辑名归入「未知专辑」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 专辑概览 专辑封面优先于曲目封面
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 D 从播放/暂停 ↓ 进进度区，↑ 回播放/暂停；连续 10 次不卡死
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 专辑概览 同一专辑的不同曲目只计一次歌，专辑数不参与
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 专辑概览 无歌手时副标题回落到「未知歌手」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 专辑概览 空曲库返回空列表
@@ -106,6 +109,7 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 风格概览 曲库完全没有风格标签 → 返回空列表（UI 应如实说「暂无风格标签」）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 风格概览 风格标签里的空白串被忽略
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 风格概览 空曲库返回空列表
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活上一首 / 下一首，焦点不跳走
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 播放页展示模式偏好 默认是标准布局
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 播放页展示模式偏好 切换后立即生效
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 播放页展示模式偏好 偏好会持久化 —— 重新打开播放器后保留上次选择
@@ -114,20 +118,16 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: PlayerLayout 枚举自身 fromStorage 认识合法值，未知/空值回落到 stage
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: PlayerLayout 枚举自身 next 循环
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: PlayerLayout 枚举自身 shortLabel 非空且互不相同
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 歌词区不参与焦点链（方向键不会被歌词吃掉）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页底部操作栏焦点链 「返回」按 ↑ 不会把焦点甩丢（顶部控件已全部下沉到底部栏）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活播放/暂停，且焦点留在原按钮上
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活上一首 / 下一首，焦点不跳走
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 进度区左右键 = 快退/快进 5 秒（不是移动焦点）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页布局切换（需求「四、3」） OK 切换布局：模式改变、焦点不丢、偏好被持久化
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页布局切换（需求「四、3」） 切换布局后进度区与播放控制仍然可达
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板（需求「四、4」） OK 打开队列：显示当前队列，焦点落在正在播放的那一行
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板（需求「四、4」） 队列里 ↓ 选择下一首，OK 播放它并关闭；焦点回到队列按钮
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板（需求「四、4」） 队列面板打开时，底下的播放页被排除出焦点树
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） 持有 token 时每个 API 请求都带 Cookie: <REDACTED>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） 无 token 时不带 Cookie 头（由服务端返回 99999）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: Cookie 认证（硬门槛） authHeaders（供播放器/图片组件用）只含 Cookie，不含 authx
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） API 请求自动附带 authx 头，且形状为 nonce/timestamp/sign
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板（需求「四、4」） 队列面板打开时，底下的播放页被排除出焦点树
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: authx 签名（兼容层，与 Cookie 解耦） 查询值含空格与中文时，authx 与 Cookie 均正常
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size track/list 发出的 query 恰好是 page 与 size
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_test.dart: 分页参数只能是 page + size album/list 与 artist/list 同样使用 page + size
@@ -1002,12 +1002,12 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 点选歌手 → 进详情，展示该歌手的曲目与统计
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 进详情后焦点落在「返回」上（不会平白消失）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 从详情返回 → 回到概览，且焦点回到原来那一行
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 概览显示封面 / 专辑名 / 歌手 / 歌曲数
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: sha256("password") 与公开值一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 恒为 64 位小写 hex（服务端按此格式校验）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 同样输入得到同样哈希（幂等，可用于 token 失效后静默重登）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 不同密码产生不同哈希
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 空字符串可计算
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 概览显示封面 / 专辑名 / 歌手 / 歌曲数
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 点选专辑 → 进详情，只显示该专辑的曲目
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 风格：无标签时如实说明（需求「一、3」） 曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 概览页的焦点链 歌手行之间可以遥控器上下移动
