@@ -4,8 +4,8 @@
 所有 APK 来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。
 
 [A] app-hisense-no-impeller-debug.apk
-    字节数          : 122,252,788
-    sha256          : 23d853aa4ad251a5be2b29221f8972829a31fd937436c9a8c4424682ddfe614b
+    字节数          : 122,267,392
+    sha256          : 6305cc6d856036d172b6478c688657dc950f57ae2b4423b495b38ab294fd137d
     applicationId   : com.feiniu.tv.music.diaga
     桌面显示名      : 飞牛A·关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -16,8 +16,8 @@
     DIAG_TAG        : (无)
 
 [B] app-hisense-impeller-default-debug.apk
-    字节数          : 122,252,768
-    sha256          : a09a2cddeac65f6400a95e96930e9fa0995bbf3d1cabe87b3dde962c53f03f0b
+    字节数          : 122,267,372
+    sha256          : d9d2ea56a4da2bc8313dec5c892b814184603c542b6145ae80423ce81017ba03
     applicationId   : com.feiniu.tv.music.diagb
     桌面显示名      : 飞牛B·默认后端
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -28,8 +28,8 @@
     DIAG_TAG        : (无)
 
 [C] app-hisense-impeller-gles-debug.apk
-    字节数          : 122,252,804
-    sha256          : 69a1ad87f5f05597ca6c75bdd25c100fc3997053e10f9b6927ef11d6f516b39b
+    字节数          : 122,267,412
+    sha256          : e1178e72fb57931640df44567de53153766516747da8884c711c0a325c53413c
     applicationId   : com.feiniu.tv.music.diagc
     桌面显示名      : 飞牛C·GLES后端
     Renderer        : ImpellerBackend=opengles
@@ -41,7 +41,7 @@
 
 [D] app-hisense-no-impeller-release.apk
     字节数          : 34,136,511
-    sha256          : 0451395c5c90600f2fd7d1bd2675d02e4f103926af7fe106245711ce3b0ab2cb
+    sha256          : 4db5fd4d45a3009220b9d22b096df01d8ff8b00058432a90bc6c37a41914f946
     applicationId   : com.feiniu.tv.music.diagd
     桌面显示名      : 飞牛D·Rel关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -53,7 +53,7 @@
 
 [E] app-hisense-engine-smoke.apk
     字节数          : 120,438,408
-    sha256          : 9cd56ac8f1a4579d1869d933aadc8d5f3ddfcafe0891cf7cf2a79073c3bbc805
+    sha256          : 7d32d8d2c7fc39510285c399f541c089e0f9d513f74daaa8f2566811dfe15158
     applicationId   : com.feiniu.tv.music.smoke
     桌面显示名      : Smoke·插件版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -65,7 +65,7 @@
 
 [F] app-hisense-engine-smoke-no-plugins.apk
     字节数          : 120,438,392
-    sha256          : 9758803fc5447f868d888bc88a3bbca878c84ad8d583daa0c45ad8caa7497a16
+    sha256          : 6ce15d29ab3ba88f003bdabc5ca2b7d9b58009588a99712465396e6dd0a41193
     applicationId   : com.feiniu.tv.music.smokenp
     桌面显示名      : Smoke·无插件
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -77,7 +77,7 @@
 
 [G] app-hisense-release.apk
     字节数          : 34,136,479
-    sha256          : b7750cb9f482c2568a9a815639eb5aba206828701cc72b8253f0cbc96a88e660
+    sha256          : df58d3a5b0dd5b0c42ce433c81a0f57b37c4ace46d13a0c1c2b86438170fa01a
     applicationId   : com.feiniu.tv.music.rel
     桌面显示名      : 飞牛·正式版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
