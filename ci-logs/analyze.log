@@ -1,2 +1,7 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 8.5s)
+
+  error • Local variable 'settle' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/playback_queue_test.dart:30:11 • referenced_before_declaration
+  error • Invalid constant value • test/support/fake_music_repository.dart:19:41 • invalid_constant
+   info • The private field _duration could be 'final'. Try making the field 'final' • test/support/fake_playback_engine.dart:40:13 • prefer_final_fields
+
+3 issues found. (ran in 5.5s)
