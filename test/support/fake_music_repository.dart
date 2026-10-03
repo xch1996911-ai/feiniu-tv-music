@@ -1,0 +1,52 @@
+import 'package:feiniu_tv_music/domain/album.dart';
+import 'package:feiniu_tv_music/domain/artist.dart';
+import 'package:feiniu_tv_music/domain/track.dart';
+import 'package:feiniu_tv_music/repositories/auth_repository.dart';
+import 'package:feiniu_tv_music/repositories/music_repository.dart';
+
+/// 曲目构造糖：测试里只关心 guid / 可播性 / 标题。
+Track makeTrack(
+  String guid, {
+  String? title,
+  int accessStatus = 0,
+  int durationMs = 180000,
+}) {
+  return Track(
+    guid: guid,
+    title: title ?? '曲目 $guid',
+    durationMs: durationMs,
+    accessStatus: accessStatus,
+    album: const AlbumRef(guid: 'album_$guid', name: '专辑 $guid'),
+    artists: const <ArtistRef>[],
+    audioSpec: const AudioSpec(format: 'flac', sampleRate: 44100, bitDepth: 16),
+  );
+}
+
+/// 失效曲目（`accessStatus == 3`，音频文件已失效 / 无权限）。
+Track makeInvalidTrack(String guid) =>
+    makeTrack(guid, accessStatus: 3, title: '失效 $guid');
+
+/// 假音乐仓储：只覆写 `PlaybackRepository` 真正用到的两个成员。
+///
+/// 真实 `MusicRepository.authHeaders` / `buildStreamUrl` 会走
+/// `_auth.provider`，未登录时抛 `StateError`；而构造 `AuthRepository`
+/// 本身不做任何 IO，因此这里可以安全地建一个未登录实例再覆写取值方法。
+class FakeMusicRepository extends MusicRepository {
+  FakeMusicRepository({Map<String, String>? headers})
+      : _headers = headers ?? <String, String>{'Cookie': 'music-token=fake'},
+        super(AuthRepository());
+
+  final Map<String, String> _headers;
+
+  /// 记录被请求过的曲目 guid，便于断言 URL 构造用对了曲目。
+  final List<String> requestedGuids = <String>[];
+
+  @override
+  Map<String, String> get authHeaders => _headers;
+
+  @override
+  String buildStreamUrl(String trackGuid) {
+    requestedGuids.add(trackGuid);
+    return 'http://nas.example.invalid:5666/music/api/v1/track/stream?guid=$trackGuid';
+  }
+}
