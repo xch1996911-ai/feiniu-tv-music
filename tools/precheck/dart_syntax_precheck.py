@@ -298,6 +298,72 @@ def check_ctor_param_shadowing(text: str, path: Path) -> list[str]:
     return warnings
 
 
+def check_enum_semicolon(structure: str, path: Path) -> list[str]:
+    """枚举值列表末尾漏 `;` —— 增强枚举最经典的语法错误。
+
+    真实案例（2026-10-03，CI 白烧一轮）：`LyricRepository` 里的
+
+        enum LyricOrigin {
+          none,
+          nas,
+          online,
+          manual,          // ← 少了 `;`
+
+          String get label => switch (this) { ... };
+        }
+
+    analyzer 报的是 5 条**看着毫不相关**的错
+    （`constant_identifier_names: The constant name 'String' isn't a
+    lowerCamelCase identifier` + 3 条 `expected_token`），
+    外加测试里 2 条 `instance_access_to_static_member` ——
+    根因却只是「少了一个分号」。本脚本当时完全没拦住。
+
+    启发式规则：只看枚举体**顶层**里**第一个 `;` 之前**的文本 ——
+    那一段本来应该**只有枚举值**。若其中出现成员声明特征
+    （`get` / `set` / `=`）就说明值列表没有被 `;` 收尾。
+    （纯值列表里不会出现这些字符，所以「纯值枚举」与「写对了的增强枚举」
+    都不会误报；已经写过 `;` 的成员部分在 `;` 之后，天然被排除。）
+
+    ⚠️ 不能简单地「只要顶层有 `;` 就放行」：成员方法体自己的结尾 `;`
+    也落在顶层（`=> switch (this) { ... };` 的花括号闭合后深度回到 0），
+    那样就会漏掉真正的漏分号。
+
+    传入的是 [strip_code] 处理过的结构文本：字符串已变成 `""`、注释已删除，
+    因此不会把注释里的 `get` 当成成员。
+    """
+    errors: list[str] = []
+    member_pat = re.compile(r'\bget\b|\bset\b|=')
+    for m in re.finditer(r'\benum\s+([A-Za-z_$][\w$]*)\s*\{', structure):
+        open_brace = m.end() - 1
+        close_brace = _match_pair(structure, open_brace, '{', '}')
+        if close_brace >= len(structure):
+            continue
+
+        # 只取枚举体的**顶层**字符（跳过嵌套的 () [] {}）
+        depth = 0
+        top: list[str] = []
+        for c in structure[open_brace + 1:close_brace]:
+            if c in '([{':
+                depth += 1
+            elif c in ')]}':
+                depth -= 1
+            if depth == 0:
+                top.append(c)
+        top_text = ''.join(top)
+
+        semicolon = top_text.find(';')
+        head = top_text if semicolon < 0 else top_text[:semicolon]
+        if not member_pat.search(head):
+            continue  # 值列表干净（或已正确收尾）→ 合法
+
+        line = structure.count('\n', 0, open_brace) + 1
+        errors.append(
+            f'L{line}: enum {m.group(1)} 的枚举值列表末尾缺少 `;` —— '
+            f'枚举值后面还有 `get` / 成员定义，必须先写 `;` 结束值列表'
+            f'（否则 analyzer 会报一堆与分号毫不相关的错）')
+    return errors
+
+
 def main() -> int:
     if len(sys.argv) == 1:
         targets = [ROOT]
@@ -322,6 +388,7 @@ def main() -> int:
         text = f.read_text(encoding='utf-8')
         structure, errs = strip_code(text)
         errs += check_balance(structure, f)
+        errs += check_enum_semicolon(structure, f)
         warns = check_ctor_param_shadowing(text, f)
         if errs:
             total_errors += len(errs)

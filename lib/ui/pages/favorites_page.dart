@@ -268,9 +268,12 @@ class _HeroAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ⚠️ 这里**不再**传 `TvFocus.debugLabel`：
+    //    节点是外部传进来的（`initState` 里建，标签是稳定的 `fav.play` 等），
+    //    `TvFocus.debugLabel` 只在自己建节点时才生效 —— 留在这里会是
+    //    一份永远不生效、还随按钮文案变化的「第二份标签」，只会误导排障。
     return TvFocus(
       focusNode: node,
-      debugLabel: 'fav.$label',
       onPressed: onPressed,
       nextRight: nextRight,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(

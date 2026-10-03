@@ -76,6 +76,16 @@ class OnlineLyricCandidate {
 }
 
 /// 在线歌词来源（可替换 —— 测试里注入假实现即可，不需要任何网络）。
+///
+/// ## 契约（实现方只需做到这些）
+/// `search` 负责**按元数据把候选捞回来**：
+/// - 只返回**真有歌词内容**的条目（见 [OnlineLyricCandidate.hasContent]），
+///   只有元数据的丢掉；
+/// - 顺序按相关度从高到低（用户在候选列表里看到的就是这个顺序）。
+///
+/// ⚠️ **可以不填 `score`**。阈值判定是 `LyricRepository` 的策略，
+/// 它会用 [OnlineLyricMatcher] 对每条候选**重新打分**再决定要不要自动绑定 ——
+/// 策略只应存在于一处，来源实现不该影响「多少分算匹配」。
 abstract class OnlineLyricSource {
   /// 展示给用户的来源名。
   String get displayName;
@@ -203,15 +213,24 @@ class LrclibLyricSource implements OnlineLyricSource {
               BaseOptions(
                 connectTimeout: const Duration(seconds: 6),
                 receiveTimeout: const Duration(seconds: 8),
-                headers: const <String, String>{
-                  // LRCLIB 使用条款要求客户端标识自己
-                  'User-Agent': 'feiniu-tv-music/1.0 (Android TV; +https://github.com/xch1996911-ai/feiniu-tv-music)',
-                  'Accept': 'application/json',
-                },
+                headers: defaultHeaders,
               ),
             );
 
   static const String baseUrl = 'https://lrclib.net/api';
+
+  /// 请求头。
+  ///
+  /// ⚠️ **每次请求都显式带上**，而不是只塞进自建 Dio 的 `BaseOptions`：
+  /// 构造时可以注入外部 Dio（测试、或将来的 HTTP 客户端），
+  /// 那种情况下 BaseOptions 不是我们建的那份，`User-Agent` 就丢了 ——
+  /// 违反 LRCLIB 使用条款，且真实故障发生在用户机器上。
+  static const Map<String, String> defaultHeaders = <String, String>{
+    // LRCLIB 使用条款要求客户端标识自己
+    'User-Agent':
+        'feiniu-tv-music/1.0 (Android TV; +https://github.com/xch1996911-ai/feiniu-tv-music)',
+    'Accept': 'application/json',
+  };
 
   final Dio _dio;
 
@@ -233,6 +252,8 @@ class LrclibLyricSource implements OnlineLyricSource {
             'track_name': title,
             if (query.artist.trim().isNotEmpty) 'artist_name': query.artist.trim(),
           },
+          // 显式带请求头：注入的 Dio 可能没有我们的 BaseOptions
+          options: Options(headers: defaultHeaders),
         )
         .timeout(requestTimeout);
 

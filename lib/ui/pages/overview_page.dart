@@ -15,6 +15,40 @@ import '../widgets/cover_image.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
 
+// ── 专辑瓦片的几何常量 ────────────────────────────────────────
+//
+// ⚠️ 这些值**必须**与 `_AlbumTile` 里的实际用法一致：网格的 `mainAxisExtent`
+//    就是用 `tileWidth + _albumTextBlock` 反推出来的。写死一个「看起来够高」
+//    的常量会导致宽屏上封面变大、行高不变 → `RenderFlex overflowed`
+//    （实测 1920 宽下专辑网格溢出 67px，电视上就是黄黑条纹）。
+
+/// 封面与标题之间的间距。
+const double _albumCoverGap = 10;
+
+/// 标题与副标题之间的间距。
+const double _albumTitleGap = 3;
+
+/// 专辑名字号。
+const double _albumTitleSize = 19;
+
+/// 副标题（歌手 · N 首）字号。
+const double _albumSubSize = 14;
+
+/// 瓦片内文字的单行倍高。
+///
+/// ⚠️ 必须显式写进 `TextStyle.height`：M3 主题 default 行高是 1.43，
+///    比直觉的 1.0 高出近一半，不写就会把固定行高撑爆。
+const double _albumTextHeight = 1.2;
+
+/// 瓦片里焦点环占掉的高度（`padding: all(10)` × 2 + 环线 3 × 2）。
+const double _albumRingInset = 26;
+
+/// 封面下方「文字块」的总高。
+const double _albumTextBlock = _albumCoverGap +
+    _albumTitleSize * _albumTextHeight +
+    _albumTitleGap +
+    _albumSubSize * _albumTextHeight;
+
 /// 概览类型（决定版式与统计口径）。
 enum OverviewKind {
   /// 歌手：横向行（头像 + 名字 + N 首歌 · M 张专辑 + 进入箭头）。
@@ -78,9 +112,16 @@ class OverviewPage extends StatefulWidget {
 
 class _OverviewPageState extends State<OverviewPage> {
   /// 行高（固定值 —— 概览是固定行高列表，才能精确算回滚位置）。
-  static const double _artistRowExtent = 80;
-  static const double _genreRowExtent = 74;
-  static const double _albumTileExtent = 246;
+  ///
+  /// ⚠️ 固定行高**必须**装得下「焦点环内边距 + 环线 + 内容」：
+  /// 小于内容高度就是 `RenderFlex overflowed`（电视上是黄黑条纹）。
+  /// 反直觉的一点是内容比看上去高 —— M3 主题给 Text 的默认行高是 1.43。
+  /// 因此下面每个 Text 都显式写了 `height: 1.2`，算式才成立：
+  /// - 歌手行：可用 92-4-4-8-8-3-3 = 62；头像 56 ≤ 62 ✅；
+  ///   文字 21×1.2 + 4 + 15×1.2 = 47.2 ≤ 62 ✅
+  /// - 风格行：可用 78-4-4-14-14-3-3 = 36；最高子项（箭头图标 26）≤ 36 ✅
+  static const double _artistRowExtent = 92;
+  static const double _genreRowExtent = 78;
   static const double _albumSpacing = 18;
 
   final ScrollController _scroll = ScrollController();
@@ -280,10 +321,20 @@ class _OverviewPageState extends State<OverviewPage> {
     _restoreRowBuilt = false;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
-        // 列数按可用宽度自适应；行高固定，返回时才能精确算回 offset。
+        // 列数按可用宽度自适应。
         const double tileMin = 250;
         final double usable = c.maxWidth - 40;
-        final int columns = (usable / (tileMin + _albumSpacing)).floor().clamp(2, 8);
+        final int columns =
+            (usable / (tileMin + _albumSpacing)).floor().clamp(2, 8);
+
+        // ⚠️ 行高**由瓦片宽度反推**，不能写死：
+        //    封面是「瓦片内宽的正方形」，宽屏上封面更大，
+        //    固定行高必然被挤爆（1920 宽实测溢出 67px）。
+        //    同一屏内列数固定 ⇒ 行高恒定，回滚位置照样能精确算。
+        final double tileWidth =
+            (usable - _albumSpacing * (columns - 1)) / columns;
+        final double cover = tileWidth - _albumRingInset;
+        final double tileExtent = tileWidth + _albumTextBlock;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -298,7 +349,7 @@ class _OverviewPageState extends State<OverviewPage> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisExtent: _albumTileExtent,
+                  mainAxisExtent: tileExtent,
                   crossAxisSpacing: _albumSpacing,
                   mainAxisSpacing: _albumSpacing,
                 ),
@@ -308,6 +359,7 @@ class _OverviewPageState extends State<OverviewPage> {
                   if (i == _pendingFocus) _restoreRowBuilt = true;
                   return _AlbumTile(
                     overview: o,
+                    coverSize: cover,
                     focusNode: i == _pendingFocus ? _restoreNode : null,
                     onFocus: () => _lastFocused = i,
                     onPressed: () => _open(o),
@@ -475,6 +527,7 @@ class _ArtistRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 21,
+                        height: 1.2,
                         fontWeight: FontWeight.w600,
                         color: TvColors.text,
                       ),
@@ -486,6 +539,7 @@ class _ArtistRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 15,
+                        height: 1.2,
                         color: TvColors.textFaint,
                       ),
                     ),
@@ -507,12 +561,20 @@ class _ArtistRow extends StatelessWidget {
 class _AlbumTile extends StatelessWidget {
   const _AlbumTile({
     required this.overview,
+    required this.coverSize,
     required this.focusNode,
     required this.onFocus,
     required this.onPressed,
   });
 
   final LibraryOverview overview;
+
+  /// 封面边长（正方形）。
+  ///
+  /// 由 [_OverviewPageState._buildAlbumGrid] 按瓦片宽度算好后传入 ——
+  /// 网格的 `mainAxisExtent` 用的是**同一个值**，两者必须同源，
+  /// 否则行高与内容对不上就是 `RenderFlex overflowed`。
+  final double coverSize;
 
   /// 由 [OverviewPage] 传入的「焦点归还」节点。
   final FocusNode? focusNode;
@@ -535,47 +597,42 @@ class _AlbumTile extends StatelessWidget {
         status: s,
         radius: 14,
         padding: const EdgeInsets.all(10),
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints c) {
-            // 封面占满宽度且保持正方形；文字区固定高度，
-            // 这样每块的总高恒定（= mainAxisExtent），回滚位置才能算准。
-            final double cover = c.maxWidth;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                CoverImage(
-                  music: music,
-                  coverId: overview.coverId,
-                  size: cover,
-                  radius: 12,
-                  iconScale: 0.3,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  overview.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                    color: TvColors.text,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${overview.subtitle ?? ''}'
-                  '${overview.subtitle != null && overview.subtitle!.isNotEmpty ? ' · ' : ''}'
-                  '${overview.trackCount} 首',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: TvColors.textFaint,
-                  ),
-                ),
-              ],
-            );
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            CoverImage(
+              music: music,
+              coverId: overview.coverId,
+              size: coverSize,
+              radius: 12,
+              iconScale: 0.3,
+            ),
+            const SizedBox(height: _albumCoverGap),
+            Text(
+              overview.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: _albumTitleSize,
+                height: _albumTextHeight,
+                fontWeight: FontWeight.w600,
+                color: TvColors.text,
+              ),
+            ),
+            const SizedBox(height: _albumTitleGap),
+            Text(
+              '${overview.subtitle ?? ''}'
+              '${overview.subtitle != null && overview.subtitle!.isNotEmpty ? ' · ' : ''}'
+              '${overview.trackCount} 首',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: _albumSubSize,
+                height: _albumTextHeight,
+                color: TvColors.textFaint,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -625,6 +682,7 @@ class _GenreRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 21,
+                    height: 1.2,
                     fontWeight: FontWeight.w600,
                     color: TvColors.text,
                   ),
@@ -632,7 +690,11 @@ class _GenreRow extends StatelessWidget {
               ),
               Text(
                 '${overview.trackCount} 首',
-                style: const TextStyle(fontSize: 16, color: TvColors.textFaint),
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.2,
+                  color: TvColors.textFaint,
+                ),
               ),
               const SizedBox(width: 12),
               const Icon(Icons.chevron_right,

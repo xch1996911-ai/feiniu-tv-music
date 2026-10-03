@@ -215,30 +215,45 @@ class LyricRepository extends ChangeNotifier {
     // ── 2) 在线兜底 ──────────────────────────────────────────
     final OnlineLyricSource? online = _online;
     if (online != null && onlineEnabled) {
+      final OnlineLyricQuery query = OnlineLyricQuery(
+        title: track.title,
+        artist: track.artistNames,
+        album: track.album.name,
+        duration: track.duration,
+      );
       Log.i('LYRIC_LOAD NAS 无歌词${nasError == null ? '' : '（$nasError）'} '
           '→ 尝试在线匹配 guid=${track.guid}');
       try {
-        final List<OnlineLyricCandidate> cands = await online
-            .search(OnlineLyricQuery(
-              title: track.title,
-              artist: track.artistNames,
-              album: track.album.name,
-              duration: track.duration,
-            ))
-            .timeout(onlineTimeout);
+        final List<OnlineLyricCandidate> raw =
+            await online.search(query).timeout(onlineTimeout);
 
         if (seq != _requestSeq) {
           Log.i('LYRIC_LOAD 丢弃过期结果（在线）guid=${track.guid}');
           return;
         }
 
-        if (cands.isNotEmpty) {
-          final OnlineLyricCandidate best = cands.first;
+        // ⚠️ **不信来源给的 score，也不信它排好序**：
+        //    「多少分算匹配」是本层的策略，必须由本层用同一个匹配器重算。
+        //    否则换一个不打分 / 不排序的 `OnlineLyricSource` 实现，
+        //    表现就是「永远只列候选、从不自动绑定」——静默退化，很难查。
+        //    打分后**保留来源原有的顺序**（那是用户会在候选列表里看到的顺序），
+        //    自动绑定则取分数最高的那一条。
+        //    `score <= 0` 表示标题根本不沾边，连候选都不该算。
+        final List<OnlineLyricCandidate> scored = <OnlineLyricCandidate>[
+          for (final OnlineLyricCandidate c in raw)
+            if (c.hasContent) c.withScore(OnlineLyricMatcher.score(query, c)),
+        ]..removeWhere((OnlineLyricCandidate c) => c.score <= 0);
+
+        if (scored.isNotEmpty) {
+          final OnlineLyricCandidate best = scored.reduce(
+            (OnlineLyricCandidate a, OnlineLyricCandidate b) =>
+                b.score > a.score ? b : a,
+          );
           if (best.score >= OnlineLyricMatcher.acceptThreshold) {
             final LyricDoc doc = _parse(best.content);
             if (doc.isNotEmpty) {
               _loading = false;
-              _candidates = List<OnlineLyricCandidate>.unmodifiable(cands);
+              _candidates = List<OnlineLyricCandidate>.unmodifiable(scored);
               _cachePut(track.guid, doc, LyricOrigin.online);
               _apply(track.guid, doc, LyricOrigin.online);
               Log.i('LYRIC_LOAD 完成（在线 ${best.source} '
@@ -247,9 +262,9 @@ class LyricRepository extends ChangeNotifier {
             }
           }
           // 置信度不足 → 只给候选，**不自动绑定**
-          _candidates = List<OnlineLyricCandidate>.unmodifiable(cands);
-          Log.i('LYRIC_LOAD 在线候选 ${cands.length} 条，'
-              '最高分 ${cands.first.score.toStringAsFixed(2)} 未达阈值 '
+          _candidates = List<OnlineLyricCandidate>.unmodifiable(scored);
+          Log.i('LYRIC_LOAD 在线候选 ${scored.length} 条，'
+              '最高分 ${best.score.toStringAsFixed(2)} 未达阈值 '
               '${OnlineLyricMatcher.acceptThreshold} → 交由用户选择');
         }
       } catch (e) {

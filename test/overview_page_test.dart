@@ -245,7 +245,9 @@ void main() {
 
       expect(find.text('共 3 张专辑'), findsOneWidget);
       expect(find.text('The Moment'), findsOneWidget);
-      expect(find.text('孙燕姿 · 1 首'), findsOneWidget);
+      // ⚠️ 孙燕姿有两张专辑（The Moment / 孙燕姿），副标题都是「孙燕姿 · 1 首」，
+      //    所以这里必须是 2 个 —— 用 findsOneWidget 是测试自己写错了。
+      expect(find.text('孙燕姿 · 1 首'), findsNWidgets(2));
       expect(find.text('叶惠美'), findsOneWidget);
       expect(find.text('周杰伦 · 1 首'), findsOneWidget);
 

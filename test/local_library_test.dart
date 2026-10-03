@@ -13,6 +13,11 @@ import 'support/fake_secure_store.dart';
 /// `makeTrack()`（support/fake_music_repository.dart）的 artists 恒为空、
 /// album 名恒为「专辑 <guid>」—— 那样测不出「多歌手 / 封面优先级」这类分支，
 /// 因此这里另造一个更可控的构造糖。
+///
+/// ⚠️ **`artistGuid` 默认是 `'ar_<曲目 guid>'`，即「每首歌各自一个歌手」**。
+/// 想表达「同一位歌手的多首歌」必须**显式传同一个 `artistGuid`**，
+/// 否则数据层会把它们（正确地）当成两个同名的不同歌手 ——
+/// 本项目真实踩过这个坑：歌手概览因此多出一个重复分组。
 Track tr(
   String guid, {
   String artist = '',
@@ -402,9 +407,11 @@ void main() {
   group('歌手概览', () {
     test('计数正确：同一歌手多首合并，未知歌手兜底', () {
       final catalogue = <Track>[
-        tr('a', artist: '孙燕姿'),
-        tr('b', artist: '周杰伦'),
-        tr('c', artist: '孙燕姿'),
+        // ⚠️ 同一位歌手必须用**同一个 artistGuid**（见 `tr()` 的说明）：
+        //    飞牛返回的 artists 里 guid 才是身份，重名歌手不能靠名字合并。
+        tr('a', artist: '孙燕姿', artistGuid: 'ar_syz'),
+        tr('b', artist: '周杰伦', artistGuid: 'ar_jl'),
+        tr('c', artist: '孙燕姿', artistGuid: 'ar_syz'),
         tr('d'), // 无歌手
       ];
       final groups = LocalLibraryRepository.artistOverviews(catalogue);
@@ -425,10 +432,14 @@ void main() {
 
     test('专辑数按**去重专辑**统计（歌手概览的第二行统计）', () {
       final catalogue = <Track>[
-        // ⚠️ 同一张专辑必须共用一个 albumGuid，否则在数据层看来就是两张专辑
-        tr('a', artist: '孙燕姿', albumName: '同一张', albumGuid: 'alb_1'),
-        tr('b', artist: '孙燕姿', albumName: '同一张', albumGuid: 'alb_1'),
-        tr('c', artist: '孙燕姿', albumName: '另一张', albumGuid: 'alb_2'),
+        // ⚠️ 同一张专辑必须共用一个 albumGuid，否则在数据层看来就是两张专辑；
+        //    同一位歌手同理必须共用 artistGuid（否则会拆成两个歌手分组）。
+        tr('a', artist: '孙燕姿', artistGuid: 'ar_syz',
+            albumName: '同一张', albumGuid: 'alb_1'),
+        tr('b', artist: '孙燕姿', artistGuid: 'ar_syz',
+            albumName: '同一张', albumGuid: 'alb_1'),
+        tr('c', artist: '孙燕姿', artistGuid: 'ar_syz',
+            albumName: '另一张', albumGuid: 'alb_2'),
       ];
       final g = LocalLibraryRepository.artistOverviews(catalogue).single;
       expect(g.trackCount, 3);

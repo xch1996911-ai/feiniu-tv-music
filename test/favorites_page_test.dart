@@ -63,6 +63,12 @@ void main() {
 
   String? focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
 
+  /// 按 debugLabel 找焦点节点。
+  ///
+  /// ⚠️ 标签取的是 **`FocusNode` 自己的 `debugLabel`**，也就是
+  /// `FavoritesPage` 里 `FocusNode(debugLabel: 'fav.play')` 那一份；
+  /// `TvFocus(debugLabel: ...)` **只在自己创建节点时才生效**
+  /// （传了 `focusNode` 就用传入节点的标签）。两者容易混淆。
   FocusNode? nodeForLabel(WidgetTester tester, String label) {
     for (final Focus f in tester.widgetList<Focus>(find.byType(Focus))) {
       if (f.focusNode?.debugLabel == label) return f.focusNode;
@@ -146,11 +152,11 @@ void main() {
     testWidgets('「去音乐库」可聚焦并能触发回调', (WidgetTester tester) async {
       await pumpFavorites(tester);
 
-      final FocusNode? n = nodeForLabel(tester, 'fav.去音乐库');
+      final FocusNode? n = nodeForLabel(tester, 'fav.browse');
       expect(n, isNotNull, reason: '空态的出口必须在焦点树上');
       n!.requestFocus();
       await tester.pump();
-      expect(focusedLabel(), 'fav.去音乐库');
+      expect(focusedLabel(), 'fav.browse');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
@@ -290,16 +296,16 @@ void main() {
         catalogue: <Track>[favTrack('a', serverFavorite: true)],
       );
 
-      final FocusNode? playNode = nodeForLabel(tester, 'fav.播放');
+      final FocusNode? playNode = nodeForLabel(tester, 'fav.play');
       expect(playNode, isNotNull);
       playNode!.requestFocus();
       await tester.pump();
-      expect(focusedLabel(), 'fav.播放');
+      expect(focusedLabel(), 'fav.play');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), 'fav.随机');
+      expect(focusedLabel(), 'fav.shuffle');
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), 'fav.播放');
+      expect(focusedLabel(), 'fav.play');
 
       // 队列必须从**收藏列表**建起（这里只断言入口被触发）
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);

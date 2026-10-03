@@ -173,6 +173,15 @@ class _PlayerPageState extends State<PlayerPage> {
     );
     final PlayerLayout layout = context.select<LocalLibraryRepository,
         PlayerLayout>((LocalLibraryRepository l) => l.playerLayout);
+    // ⚠️ 「当前曲是否已收藏」也必须在这里读，**不能**下沉到 [_buildCoverPane]：
+    //    那两个布局方法是从 `LayoutBuilder` 的 builder 里调用的，而 builder
+    //    跑在 **layout 阶段**（`debugDoingBuild == false`），provider 的
+    //    `context.select` 会直接断言失败：
+    //    `Failed assertion: 'widget is LayoutBuilder || debugDoingBuild'`。
+    //    （`context.read` 没有这个限制，所以只有 select 会炸。）
+    final bool fav = context.select<LocalLibraryRepository, bool>(
+      (LocalLibraryRepository l) => song != null && l.isFavorite(song.guid),
+    );
 
     return Material(
       color: TvColors.stageTo,
@@ -196,14 +205,14 @@ class _PlayerPageState extends State<PlayerPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      Expanded(child: _buildBody(song, layout)),
+                      Expanded(child: _buildBody(song, layout, fav)),
                       const SizedBox(height: 8),
                       // 底部操作栏是一整块玻璃条（与全站毛玻璃视觉一致）
                       TvGlass(
                         radius: 20,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
-                        child: _buildBottomBar(song, layout),
+                        child: _buildBottomBar(song, layout, fav),
                       ),
                       const SizedBox(height: 12),
                       _SeekRow(playbackNode: _seekNode, upNode: _playNode),
@@ -223,7 +232,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // ── 主体：两种展示模式 ────────────────────────────────────
 
-  Widget _buildBody(Track? song, PlayerLayout layout) {
+  Widget _buildBody(Track? song, PlayerLayout layout, bool fav) {
     if (song == null) {
       return const Center(
         child: Text('尚未选择歌曲',
@@ -231,13 +240,13 @@ class _PlayerPageState extends State<PlayerPage> {
       );
     }
     return switch (layout) {
-      PlayerLayout.stage => _buildStageLayout(song),
-      PlayerLayout.cover => _buildCoverLayout(song),
+      PlayerLayout.stage => _buildStageLayout(song, fav),
+      PlayerLayout.cover => _buildCoverLayout(song, fav),
     };
   }
 
   /// 图四标准布局：左封面 + 信息，右歌词。
-  Widget _buildStageLayout(Track song) {
+  Widget _buildStageLayout(Track song, bool fav) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
         // 封面按**可用高度**自适应：小屏不会把标题挤出去，
@@ -248,7 +257,7 @@ class _PlayerPageState extends State<PlayerPage> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Expanded(flex: 5, child: _buildCoverPane(song, cover, center: false)),
+            Expanded(flex: 5, child: _buildCoverPane(song, fav, cover, center: false)),
             const SizedBox(width: 30),
             Expanded(flex: 4, child: _buildLyricPane(song)),
           ],
@@ -258,7 +267,7 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   /// 大封面模式：封面放大成视觉主体，歌词移到**封面下方**。
-  Widget _buildCoverLayout(Track song) {
+  Widget _buildCoverLayout(Track song, bool fav) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
         // 封面同时受可用高度与宽度约束，取较小者 ——
@@ -272,6 +281,7 @@ class _PlayerPageState extends State<PlayerPage> {
               flex: 6,
               child: _buildCoverPane(
                 song,
+                fav,
                 cover,
                 center: true,
                 horizontal: true,
@@ -290,16 +300,17 @@ class _PlayerPageState extends State<PlayerPage> {
   /// [center] = true 时整体水平居中（大封面模式）；
   /// [horizontal] = true 时曲目信息放在封面**右侧**而不是下方，
   /// 避免大封面模式下文字把歌词区挤得太窄。
+  ///
+  /// ⚠️ 本方法**只做布局**，任何 provider 订阅都由调用方（真正的 `build()`）
+  /// 传进来 —— 它被 `LayoutBuilder` 的 builder 调用，那里不允许 `context.select`。
   Widget _buildCoverPane(
     Track song,
+    bool fav,
     double coverSize, {
     required bool center,
     bool horizontal = false,
   }) {
     final MusicRepository music = context.read<MusicRepository>();
-    final bool fav = context.select<LocalLibraryRepository, bool>(
-      (LocalLibraryRepository l) => l.isFavorite(song.guid),
-    );
 
     final Widget cover = DecoratedBox(
       decoration: BoxDecoration(
@@ -419,16 +430,12 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // ── 底部操作栏（返回 / 模式 / 布局 / 收藏 / 上一首 / 播放 / 下一首 / 队列）──
 
-  Widget _buildBottomBar(Track? song, PlayerLayout layout) {
+  Widget _buildBottomBar(Track? song, PlayerLayout layout, bool fav) {
     final bool playing = context.select<PlaybackRepository, bool>(
       (PlaybackRepository p) => p.isPlaying,
     );
     final PlayMode mode = context.select<PlaybackRepository, PlayMode>(
       (PlaybackRepository p) => p.mode,
-    );
-    final bool fav = context.select<LocalLibraryRepository, bool>(
-      (LocalLibraryRepository l) =>
-          song != null && l.isFavorite(song.guid),
     );
     final PlaybackRepository p = context.read<PlaybackRepository>();
 
