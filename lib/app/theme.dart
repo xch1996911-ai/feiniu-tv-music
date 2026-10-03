@@ -65,6 +65,25 @@ class TvColors {
 
   /// 按下态（OK/Enter 已按下但还没抬起）。比焦点态更亮，用于**区分**两种状态。
   static const Color pressedFill = Color(0xFF3F6BD8);
+
+  // ── 毛玻璃视觉体系（V4 新增）──────────────────────────────
+  /// 玻璃面：半透明深色。
+  ///
+  /// 透明度是**电视上实测调出来**的：再透一点会被背景内容干扰、
+  /// 文字对比度下降；再实一点就退化成普通不透明面板，「玻璃感」消失。
+  static const Color glass = Color(0xB3141420);
+
+  /// 更亮一档的玻璃 —— 用于需要「浮在更上层」的弹窗 / 队列面板。
+  static const Color glassHi = Color(0xCC1C1C2B);
+
+  /// 玻璃面上的细边线。刻意比 [line] 淡：整页都用硬边框会显得很碎。
+  static const Color glassLine = Color(0x26FFFFFF);
+
+  /// 弹窗背后的遮罩（比玻璃更暗，且**不做模糊**，让焦点留在弹窗上）。
+  static const Color scrim = Color(0xB3000000);
+
+  /// 玻璃面外阴影。
+  static const Color glassShadow = Color(0x59000000);
 }
 
 /// 全局主题（TV 场景：深背景 + 大字号 + 高对比）。

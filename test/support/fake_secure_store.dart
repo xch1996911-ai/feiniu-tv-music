@@ -66,4 +66,40 @@ class FakeSecureStore extends SecureStore {
   Future<void> writeRecentGuids(List<String> guids) async {
     prefs['recentGuids'] = guids.take(SecureStore.maxRecentTracks).join('\n');
   }
+
+  // ── 收藏（V4）：飞牛没有收藏写接口 → 本机集合是唯一数据源 ──────
+
+  @override
+  Future<List<String>> readFavoriteGuids() async {
+    final raw = prefs['favGuids'];
+    if (raw == null || raw.isEmpty) return const <String>[];
+    return raw
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> writeFavoriteGuids(List<String> guids) async {
+    prefs['favGuids'] = guids.take(SecureStore.maxFavoriteTracks).join('\n');
+  }
+
+  @override
+  Future<bool> readFavoritesSeeded() async => prefs['favSeeded'] == '1';
+
+  @override
+  Future<void> writeFavoritesSeeded(bool value) async {
+    prefs['favSeeded'] = value ? '1' : '0';
+  }
+
+  // ── 界面偏好（V4）：播放页展示模式 ────────────────────────
+
+  @override
+  Future<String?> readPlayerLayoutKey() async => prefs['playerLayout'];
+
+  @override
+  Future<void> writePlayerLayoutKey(String value) async {
+    prefs['playerLayout'] = value;
+  }
 }

@@ -15,6 +15,7 @@ import '../repositories/local_library_repository.dart';
 import '../repositories/lyric_repository.dart';
 import '../repositories/music_repository.dart';
 import '../repositories/playback_repository.dart';
+import '../services/online_lyric_source.dart';
 
 /// 启动引导页 —— **必须是屏幕上最先出现的东西**。
 ///
@@ -143,7 +144,11 @@ class _BootAppState extends State<BootApp> {
       final music = MusicRepository(auth);
       final playback = PlaybackRepository(music: music, handler: handler);
       final library = LibraryRepository(music);
-      final lyrics = LyricRepository(music);
+      // 歌词：NAS 优先；NAS 没有/失败/为空时才走 LRCLIB 在线兜底
+      // （免密钥，符合「密钥不得硬编码」的红线）。
+      // ⚠️ 只在这里注入 —— 测试里不传 online 时 `_online == null`，
+      //    因此既有歌词测试**不会**打真实网络。
+      final lyrics = LyricRepository(music, online: LrclibLyricSource());
       final local = LocalLibraryRepository();
 
       // 跨分页连续播放的关键接线：播放队列接近末尾时，让曲库去拉下一页，

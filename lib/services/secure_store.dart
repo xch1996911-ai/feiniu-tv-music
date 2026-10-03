@@ -211,6 +211,67 @@ class SecureStore {
         guids.take(maxRecentTracks).join('\n'),
       );
 
+  // ================================================================
+  //  本机收藏（非机密）
+  //
+  //  ⚠️ 为什么收藏也记在本机：飞牛**没有可用的收藏写接口**。
+  //     `fnOS_API_真实契约.md` §9 里只有**只读**的 `Track.isFavorite` 字段；
+  //     `favorite-track/list` 属「逆向确认、未实测」，且整份 endpoints 里
+  //     **不存在**「加收藏 / 取消收藏」的写端点。
+  //     而需求要求「按下后立即更新界面并持久保存」→ 只能由本机记录。
+  //
+  //  ## 怎么避免「服务端 / 本机两份状态互相冲突」
+  //  采用**一次性播种**：首次进入时把服务端 `isFavorite == true` 的曲目
+  //  导入本机集合并置 seeded 标记；**此后只认本机这一份**。
+  //  UI 永远只读本机集合，不存在两个数据源打架。
+  //
+  //  与凭据区严格分开：`clearSession()` 不碰这里 —— 登出只是换账号。
+  // ================================================================
+
+  static const String _kFavoriteGuids = 'feiniu.favorites.guids';
+  static const String _kFavoritesSeeded = 'feiniu.favorites.seeded';
+
+  /// 本机收藏上限（纯防御，避免异常情况下无限增长）。
+  static const int maxFavoriteTracks = 2000;
+
+  Future<List<String>> readFavoriteGuids() async {
+    final raw = await _read(_kFavoriteGuids);
+    if (raw == null || raw.isEmpty) return const <String>[];
+    return raw
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  Future<void> writeFavoriteGuids(List<String> guids) => _write(
+        _kFavoriteGuids,
+        guids.take(maxFavoriteTracks).join('\n'),
+      );
+
+  /// 是否已经用服务端 `isFavorite` 播种过。
+  ///
+  /// ⚠️ 刻意用**单独一个键**而不是「集合非空」来判断：用户完全可能
+  /// 合法地把收藏全部取消（集合变空），那之后不该再被服务端播种回来。
+  Future<bool> readFavoritesSeeded() async =>
+      (await _read(_kFavoritesSeeded)) == '1';
+
+  Future<void> writeFavoritesSeeded(bool value) =>
+      _write(_kFavoritesSeeded, value ? '1' : '0');
+
+  // ================================================================
+  //  界面偏好（非机密）
+  // ================================================================
+
+  static const String _kPlayerLayout = 'feiniu.playerlayout';
+
+  /// 播放页展示模式（`stage` = 标准布局 / `cover` = 大封面）。
+  ///
+  /// 返回 null 表示「用户从未选过」，由调用方决定默认值。
+  Future<String?> readPlayerLayoutKey() => _read(_kPlayerLayout);
+
+  Future<void> writePlayerLayoutKey(String value) =>
+      _write(_kPlayerLayout, value);
 
   /// 读取 deviceId；不存在或形态非法（非 32 位 hex）时**生成并持久化**一个新的。
   ///

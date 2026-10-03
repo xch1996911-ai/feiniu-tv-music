@@ -13,22 +13,23 @@ import '../../repositories/playback_repository.dart';
 import '../shell/shell_stage.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
+import '../widgets/tv_glass.dart';
 
-/// 首页（参考图二）。
+/// 首页。
 ///
 /// 版式：四张快捷卡片 + 「最近播放」列表；顶部搜索栏与左侧导航由 AppShell 提供。
 ///
 /// ## 四张卡片的真实含义（全部有实际行为，没有装饰性假按钮）
 /// - **漫游**  —— 随机播放全部歌曲（切换播放模式为「随机」）；
-/// - **收藏**  —— 曲库里 `isFavorite == true` 的曲目（服务端字段，不本地另存）；
-/// - **最近播放** —— 本机收听历史（飞牛无播放历史接口，见
-///   [LocalLibraryRepository] 的说明）；
-/// - **最近添加** —— 按 `createdAt`（Unix 秒）倒序。
+/// - **收藏**  —— 本机收藏集合（飞牛没有收藏写接口，见 [LocalLibraryRepository]）；
+/// - **最近播放** —— 本机收听历史（飞牛无播放历史接口）；
+/// - **最近添加** —— 按 `createdAt`（Unix 秒）倒序，**直接进入该列表**。
+///
+/// 卡片上显示的是**真实统计数**，不是装饰文案。
 ///
 /// ## 性能
 /// 只 `select` 当前曲目 guid，**不 watch 整个播放仓储**：
 /// 播放位置每秒都在变，watch 会让首页（含十几张网络封面）反复重建。
-/// `select` 后只有「换歌」那一下才重建。
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
@@ -86,6 +87,11 @@ class _HomePageState extends State<HomePage> {
     final List<Track> recent = local.recentTracks(library.tracks);
     final List<Track> shown = recent.take(_maxRecentOnHome).toList();
 
+    // 真实统计（都是 O(n) 的轻量计算，不做排序）。
+    final int favCount = local.favoriteTracks(library.tracks).length;
+    final int addedCount =
+        library.tracks.where((Track t) => t.createdAt != null).length;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(26, 6, 26, 26),
       children: <Widget>[
@@ -95,9 +101,9 @@ class _HomePageState extends State<HomePage> {
               child: _ShortcutCard(
                 icon: Icons.album,
                 label: '漫游',
+                count: '${library.tracks.length} 首',
                 colors: const <Color>[Color(0xFFFF4D4F), Color(0xFFFFB199)],
                 node: _roamNode,
-                nextLeft: null,
                 nextRight: _favNode,
                 onPressed: () => _roam(library.tracks),
               ),
@@ -107,6 +113,7 @@ class _HomePageState extends State<HomePage> {
               child: _ShortcutCard(
                 icon: Icons.favorite,
                 label: '收藏',
+                count: '$favCount 首',
                 colors: const <Color>[Color(0xFFFF9A3D), Color(0xFFFFD08A)],
                 node: _favNode,
                 nextLeft: _roamNode,
@@ -119,6 +126,7 @@ class _HomePageState extends State<HomePage> {
               child: _ShortcutCard(
                 icon: Icons.history,
                 label: '最近播放',
+                count: '${recent.length} 首',
                 colors: const <Color>[Color(0xFF1FA36B), Color(0xFF7BD8A8)],
                 node: _recentNode,
                 nextLeft: _favNode,
@@ -129,18 +137,18 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(width: 16),
             Expanded(
               child: _ShortcutCard(
-                icon: Icons.add,
+                icon: Icons.fiber_new,
                 label: '最近添加',
-                colors: const <Color>[Color(0xFF6E6E7E), Color(0xFFB9B9C6)],
+                count: '$addedCount 首',
+                colors: const <Color>[Color(0xFF5B6EF5), Color(0xFF9FB0FF)],
                 node: _addedNode,
                 nextLeft: _recentNode,
-                nextRight: null,
                 onPressed: () => widget.onOpenStage(ShellStage.recentAdded),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 26),
         Row(
           children: <Widget>[
             const Text(
@@ -150,6 +158,11 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.w700,
                 color: TvColors.text,
               ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              recent.isEmpty ? '暂无记录' : '共 ${recent.length} 首 · 按播放时间',
+              style: const TextStyle(fontSize: 15, color: TvColors.textFaint),
             ),
             const Spacer(),
             if (recent.length > _maxRecentOnHome)
@@ -162,8 +175,9 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 10),
         if (shown.isEmpty)
           const TrackListEmpty(
-            text: '还没有播放记录\n\n'
-                '从下面的「音乐库」里挑一首开始播放，这里就会留下痕迹。',
+            icon: Icons.history,
+            text: '暂无最近播放\n\n'
+                '从「音乐库」里挑一首开始播放，这里就会留下痕迹。',
           )
         else
           for (int i = 0; i < shown.length; i++)
@@ -185,11 +199,15 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// 首页快捷卡片（图二里的四张渐变卡）。
+/// 首页快捷卡片。
+///
+/// 视觉上属于全站毛玻璃体系：玻璃底 + 一层低透明度渐变（保留四张卡的
+/// 色彩识别度，同时不像旧版那样是四块「贴上去的纯色板」）。
 class _ShortcutCard extends StatelessWidget {
   const _ShortcutCard({
     required this.icon,
     required this.label,
+    required this.count,
     required this.colors,
     required this.node,
     required this.onPressed,
@@ -199,6 +217,10 @@ class _ShortcutCard extends StatelessWidget {
 
   final IconData icon;
   final String label;
+
+  /// 真实统计（如「128 首」）。
+  final String count;
+
   final List<Color> colors;
   final FocusNode node;
   final FocusNode? nextLeft;
@@ -215,21 +237,30 @@ class _ShortcutCard extends StatelessWidget {
       nextRight: nextRight,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
-        radius: 16,
+        radius: 18,
         padding: EdgeInsets.zero,
-        // 渐变卡片自带底色的情况下，焦点填充要淡一些，否则会盖掉渐变色
+        // 卡片自带渐变底色，焦点填充要淡一些，否则会盖掉渐变
         focusColor: const Color(0x33FFFFFF),
         pressedColor: const Color(0x66FFFFFF),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+        child: TvGlass(
+          radius: 18,
+          // 4 张卡片并排，面积不小 → 不做模糊，只保留玻璃色与细边线。
+          blur: false,
+          tint: const Color(0x1FFFFFFF),
+          padding: EdgeInsets.zero,
           child: Container(
-            height: 138,
+            height: 136,
             width: double.infinity,
             decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: colors,
+                // 低透明度叠加：既有色彩区分，又能透出背后的玻璃底。
+                colors: <Color>[
+                  colors[0].withValues(alpha: 0.72),
+                  colors[1].withValues(alpha: 0.34),
+                ],
               ),
             ),
             padding: const EdgeInsets.all(16),
@@ -238,15 +269,31 @@ class _ShortcutCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 Icon(icon, size: 28, color: Colors.white),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      count,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xCCFFFFFF),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
