@@ -84,9 +84,25 @@ void main() {
   }
 
   /// 准备 5 首歌并进到播放页。
+  ///
+  /// ⚠️ **建立队列这一步必须放进 [WidgetTester.runAsync]。**
+  ///
+  /// `PlaybackRepository` 的加载串行链挂在**构造期创建**的
+  /// `Future<void>.value()` 上，而构造发生在 `setUp`（root Zone）。
+  /// `_Future._addListener` 用 `this._zone` 调度微任务，因此 `.then` 的回调
+  /// 被丢进 **root Zone 的微任务队列**；而 `testWidgets` 跑在 FakeAsync 里，
+  /// `pump()` 的 `flushMicrotasks()` **只清 FakeAsync 自己的队列**，
+  /// 碰不到 root Zone 的微任务。
+  ///
+  /// 结果：引擎永远收不到加载请求，`engine.playing` 恒为 false ——
+  /// 真机上完全没有这个问题（那里只有一个真实的微任务队列）。
+  /// `runAsync` 会把回调放回真实事件循环，从而正确复现运行时行为。
   Future<void> ready(WidgetTester tester) async {
     music.catalogue = <Track>[for (int i = 0; i < 5; i++) makeTrack('g$i')];
-    playback.setQueue(music.catalogue, startIndex: 2);
+    await tester.runAsync(() async {
+      playback.setQueue(music.catalogue, startIndex: 2);
+      await playback.pendingLoads;
+    });
     await pumpPlayer(tester);
   }
 
