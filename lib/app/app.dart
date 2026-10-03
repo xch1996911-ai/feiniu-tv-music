@@ -4,23 +4,33 @@ import 'package:provider/provider.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/music_repository.dart';
 import '../repositories/library_repository.dart';
+import '../repositories/local_library_repository.dart';
 import '../repositories/lyric_repository.dart';
 import '../repositories/playback_repository.dart';
 import '../ui/pages/login_page.dart';
-import '../ui/pages/server_status_page.dart';
 import '../ui/shell/app_shell.dart';
 import 'theme.dart';
 
-/// 应用根：装配 Provider 树 + 线性流程（登录 → 状态 → 列表 → 播放）。
+/// 应用根：装配 Provider 树 + 两态流程（登录 ⇄ 正式界面）。
 ///
-/// Phase 1 为临时验证 UI，采用最简线性 stage 切换而非完整路由；
-/// 真实 TV 导航（Navigation Rail / Shelf）在 Phase 2 实现。
+/// ⚠️ **登录成功后没有任何中间页**。
+///
+/// 早期版本这里是 `login → status → shell` 三段式，中间的 `status` 是
+/// Phase 1 用来验证「NAS 是否可达」的临时测试页（显示原始 JSON、
+/// 还有个「进入歌曲列表」按钮）。正式版把它删掉了：
+/// 用户登录成功后必须**直接落到首页**，不该再多点一次、
+/// 更不该看到一屏调试信息。
+///
+/// 现在只剩两个状态，判定依据只有一条 —— `AuthRepository.isLoggedIn`：
+/// - 已登录（含启动时从安全存储恢复的会话）→ [Stage.shell]；
+/// - 未登录（或登出 / token 失效且无法自动重登）→ [Stage.login]。
 class App extends StatelessWidget {
   final AuthRepository auth;
   final MusicRepository music;
   final PlaybackRepository playback;
   final LibraryRepository library;
   final LyricRepository lyrics;
+  final LocalLibraryRepository local;
 
   const App({
     super.key,
@@ -29,6 +39,7 @@ class App extends StatelessWidget {
     required this.playback,
     required this.library,
     required this.lyrics,
+    required this.local,
   });
 
   @override
@@ -40,33 +51,30 @@ class App extends StatelessWidget {
         ChangeNotifierProvider<PlaybackRepository>.value(value: playback),
         ChangeNotifierProvider<LibraryRepository>.value(value: library),
         ChangeNotifierProvider<LyricRepository>.value(value: lyrics),
+        ChangeNotifierProvider<LocalLibraryRepository>.value(value: local),
       ],
       child: MaterialApp(
         title: '飞牛 TV 音乐',
         debugShowCheckedModeBanner: false,
         // 与启动引导页共用同一套主题，避免引导页 → 主界面切换时样式跳变。
         theme: buildTvTheme(),
-        home: const Phase1Flow(),
+        home: const AppFlow(),
       ),
     );
   }
 }
 
-/// 应用阶段。
-///
-/// V2 把 `songs` / `player` 合并为 [Stage.shell]：
-/// 曲库、搜索、播放页之间的切换交给 [AppShell]，
-/// 这样 Mini Player 能**跨页面常驻**（放在 Shell 上而不是各页面里）。
-enum Stage { login, status, shell }
+/// 应用阶段。只有两个 —— 要么在登录，要么已经在正式界面里。
+enum Stage { login, shell }
 
-class Phase1Flow extends StatefulWidget {
-  const Phase1Flow({super.key});
+class AppFlow extends StatefulWidget {
+  const AppFlow({super.key});
 
   @override
-  State<Phase1Flow> createState() => _Phase1FlowState();
+  State<AppFlow> createState() => _AppFlowState();
 }
 
-class _Phase1FlowState extends State<Phase1Flow> {
+class _AppFlowState extends State<AppFlow> {
   Stage _stage = Stage.login;
 
   /// 提前持有引用：`dispose()` 里再 `context.read` 会向上查 Provider，
@@ -77,20 +85,24 @@ class _Phase1FlowState extends State<Phase1Flow> {
   void initState() {
     super.initState();
     _auth = context.read<AuthRepository>();
+    // 启动时已从安全存储恢复出会话（记住密码/记住登录）→ 直接进正式界面，
+    // 不显示登录页。
     if (_auth.isLoggedIn) {
-      _stage = Stage.status;
+      _stage = Stage.shell;
     }
     _auth.addListener(_onAuthChange);
   }
 
+  /// 登录态变化的**唯一**响应点：
+  /// - 变成已登录（登录成功 / 自动重登成功）→ 进正式界面；
+  /// - 变成未登录（主动登出 / token 失效且无法自动重登）→ 回登录页。
+  ///
+  /// 注意：监听回调可能在页面已卸载后才触发，必须先判 mounted。
   void _onAuthChange() {
-    // 登出 / token 失效清理 → 回到登录页。
-    // 注意：监听回调可能在页面已卸载后才触发，必须先判 mounted。
-    if (!mounted) {
-      return;
-    }
-    if (!_auth.isLoggedIn && _stage != Stage.login) {
-      setState(() => _stage = Stage.login);
+    if (!mounted) return;
+    final Stage target = _auth.isLoggedIn ? Stage.shell : Stage.login;
+    if (_stage != target) {
+      setState(() => _stage = target);
     }
   }
 
@@ -100,18 +112,17 @@ class _Phase1FlowState extends State<Phase1Flow> {
     super.dispose();
   }
 
-  void _go(Stage s) => setState(() => _stage = s);
-
   @override
   Widget build(BuildContext context) {
     switch (_stage) {
       case Stage.login:
-        return LoginPage(onLoggedIn: () => _go(Stage.status));
-      case Stage.status:
-        return ServerStatusPage(
-          onContinue: () => _go(Stage.shell),
-          onBack: () => _go(Stage.login),
-        );
+        // 登录成功后由 _onAuthChange 统一切到 shell；
+        // 这里也保留一个回调，保证「按钮点下去立刻有反馈」不依赖通知时序。
+        return LoginPage(onLoggedIn: () {
+          if (mounted && _stage != Stage.shell) {
+            setState(() => _stage = Stage.shell);
+          }
+        });
       case Stage.shell:
         return const AppShell();
     }

@@ -276,6 +276,7 @@ class PlaybackRepository extends ChangeNotifier
   static String sourceLabelOf(QueueSource s) => switch (s) {
         QueueSource.library => '全部歌曲',
         QueueSource.search => '搜索结果',
+        QueueSource.local => '本机列表',
         QueueSource.restored => '上次播放',
       };
 

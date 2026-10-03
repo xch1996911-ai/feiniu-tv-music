@@ -1,8 +1,13 @@
+import 'dart:async';
+
+import 'package:feiniu_tv_music/core/result.dart';
 import 'package:feiniu_tv_music/domain/lyric.dart';
 import 'package:feiniu_tv_music/domain/track.dart';
 import 'package:feiniu_tv_music/playback/playback_control.dart';
+import 'package:feiniu_tv_music/repositories/auth_repository.dart';
 import 'package:feiniu_tv_music/repositories/library_repository.dart';
 import 'package:feiniu_tv_music/repositories/lyric_repository.dart';
+import 'package:feiniu_tv_music/repositories/music_repository.dart';
 import 'package:feiniu_tv_music/repositories/playback_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -282,6 +287,124 @@ void main() {
       expect(failing.doc.isEmpty, isTrue);
       expect(failing.error, isNotNull);
     });
+
+    test('P 歌词源直接抛异常时 load 不抛出（只标记暂无歌词）', () async {
+      final repo = LyricRepository(_ThrowingLyricSource());
+      addTearDown(repo.dispose);
+
+      // 「不返回也不抛异常」和「抛异常」是两条路径，都必须兜住 ——
+      // 构造/加载阶段漏出的异常在电视上的表现就是「黑屏」。
+      await repo.load(makeTrack('g1'));
+
+      expect(repo.doc.isEmpty, isTrue);
+      expect(repo.error, isNotNull);
+      expect(repo.isLoading, isFalse, reason: '必须在结束态，否则歌词区永远转圈');
+    });
+
+    test('P 歌词请求有硬超时（Dio 的 receiveTimeout 只约束包间隔）', () {
+      // 服务端持续吐字节但永不结束时，Dio 的 receiveTimeout 不会触发，
+      // 只能靠显式 timeout。这条约束一旦被删，表现为「极少数电视上歌词永远转圈」，
+      // 属最难复现的故障，必须钉住。
+      expect(LyricRepository.requestTimeout, const Duration(seconds: 12));
+    });
+
+    test('P 换歌加载时，请求发出前就已清空上一首歌词', () async {
+      final gated = _GatedLyricSource();
+      final repo = LyricRepository(gated);
+      addTearDown(repo.dispose);
+
+      repo.applyForTest('old', docOf(const <LyricLine>[
+        LyricLine(text: '上一首的歌词', time: Duration.zero),
+      ]));
+      expect(repo.doc.isNotEmpty, isTrue);
+
+      final pending = repo.load(makeTrack('new'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(gated.requestedGuids, <String>['new']);
+      expect(repo.isLoading, isTrue);
+      expect(
+        repo.doc.isEmpty,
+        isTrue,
+        reason: '新歌词回来之前，界面绝不能继续显示上一首的歌词（真实故障：文不对题）',
+      );
+      expect(repo.loadedGuid, 'new');
+
+      gated.complete('new', lrc: '[00:00.00]新歌词');
+      await pending;
+      expect(repo.doc.lines.single.text, '新歌词');
+    });
+
+    test('P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首', () async {
+      final gated = _GatedLyricSource();
+      final repo = LyricRepository(gated);
+      addTearDown(repo.dispose);
+
+      final f1 = repo.load(makeTrack('g1'));
+      await Future<void>.delayed(Duration.zero);
+      final f2 = repo.load(makeTrack('g2'));
+      await Future<void>.delayed(Duration.zero);
+      expect(gated.requestedGuids, <String>['g1', 'g2']);
+
+      // 慢的那个先回来
+      gated.complete('g1', lrc: '[00:00.00]g1 的歌词');
+      await f1;
+      expect(repo.doc.isEmpty, isTrue, reason: 'g1 已被 g2 取代，结果必须整份丢弃');
+      expect(repo.loadedGuid, 'g2');
+
+      gated.complete('g2', lrc: '[00:00.00]g2 的歌词');
+      await f2;
+      expect(repo.loadedGuid, 'g2');
+      expect(repo.doc.lines.single.text, 'g2 的歌词');
+    });
+
+    test('P docEpoch 在内容被替换时自增（UI 靠它决定是否把歌词弹回顶部）', () async {
+      final gated = _GatedLyricSource();
+      final repo = LyricRepository(gated);
+      addTearDown(repo.dispose);
+
+      final before = repo.docEpoch;
+
+      final pending = repo.load(makeTrack('g1'));
+      await Future<void>.delayed(Duration.zero);
+      final onStart = repo.docEpoch;
+      expect(onStart, greaterThan(before), reason: '开始加载新歌就要换一次代号');
+
+      gated.complete('g1', lrc: '[00:00.00]A\n[00:05.00]B');
+      await pending;
+      final onDone = repo.docEpoch;
+      expect(onDone, greaterThan(onStart), reason: '加载完成又是一次内容替换');
+
+      repo.clear();
+      expect(repo.docEpoch, greaterThan(onDone), reason: '清空也算一次替换');
+    });
+
+    test('P 同一首切回来命中缓存，不再发第二次请求', () async {
+      final src = FakeLyricSource.sample();
+      final repo = LyricRepository(src);
+      addTearDown(repo.dispose);
+
+      await repo.load(makeTrack('g1'));
+      await repo.load(makeTrack('g2'));
+      await repo.load(makeTrack('g1')); // 切回来
+
+      expect(
+        src.requestedGuids,
+        <String>['g1', 'g2'],
+        reason: 'g1 第二次应命中缓存；来回切歌不该反复打服务端',
+      );
+      expect(repo.doc.lines.length, 3);
+    });
+
+    test('P force=true 时忽略缓存重新请求（用于手动重试）', () async {
+      final src = FakeLyricSource.sample();
+      final repo = LyricRepository(src);
+      addTearDown(repo.dispose);
+
+      await repo.load(makeTrack('g1'));
+      await repo.load(makeTrack('g1'), force: true);
+      expect(src.requestedGuids, <String>['g1', 'g1']);
+    });
   });
 
   // ── 播放模式持久化（V2 §11）──────────────────────────────
@@ -307,4 +430,45 @@ void main() {
       expect(PlayModeX.fromStorage(null), PlayMode.sequence);
     });
   });
+}
+
+/// 可控歌词源：`getLyrics` 返回一个**不会被自动完成**的 Future，
+/// 由测试显式决定何时回包、以什么顺序回包。
+///
+/// 现有的 [FakeLyricSource] 会立刻返回，因此测不到「请求还在路上」时的
+/// 两个关键分支：
+/// ① 请求发出前是否已清空旧歌词（否则界面上是上一首的歌词）；
+/// ② 慢的旧请求回来后会不会覆盖新歌（切歌太快时的经典竞态）。
+class _GatedLyricSource extends MusicRepository {
+  _GatedLyricSource() : super(AuthRepository());
+
+  final Map<String, Completer<Result<LyricDoc>>> _gates =
+      <String, Completer<Result<LyricDoc>>>{};
+
+  final List<String> requestedGuids = <String>[];
+
+  @override
+  Future<Result<LyricDoc>> getLyrics(String trackGuid) {
+    requestedGuids.add(trackGuid);
+    final gate = Completer<Result<LyricDoc>>();
+    _gates[trackGuid] = gate;
+    return gate.future;
+  }
+
+  /// 手动回包（同一 guid 只回一次）。
+  void complete(String guid, {String lrc = ''}) {
+    _gates.remove(guid)!.complete(
+          Result<LyricDoc>.ok(LyricDoc(lines: LyricDoc.parseLrc(lrc))),
+        );
+  }
+}
+
+/// 一调用就抛异常的歌词源（模拟传输层直接抛出，而不是返回 `Result.err`）。
+class _ThrowingLyricSource extends MusicRepository {
+  _ThrowingLyricSource() : super(AuthRepository());
+
+  @override
+  Future<Result<LyricDoc>> getLyrics(String trackGuid) async {
+    throw StateError('模拟歌词接口在传输层直接抛异常');
+  }
 }

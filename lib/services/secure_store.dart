@@ -178,6 +178,39 @@ class SecureStore {
     await _delete(_kLastPositionMs);
   }
 
+  // ================================================================
+  //  本机收听历史（非机密）
+  //
+  //  飞牛**没有播放历史接口**（`fnOS_API_真实契约.md` §9 的路径表里不存在
+  //  play-history 端点），所以首页「最近播放」只能由客户端自己记。
+  //  这里只存 guid（32 位 hex），不含歌名/路径，丢失不影响任何功能。
+  //
+  //  刻意与凭据区分离：`clearSession()` 不碰这里 —— 登出只是换账号，
+  //  本机听过什么不该因为登出而被清空（也与凭据无关，不涉及明文密码）。
+  // ================================================================
+
+  static const String _kRecentGuids = 'feiniu.recent.guids';
+
+  /// 「最近播放」最多保留多少首。
+  static const int maxRecentTracks = 50;
+
+  /// 读取最近播放的 guid，**新的在前**。永远不抛异常语义由调用方兜底。
+  Future<List<String>> readRecentGuids() async {
+    final raw = await _read(_kRecentGuids);
+    if (raw == null || raw.isEmpty) return const <String>[];
+    return raw
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  /// 写入最近播放的 guid（只保留前 [maxRecentTracks] 条）。
+  Future<void> writeRecentGuids(List<String> guids) => _write(
+        _kRecentGuids,
+        guids.take(maxRecentTracks).join('\n'),
+      );
+
 
   /// 读取 deviceId；不存在或形态非法（非 32 位 hex）时**生成并持久化**一个新的。
   ///

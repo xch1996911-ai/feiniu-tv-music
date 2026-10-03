@@ -87,6 +87,9 @@ enum QueueSource {
   /// 搜索结果。
   search,
 
+  /// 本机视图（收藏 / 最近播放 / 最近添加 / 按歌手·专辑·风格分组）。
+  local,
+
   /// 恢复自上次会话。
   restored,
 }
@@ -96,6 +99,7 @@ extension QueueSourceX on QueueSource {
   String get storageKey => switch (this) {
         QueueSource.library => 'library',
         QueueSource.search => 'search',
+        QueueSource.local => 'local',
         QueueSource.restored => 'restored',
       };
 }

@@ -55,6 +55,17 @@ class FakeMusicRepository extends MusicRepository {
     return 'http://nas.example.invalid:5666/music/api/v1/track/stream?guid=$trackGuid';
   }
 
+  /// 封面 URL 也必须覆写：真实实现要经 `_auth.provider`，
+  /// 未登录时会抛 `StateError` —— 而只要测试里出现过 `CoverImage`，
+  /// 这条路径就会被走到。
+  @override
+  String buildCoverUrl(
+    String coverId, {
+    int size = MusicServerProvider.defaultCoverSize,
+  }) =>
+      'http://nas.example.invalid:5666/music/api/v1/static/cover'
+      '?coverId=$coverId&size=$size';
+
   // ── 分页（曲库测试用）─────────────────────────────────────
 
   /// 全量曲目池。`servePages` 会按 page/size 切片返回。

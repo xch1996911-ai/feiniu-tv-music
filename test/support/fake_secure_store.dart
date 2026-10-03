@@ -46,4 +46,24 @@ class FakeSecureStore extends SecureStore {
     prefs.remove('lastGuid');
     prefs.remove('lastPosMs');
   }
+
+  // ── 本机收听历史（首页「最近播放」用）────────────────────
+
+  /// 与真实实现保持**同样的线格式**（`\n` 分隔），否则「持久化往返」
+  /// 测试就测不到真实的序列化/反序列化分支了。
+  @override
+  Future<List<String>> readRecentGuids() async {
+    final raw = prefs['recentGuids'];
+    if (raw == null || raw.isEmpty) return const <String>[];
+    return raw
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> writeRecentGuids(List<String> guids) async {
+    prefs['recentGuids'] = guids.take(SecureStore.maxRecentTracks).join('\n');
+  }
 }
