@@ -10,6 +10,9 @@ import 'support/fake_music_repository.dart';
 import 'support/fake_playback_engine.dart';
 import 'support/fake_lyric_source.dart';
 
+/// 把逐行歌词包成 [LyricDoc]（`LyricDoc.parseLrc` 返回的是 `List<LyricLine>`）。
+LyricDoc docOf(List<LyricLine> lines) => LyricDoc(lines: lines);
+
 /// V2：歌词高亮 / 播放控制层契约 / 队列管理 的回归测试。
 void main() {
   late FakeMusicRepository music;
@@ -117,7 +120,7 @@ void main() {
       await settle();
 
       final seen = <int>[];
-      final sub = playback.states.listen((s) => seen.add(s.currentIndex));
+      final sub = playback.states.listen((s) => seen.add(s?.currentIndex ?? -1));
       addTearDown(sub.cancel);
 
       await playback.next();
@@ -201,9 +204,9 @@ void main() {
     tearDown(() => lyrics.dispose());
 
     test('L 加载当前歌曲歌词并能定位高亮行', () async {
-      final doc = LyricDoc.parseLrc(
+      final doc = docOf(LyricDoc.parseLrc(
         '[00:00.00]第一行\n[00:05.00]第二行\n[00:10.00]第三行',
-      );
+      ));
       lyrics.applyForTest('g1', doc);
 
       expect(lyrics.doc.lines.length, 3);
@@ -213,9 +216,11 @@ void main() {
     });
 
     test('L seek 后高亮行同步跳转', () async {
-      lyrics.applyForTest('g1', LyricDoc.parseLrc(
-        '[00:00.00]A\n[00:30.00]B\n[01:00.00]C',
-      ));
+      lyrics.applyForTest('g1', docOf(<LyricLine>[
+        LyricLine(text: 'A', time: Duration.zero),
+        LyricLine(text: 'B', time: const Duration(seconds: 30)),
+        LyricLine(text: 'C', time: const Duration(minutes: 1)),
+      ]));
 
       // 模拟 seek 到 1:05
       expect(lyrics.activeLineIndex(const Duration(minutes: 1, seconds: 5)), 2);
@@ -224,7 +229,9 @@ void main() {
     });
 
     test('N 换歌时旧歌词被清空（不残留上一首）', () async {
-      lyrics.applyForTest('g1', LyricDoc.parseLrc('[00:00.00]A'));
+      lyrics.applyForTest('g1', docOf(<LyricLine>[
+        const LyricLine(text: 'A', time: Duration.zero),
+      ]));
       expect(lyrics.doc.isNotEmpty, isTrue);
 
       lyrics.clear();
@@ -238,9 +245,10 @@ void main() {
     });
 
     test('M 同一行内高亮不变（不会每 500ms 抖一次）', () async {
-      lyrics.applyForTest('g1', LyricDoc.parseLrc(
-        '[00:00.00]第一行\n[00:30.00]第二行',
-      ));
+      lyrics.applyForTest('g1', docOf(<LyricLine>[
+        LyricLine(text: '第一行', time: Duration.zero),
+        LyricLine(text: '第二行', time: const Duration(seconds: 30)),
+      ]));
       // 同一行内不同时间点应得到同一行号
       expect(lyrics.activeLineIndex(const Duration(seconds: 1)),
           lyrics.activeLineIndex(const Duration(seconds: 2)));

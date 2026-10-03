@@ -16,7 +16,7 @@ class FakeLyricSource extends MusicRepository {
   /// 让 getLyrics 返回错误（测「歌词失败不影响播放」）。
   final bool fail;
 
-  LyricDoc _doc;
+  final LyricDoc _doc;
 
   /// 记录被请求过的曲目 guid（断言只加载当前歌曲）。
   final List<String> requestedGuids = <String>[];
@@ -33,11 +33,16 @@ class FakeLyricSource extends MusicRepository {
   }
 
   /// 一份带时间轴的样例歌词（供需要走真实解析路径的测试使用）。
+  ///
+  /// ⚠️ `LyricDoc.parseLrc` 返回的是 `List<LyricLine>`，不是 `LyricDoc`，
+  /// 这里要显式包一层。
   static FakeLyricSource sample() => FakeLyricSource(
-        doc: LyricDoc.parseLrc(
-          '[00:00.00]第一行歌词\n'
-          '[00:05.00]第二行歌词\n'
-          '[00:10.00]第三行歌词\n',
+        doc: LyricDoc(
+          lines: LyricDoc.parseLrc(
+            '[00:00.00]第一行歌词\n'
+            '[00:05.00]第二行歌词\n'
+            '[00:10.00]第三行歌词\n',
+          ),
         ),
       );
 }

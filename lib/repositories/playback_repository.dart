@@ -122,6 +122,14 @@ class PlaybackRepository extends ChangeNotifier
     _prefetchCallback = callback;
   }
 
+  /// 当前排队的加载全部结束时完成。
+  ///
+  /// 仅供测试等待「串行链排空」用。`next()` 是 `async` 但**不同步等待加载完成**
+  /// （它只把任务排进 [_loadChain] 就返回），所以测试里 `await next()` 之后
+  /// 引擎侧可能**什么都没发生**，必须额外 await 这个 Future 才能断言结果。
+  @visibleForTesting
+  Future<void> get pendingLoads => _loadChain;
+
   // ── 状态恢复（V2 §14）────────────────────────────────────
 
   /// 上次播放的曲目 guid 与进度（供 [restoreToTrack] 使用）。
@@ -666,7 +674,8 @@ class PlaybackRepository extends ChangeNotifier
   }
 
   /// 播放推进后若接近队尾则触发预加载（跨分页连续播放的关键）。
-  void _maybePrefetch() {
-    unawaited(prefetchMore());
-  }
+  ///
+  /// 返回 [Future] 以便调用处写 `unawaited(...)`；`prefetchMore()` 内部
+  /// 已有防重入，重复调用不会产生并发请求。
+  Future<bool> _maybePrefetch() => prefetchMore();
 }

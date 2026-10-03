@@ -99,12 +99,12 @@ class _SongListPageState extends State<SongListPage> {
   }
 
   Widget _buildBody(LibraryRepository library, PlaybackRepository playback) {
-    if (library.phase == LibraryRepository.LibraryPhase.loading &&
+    if (library.phase == LibraryPhase.loading &&
         library.tracks.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (library.phase == LibraryRepository.LibraryPhase.error &&
+    if (library.phase == LibraryPhase.error &&
         library.tracks.isEmpty) {
       return _ErrorView(
         message: library.error ?? '加载失败',
@@ -211,7 +211,7 @@ class _Footer extends StatelessWidget {
         ),
       );
     }
-    if (library.phase == LibraryRepository.LibraryPhase.noMore) {
+    if (library.phase == LibraryPhase.noMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(

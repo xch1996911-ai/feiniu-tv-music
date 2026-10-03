@@ -4,6 +4,31 @@ import '../core/log.dart';
 import '../domain/track.dart';
 import 'music_repository.dart';
 
+/// 曲库加载阶段。
+///
+/// 顶层枚举（不嵌套在 `LibraryRepository` 里）：嵌套枚举在
+/// `LibraryRepository.LibraryPhase.ready` 这种引用形式下容易解析不出，
+/// 顶层更省心。
+enum LibraryPhase {
+  /// 尚未发起任何加载。
+  idle,
+
+  /// 首屏加载中。
+  loading,
+
+  /// 首屏已就绪，可继续续页。
+  ready,
+
+  /// 续页（滚动加载更多）中。
+  loadingMore,
+
+  /// 加载失败（可重试）。
+  error,
+
+  /// 服务端已无更多数据。
+  noMore,
+}
+
 /// 曲库分页仓储：管理「全部歌曲」的完整曲库。
 ///
 /// ## 为什么需要它
@@ -55,8 +80,6 @@ class LibraryRepository extends ChangeNotifier {
 
   /// 当前阶段，供 UI 区分「首次加载 / 续页失败」两种不同展示。
   LibraryPhase _phase = LibraryPhase.idle;
-
-  enum LibraryPhase { idle, loading, ready, loadingMore, error, noMore }
 
   // ── 只读状态 ──────────────────────────────────────────────
 

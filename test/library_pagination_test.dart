@@ -54,7 +54,7 @@ void main() {
       expect(library.tracks.length, 50);
       expect(library.loadedPages, 1);
       expect(library.hasMore, isTrue);
-      expect(library.phase, LibraryRepository.LibraryPhase.ready);
+      expect(library.phase, LibraryPhase.ready);
       expect(library.error, isNull);
     });
 
@@ -75,7 +75,7 @@ void main() {
       await library.loadFirst();
       expect(library.tracks.length, 30);
       expect(library.hasMore, isFalse);
-      expect(library.phase, LibraryRepository.LibraryPhase.noMore);
+      expect(library.phase, LibraryPhase.noMore);
 
       final before = music.trackPageRequests.length;
       final ok = await library.loadMore();
@@ -135,11 +135,11 @@ void main() {
           const AppError('网络不通', kind: ErrorKind.network);
       await library.loadFirst();
 
-      expect(library.phase, LibraryRepository.LibraryPhase.error);
+      expect(library.phase, LibraryPhase.error);
       expect(library.error, isNotNull);
 
       await library.retry();
-      expect(library.phase, LibraryRepository.LibraryPhase.ready);
+      expect(library.phase, LibraryPhase.ready);
       expect(library.tracks.length, 50);
     });
   });

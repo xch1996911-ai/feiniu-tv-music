@@ -36,9 +36,6 @@ enum ShellStage { library, search, player }
 class _AppShellState extends State<AppShell> {
   ShellStage _stage = ShellStage.library;
 
-  /// 切到播放页。
-  void _openPlayer() => setState(() => _stage = ShellStage.player);
-
   /// 返回上一页（播放页 → 搜索页 → 曲库）。
   ///
   /// V2 §18：Back 键在播放页只回到列表，**音乐继续播放**。

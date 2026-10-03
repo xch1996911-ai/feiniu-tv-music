@@ -215,10 +215,8 @@ class _ProgressSection extends StatelessWidget {
     // 方向键在进度条上完全失效。这里显式覆盖为「±5 秒」。
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.arrowLeft):
-            const _SeekIntent(-1),
-        const SingleActivator(LogicalKeyboardKey.arrowRight):
-            const _SeekIntent(1),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): const _SeekIntent(-1),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): const _SeekIntent(1),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
