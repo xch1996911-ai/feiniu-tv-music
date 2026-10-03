@@ -51,58 +51,28 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 N 全部靠推断得出的风格会被标记为 inferred
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 O 规则版本随结果一起产出（供索引判断是否需要重算）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
 ::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 显示明确空态 + 「去音乐库」入口，而不是显示全曲库 (failed)
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 显示明确空态 + 「去音乐库」入口，而不是显示全曲库
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
-══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
-The following TestFailure was thrown running a test:
-Expected: exactly one matching candidate
-  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing 把焦点移到歌曲行上: []>
-   Which: means none were found but one was expected
-
-When the exception was thrown, this was the stack:
-#4      main.<anonymous closure>.<anonymous closure> (file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart:139:7)
-<asynchronous suspension>
-#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
-<asynchronous suspension>
-#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
-<asynchronous suspension>
-<asynchronous suspension>
-(elided one frame from package:stack_trace)
-
-This was caught by the test expectation on the following line:
-  file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart line 139
-The test description was:
-  显示明确空态 + 「去音乐库」入口，而不是显示全曲库
-════════════════════════════════════════════════════════════════════════════════════════════════════
-Test failed. See exception logs above.
-The test description was: 显示明确空态 + 「去音乐库」入口，而不是显示全曲库
-
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 「去音乐库」可聚焦并能触发回调
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 0 首（共 0 首）
 ::endgroup::
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Ok 分支
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Err 分支
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: map 仅作用于成功值
-::endgroup::
 [FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: getOrElse 失败回退
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 服务端 isFavorite 播种进来的歌会显示（首次迁移）
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 没有播种过的歌**不会**因为服务端标记而进收藏页
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 在别处收藏一首歌 → 收藏页立即出现（无需重启）
@@ -122,6 +92,10 @@ The test description was: 显示明确空态 + 「去音乐库」入口，而不
 [FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 ::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Ok 分支
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Err 分支
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: map 仅作用于成功值
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: getOrElse 失败回退
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 盐值与真实契约一致
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 MD5 小写 hex（对照公开值）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_authx_test.dart: 常量与工具 免签名白名单按前缀匹配（是前端自身路由，不是 /music/api/v1 下的接口）
@@ -423,15 +397,7 @@ In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the f
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） 搜索结果可建立独立播放队列（不污染曲库队列）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 会把曲库拉完
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） buildFullIndex 可重入：并发调用不重复拉取
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） 索引失败时停止，不无限重试 (failed)
-Expected: <50>
-  Actual: <0>
-失败后不应继续拉
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/library_pagination_test.dart 416:7             main.<fn>.<fn>
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 全库索引（供搜索覆盖全库） 索引失败时停止，不无限重试
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 mark 记录到内存且不抛异常
 [FeiNiuTV] 契约测试-唯一标记-A
@@ -1255,13 +1221,7 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 歌词请求失败 → 显示暂无歌词但不影响播放
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词源直接抛异常时 load 不抛出（只标记暂无歌词）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词请求有硬超时（Dio 的 receiveTimeout 只约束包间隔）
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词 (failed)
-Bad state: No element
-dart:core                                _Array.single
-test/lyric_and_control_test.dart 335:29  main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P docEpoch 在内容被替换时自增（UI 靠它决定是否把歌词弹回顶部）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 同一首切回来命中缓存，不再发第二次请求
@@ -1424,7 +1384,7 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-03 16:20:11.000）
+[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-03 16:35:17.000）
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
@@ -1550,31 +1510,28 @@ Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" o
 In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
 If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 ::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 完整首字母优先于首字母前缀 (failed)
-[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-Expected: a value greater than <950>
-  Actual: <950>
-   Which: is not a value greater than <950>
+::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 完整首字母优于首字母前缀（看命中位置，不看分值） (failed)
+Expected: MatchStrength:<MatchStrength.initials>
+  Actual: MatchStrength:<MatchStrength.original>
 
 package:matcher                                     expect
 package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 104:7                  main.<fn>.<fn>
+test/pinyin_search_test.dart 107:7                  main.<fn>.<fn>
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ④ 部分拼音：拼音前缀与连续子串
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
 [FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
 The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
 Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
@@ -1589,27 +1546,25 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 归一化不改写展示名：版本词保留在原名里
 ::endgroup::
 ::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ⑧ 轻微拼写错误给出低优先级候选 (failed)
-Expected: a value less than <975>
-  Actual: <975>
-   Which: is not a value less than <975>
-纠错命中必须**低于**精确命中，不能顶掉正确结果
+Expected: true
+  Actual: <false>
+只有纠错路径才会给出这条候选
 
 package:matcher                                     expect
 package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 158:9                  main.<fn>.<fn>
+test/pinyin_search_test.dart 166:7                  main.<fn>.<fn>
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 多音字：词组优先（重庆 / 音乐 等）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 无结果时安静返回空，不编造命中
 ::endgroup::
 ::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 中文原文精确匹配优先于拼音匹配 (failed)
-Expected: a value greater than <990>
-  Actual: <990>
-   Which: is not a value greater than <990>
+Expected: MatchPosition:<MatchPosition.exact>
+  Actual: MatchPosition:<MatchPosition.prefix>
 
 package:matcher                                     expect
 package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 182:7                  main.<fn>.<fn>
+test/pinyin_search_test.dart 190:7                  main.<fn>.<fn>
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 歌曲名命中优先于仅歌手字段命中
@@ -1617,36 +1572,12 @@ test/pinyin_search_test.dart 182:7                  main.<fn>.<fn>
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 排序稳定可复现（同查询两次结果完全一致）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §三 结果与排序 结果不展示内部拼音索引，只有原始曲目信息
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 超过 50 首时，第 51 首与最后一首都能被拼音找到
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 索引持久缓存：重建实例后**不重算**就能搜到（账号隔离） (failed)
-Expected: false
-  Actual: <true>
-不同账户不得复用彼此的缓存
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 273:7                  main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 索引持久缓存：重建实例后**不重算**就能搜到（账号隔离）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 增量维护：只有变化的条目被重算
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 缓存版本不符时**整份丢弃重建**，绝不沿用失效缓存
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 曲库清空后再恢复：索引跟着走，不残留也不卡死
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 完整曲库、缓存与性能 查询序号：晚到的旧结果会被标记为过期
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 TextNorm：全角→半角、大小写折叠、ü→v、丢标点 (failed)
-Expected: 'nv'
-  Actual: '女'
-   Which: is different.
-          Expected: nv
-            Actual: 女
-                    ^
-           Differ at offset 0
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/pinyin_search_test.dart 354:7                  main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 TextNorm：全角→半角、大小写折叠、ü→v、丢标点
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 项目词典：每条都满足「简体 / 小写无调 / 读音数=字数」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §四 归一化与词典约束 词典的最长词组长度是推导出来的（不是写死的）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 焦点顺序（需求指定的五段链） 封面 →(→) 上一首 → 播放/暂停 → 下一首 → 队列
@@ -1659,29 +1590,29 @@ test/pinyin_search_test.dart 354:7                  main.<fn>.<fn>
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 概览只画统计，不展开曲目
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 点选歌手 → 进详情，展示该歌手的曲目与统计
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 进详情后焦点落在「返回」上（不会平白消失）
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 从详情返回 → 回到概览，且焦点回到原来那一行
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 专辑：概览 → 详情（需求「一、2」） 概览显示封面 / 专辑名 / 歌手 / 歌曲数
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
-[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -1691,32 +1622,8 @@ test/pinyin_search_test.dart 354:7                  main.<fn>.<fn>
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 风格：无标签时如实说明（需求「一、3」） 曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」 (failed)
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 风格：无标签时如实说明（需求「一、3」） 曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
-The following TestFailure was thrown running a test:
-Expected: exactly one matching candidate
-  Actual: _TextContainingWidgetFinder:<Found 0 widgets with text containing 暂无风格标签: []>
-   Which: means none were found but one was expected
-
-When the exception was thrown, this was the stack:
-#4      main.<anonymous closure>.<anonymous closure> (file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart:283:7)
-<asynchronous suspension>
-#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
-<asynchronous suspension>
-#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
-<asynchronous suspension>
-<asynchronous suspension>
-(elided one frame from package:stack_trace)
-
-This was caught by the test expectation on the following line:
-  file:///home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart line 283
-The test description was:
-  曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」
-════════════════════════════════════════════════════════════════════════════════════════════════════
-Test failed. See exception logs above.
-The test description was: 曲库没有风格标签 → 显示空态，绝不把全部歌曲塞进「未知风格」
-
 ::endgroup::
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
@@ -1737,18 +1644,7 @@ The test description was: 曲库没有风格标签 → 显示空态，绝不把�
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 顺序播放 最后一首手动「下一首」不重新开始整个队列
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 顺序播放 第一首手动「上一首」无操作（不回绕），且按钮应置灰
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 顺序播放 只有一首时「下一首」无操作（顺序播放 ≠ 循环）
-::endgroup::
-::group::❌ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 列表循环 A→B→C→A→B→C→A 连续跑两轮（自然结束驱动） (failed)
-Expected: ['g0', 'g1', 'g2', 'g0', 'g1', 'g2', 'g0']
-  Actual: ['g0', 'g0', 'g0', 'g0', 'g0', 'g0', 'g0']
-   Which: at location [1] is 'g0' instead of 'g1'
-两轮之后应回到 g0
-
-package:matcher                                     expect
-package:flutter_test/src/widget_tester.dart 473:18  expect
-test/playback_mode_test.dart 215:7                  main.<fn>.<fn>
-::endgroup::
-::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 列表循环 A→B→C→A→B→C→A 连续跑两轮（自然结束驱动）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 列表循环 第一首处「上一首」回到最后一首
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 列表循环 只有一首时循环该首
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/playback_mode_test.dart: 列表循环 最后一首手动「下一首」回绕到第一首
@@ -1830,4 +1726,4 @@ dart:isolate  _RawReceivePort._handleMessage
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 1 首（共 1 首）
 ::endgroup::
 
-::error::438 tests passed, 11 failed.
+::error::445 tests passed, 4 failed.
