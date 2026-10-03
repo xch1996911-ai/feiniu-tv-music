@@ -1,8 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-  error • A value of type 'Set<CachedSearchDoc>' can't be assigned to a variable of type 'Map<String, CachedSearchDoc>'. Try changing the type of the variable, or casting the right-hand type to 'Map<String, CachedSearchDoc>' • lib/services/search_service.dart:402:14 • invalid_assignment
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:29:16 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:30:18 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/lyric_usability_test.dart:31:20 • unnecessary_const
-
-4 issues found. (ran in 9.8s)
+No issues found! (ran in 9.6s)
