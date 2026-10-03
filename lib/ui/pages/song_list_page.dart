@@ -1,215 +1,356 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/exceptions.dart';
+import '../../core/log.dart';
 import '../../domain/track.dart';
-import '../../repositories/auth_repository.dart';
+import '../../repositories/library_repository.dart';
 import '../../repositories/music_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../widgets/cover_image.dart';
 
-/// 歌曲列表页（Phase 1 临时 UI）。
-/// 读取分页曲目；每行显示「歌名 / 歌手 / 专辑 / 格式」；D-pad 可聚焦，OK 选曲播放。
+/// 全部歌曲（曲库）页。
+///
+/// ## V2 关键改造（相对 V1）
+/// 1. **完整曲库**：不再 `getTracks(1, 30)`，改用 [LibraryRepository] 分页 + 无限滚动；
+/// 2. **当前播放标识**：正在播放的曲目高亮 + ▶ 标记，随自动下一首实时更新；
+/// 3. **状态保持**：`ScrollController` 保留，返回本页时位置不变（V2 §13）。
 class SongListPage extends StatefulWidget {
-  final VoidCallback onPick;
-  final VoidCallback onBack;
+  final VoidCallback onOpenPlayer;
+  final VoidCallback onOpenSearch;
 
-  const SongListPage({super.key, required this.onPick, required this.onBack});
+  const SongListPage({
+    super.key,
+    required this.onOpenPlayer,
+    required this.onOpenSearch,
+  });
 
   @override
   State<SongListPage> createState() => _SongListPageState();
 }
 
 class _SongListPageState extends State<SongListPage> {
-  bool _loading = true;
-  String? _error;
-  List<Track> _tracks = const [];
+  /// 保留滚动位置（V2 §13：返回不能滚回顶部）。
+  final ScrollController _scroll = ScrollController();
+
+  /// 距底部还有多少像素就开始预加载（提前量，避免用户看到空白）。
+  static const double _prefetchExtent = 600;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _scroll.addListener(_onScroll);
+    // 首屏加载；曲库仓储内部保证「已有数据不重复请求」。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    final music = context.read<MusicRepository>();
-    final auth = context.read<AuthRepository>();
-    final res = await music.getTracks(1, 30);
+  @override
+  void dispose() {
+    // ⚠️ ScrollController 必须释放（V2 §29 检查项）。
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final pos = _scroll.position;
+    if (pos.pixels >= pos.maxScrollExtent - _prefetchExtent) {
+      // 接近底部 → 请求下一页（仓储内部防并发 + 判 hasMore）
+      context.read<LibraryRepository>().loadMore();
+    }
+  }
+
+  Future<void> _bootstrap() async {
+    if (!mounted) return;
+    final library = context.read<LibraryRepository>();
+    final playback = context.read<PlaybackRepository>();
+
+    await library.loadFirst();
     if (!mounted) return;
 
-    if (res.isErr) {
-      if (res.error.kind == ErrorKind.tokenExpired) {
-        // 自动重登后重试；若重登失败，AuthRepository 已 logout → 自动回登录页。
-        final r = await auth.handleTokenExpired();
-        if (r.isOk && mounted) {
-          return _load();
-        }
-      }
-      setState(() {
-        _loading = false;
-        _error = res.error.message;
-      });
-      return;
-    }
-    setState(() {
-      _tracks = res.value.items;
-      _loading = false;
-    });
-  }
+    // 播放队列与曲库对齐（跨分页连续播放的前提）
+    playback.adoptQueue(library.tracks);
 
-  void _select(int index) {
-    if (index < 0 || index >= _tracks.length) return;
-    final pb = context.read<PlaybackRepository>();
-    pb.setQueue(_tracks, startIndex: index);
-    widget.onPick();
+    // 恢复上次播放位置（只定位，不自动播放）
+    if (playback.current == null && playback.pendingRestoreGuid != null) {
+      if (playback.restoreToTrack(library.tracks)) {
+        Log.i('STATE_RESTORE UI 已定位上次播放（未自动播放）');
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Flutter 3.47 已废弃 WillPopScope，改用 PopScope。
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) widget.onBack();
-      },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('歌曲列表')),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _load, child: const Text('重试')),
-                      ],
-                    ),
-                  )
-                : _SongListView(tracks: _tracks, onSelect: _select),
-      ),
+    final library = context.watch<LibraryRepository>();
+    final playback = context.watch<PlaybackRepository>();
+
+    return Column(
+      children: <Widget>[
+        _Header(
+          title: '全部歌曲',
+          subtitle: library.tracks.isEmpty
+              ? null
+              : '${library.tracks.length} 首${library.hasMore ? ' …' : ''}',
+          onSearch: widget.onOpenSearch,
+        ),
+        Expanded(child: _buildBody(library, playback)),
+      ],
     );
   }
-}
 
-class _SongListView extends StatelessWidget {
-  final List<Track> tracks;
-  final void Function(int) onSelect;
+  Widget _buildBody(LibraryRepository library, PlaybackRepository playback) {
+    if (library.phase == LibraryRepository.LibraryPhase.loading &&
+        library.tracks.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  const _SongListView({required this.tracks, required this.onSelect});
+    if (library.phase == LibraryRepository.LibraryPhase.error &&
+        library.tracks.isEmpty) {
+      return _ErrorView(
+        message: library.error ?? '加载失败',
+        onRetry: () => library.retry(),
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
+    if (library.tracks.isEmpty) {
+      return const Center(
+        child: Text('曲库为空',
+            style: TextStyle(fontSize: 22, color: Colors.white38)),
+      );
+    }
+
+    final currentGuid = playback.current?.guid;
+
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-      itemCount: tracks.length,
+      controller: _scroll,
+      // 底部多一条用于显示「加载更多 / 没有更多了」
+      itemCount: library.tracks.length + 1,
       itemBuilder: (context, i) {
+        if (i == library.tracks.length) {
+          return _Footer(library: library);
+        }
+        final track = library.tracks[i];
         return _TrackRow(
-          track: tracks[i],
-          autofocus: i == 0,
-          onActivate: () => onSelect(i),
+          track: track,
+          index: i,
+          isCurrent: track.guid == currentGuid,
+          onPlay: () {
+            Log.i('UI 选歌 index=$i guid=${track.guid}');
+            // 用整份曲库建队列 → 跨分页连续播放成立
+            playback.setQueue(library.tracks, startIndex: i);
+            widget.onOpenPlayer();
+          },
         );
       },
     );
   }
 }
 
-/// 单行曲目。
-///
-/// Flutter 3.47 的 `FocusableActionDetector` 已移除 `onActivate` 参数，
-/// 改用 `ListTile`：它自带焦点能力与「OK/Enter 触发 `onTap`」行为，
-/// 更契合 D-pad 优先的电视界面。
-///
-/// 焦点节点放在 State 中持有（而非在 build 里 new），否则会泄漏且重建时丢失焦点。
-class _TrackRow extends StatefulWidget {
-  final Track track;
-  final bool autofocus;
-  final VoidCallback onActivate;
+/// 顶部标题栏 + 搜索入口。
+class _Header extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final VoidCallback onSearch;
 
-  const _TrackRow({
-    required this.track,
-    required this.autofocus,
-    required this.onActivate,
+  const _Header({
+    required this.title,
+    required this.subtitle,
+    required this.onSearch,
   });
 
   @override
-  State<_TrackRow> createState() => _TrackRowState();
-}
-
-class _TrackRowState extends State<_TrackRow> {
-  final FocusNode _node = FocusNode();
-  bool _focused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _node.addListener(_onFocusChanged);
-  }
-
-  @override
-  void dispose() {
-    _node.removeListener(_onFocusChanged);
-    _node.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChanged() {
-    if (!mounted) return;
-    setState(() => _focused = _node.hasFocus);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final t = widget.track;
-    return ListTile(
-      focusNode: _node,
-      autofocus: widget.autofocus,
-      onTap: widget.onActivate,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: _focused ? Colors.blue : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      tileColor: _focused ? Colors.blue.withValues(alpha: 0.25) : null,
-      focusColor: Colors.blue.withValues(alpha: 0.25),
-      title: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: Text(
-              t.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: _focused ? FontWeight.w600 : FontWeight.normal,
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: Row(
+        children: <Widget>[
+          Text(
+            title,
+            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w600),
+          ),
+          if (subtitle != null) ...<Widget>[
+            const SizedBox(width: 12),
+            Text(
+              subtitle!,
+              style: const TextStyle(fontSize: 18, color: Colors.white38),
             ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(t.artistNames,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(t.album.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              t.audioSpec.format ?? '—',
-              style: const TextStyle(color: Colors.blueGrey),
+          ],
+          const Spacer(),
+          ElevatedButton.icon(
+            onPressed: onSearch,
+            icon: const Icon(Icons.search, size: 22),
+            label: const Text('搜索', style: TextStyle(fontSize: 18)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white12,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 列表底部：加载更多 / 没有更多了 / 出错重试。
+class _Footer extends StatelessWidget {
+  final LibraryRepository library;
+
+  const _Footer({required this.library});
+
+  @override
+  Widget build(BuildContext context) {
+    if (library.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+        ),
+      );
+    }
+    if (library.phase == LibraryRepository.LibraryPhase.noMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text('已加载全部歌曲',
+              style: TextStyle(fontSize: 16, color: Colors.white30)),
+        ),
+      );
+    }
+    if (library.error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: ElevatedButton.icon(
+            onPressed: () => library.retry(),
+            icon: const Icon(Icons.refresh, size: 20),
+            label: const Text('加载失败，点此重试', style: TextStyle(fontSize: 16)),
+          ),
+        ),
+      );
+    }
+    return const SizedBox(height: 20);
+  }
+}
+
+/// 错误视图。
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            message,
+            style: const TextStyle(fontSize: 20, color: Colors.redAccent),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh, size: 20),
+            label: const Text('重试', style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 单行曲目。
+///
+/// **性能（V2 §19）**：`ListView.builder` 懒构建；行内**不**订阅 position 流
+/// （否则每 200ms 整个列表 rebuild）。当前播放状态由父级传入，
+/// 只有「从当前曲变为非当前曲」的那几行会重建。
+class _TrackRow extends StatelessWidget {
+  final Track track;
+  final int index;
+
+  /// 是否是当前播放的曲目（V2 §5）。
+  final bool isCurrent;
+
+  final VoidCallback onPlay;
+
+  const _TrackRow({
+    required this.track,
+    required this.index,
+    required this.isCurrent,
+    required this.onPlay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final music = context.read<MusicRepository>();
+    return Container(
+      // 正在播放的行用背景色 + 左侧色条明显区分
+      color: isCurrent ? const Color(0x1A4F8CFF) : Colors.transparent,
+      child: ListTile(
+        onTap: onPlay,
+        selected: isCurrent,
+        selectedTileColor: Colors.transparent,
+        leading: SizedBox(
+          width: 60,
+          child: Stack(
+            children: <Widget>[
+              CoverImage(
+                music: music,
+                coverId: track.effectiveCoverId,
+                size: 48,
+                radius: 4,
+              ),
+              if (isCurrent)
+                const Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Icon(Icons.play_circle_fill,
+                      color: Colors.blue, size: 20),
+                ),
+            ],
+          ),
+        ),
+        title: Row(
+          children: <Widget>[
+            Flexible(
+              child: Text(
+                track.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight:
+                      isCurrent ? FontWeight.w700 : FontWeight.w400,
+                  color: isCurrent ? Colors.blue : Colors.white,
+                ),
+              ),
+            ),
+            if (isCurrent) ...<Widget>[
+              const SizedBox(width: 8),
+              const Text(
+                '正在播放',
+                style: TextStyle(fontSize: 14, color: Colors.blue),
+              ),
+            ],
+          ],
+        ),
+        subtitle: Text(
+          '${track.artistNames} · ${track.album.name}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 15, color: Colors.white54),
+        ),
+        trailing: Text(
+          track.audioSpec.display,
+          style: const TextStyle(fontSize: 14, color: Colors.white38),
+        ),
       ),
     );
   }

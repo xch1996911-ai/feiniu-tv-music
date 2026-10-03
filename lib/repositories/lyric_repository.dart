@@ -145,6 +145,18 @@ class LyricRepository extends ChangeNotifier {
     _safeNotify();
   }
 
+  /// **仅供测试**：直接注入一份歌词，跳过网络请求。
+  ///
+  /// 设备上恒为测试专用入口（生产路径请用 [load]）。
+  @visibleForTesting
+  void applyForTest(String guid, LyricDoc doc) {
+    _loadedGuid = guid;
+    _doc = doc;
+    _error = null;
+    _loading = false;
+    _safeNotify();
+  }
+
   bool _disposed = false;
 
   void _safeNotify() {

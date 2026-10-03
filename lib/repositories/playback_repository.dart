@@ -122,6 +122,87 @@ class PlaybackRepository extends ChangeNotifier
     _prefetchCallback = callback;
   }
 
+  // ── 状态恢复（V2 §14）────────────────────────────────────
+
+  /// 上次播放的曲目 guid 与进度（供 [restoreToTrack] 使用）。
+  String? _pendingRestoreGuid;
+  Duration _pendingRestorePosition = Duration.zero;
+
+  /// 待恢复的曲目 guid（UI 可据此显示「上次播放的歌曲」）。
+  String? get pendingRestoreGuid => _pendingRestoreGuid;
+  Duration get pendingRestorePosition => _pendingRestorePosition;
+
+  /// 读取上次播放的曲目与进度。
+  ///
+  /// **刻意不自动播放**（V2 §14 明确要求）：电视开机后 APP 突然放歌是很糟的体验。
+  /// 只是把「上次在听什么」准备好，等用户按播放。
+  Future<void> loadRestorePoint() async {
+    try {
+      final guid = await _store.readLastTrackGuid().timeout(
+            const Duration(seconds: 3),
+          );
+      final ms = await _store.readLastPositionMs().timeout(
+            const Duration(seconds: 3),
+          );
+      if (guid == null || guid.isEmpty) {
+        Log.i('STATE_RESTORE 无上次播放记录');
+        return;
+      }
+      _pendingRestoreGuid = guid;
+      _pendingRestorePosition = Duration(milliseconds: ms ?? 0);
+      Log.i('STATE_RESTORE guid=$guid position=${_pendingRestorePosition.inMilliseconds}ms');
+    } catch (e) {
+      // 恢复失败必须**完全不影响启动**（V2 §14）。
+      Log.w('STATE_RESTORE_FAIL 读取上次播放失败（忽略）：$e');
+    }
+  }
+
+  /// 把队列定位到上次播放的曲目，但**不自动播放**。
+  ///
+  /// 返回是否命中。UI 命中后可以显示「上次播放：xxx」。
+  bool restoreToTrack(List<Track> catalogue) {
+    final guid = _pendingRestoreGuid;
+    if (guid == null || catalogue.isEmpty) return false;
+    final idx = catalogue.indexWhere((t) => t.guid == guid);
+    if (idx < 0) {
+      Log.i('STATE_RESTORE 曲库里已找不到 guid=$guid（可能已删除）');
+      return false;
+    }
+    _queue = List<Track>.unmodifiable(catalogue);
+    _index = idx;
+    _source = QueueSource.restored;
+    _consecutiveFailures = 0;
+    _lastError = null;
+    Log.i('STATE_RESTORE 定位到 index=$idx（未自动播放）');
+    _safeNotify();
+    return true;
+  }
+
+  /// 记录当前曲目与进度（供下次启动恢复）。
+  ///
+  /// 由 UI 定期调用；**刻意不自动播放**，恢复后等用户按播放。
+  Future<void> saveRestorePoint() async {
+    final t = current;
+    if (t == null) return;
+    try {
+      await _store.writeLastTrackGuid(t.guid);
+      final pos = _handler.position ?? Duration.zero;
+      await _store.writeLastPositionMs(pos.inMilliseconds);
+    } catch (e) {
+      // 持久化失败静默忽略：不能因为存不进去而影响播放
+      Log.w('STATE_RESTORE_FAIL 保存进度失败：$e');
+    }
+  }
+
+  /// **仅供测试**：直接写入「待恢复点」，跳过安全存储。
+  ///
+  /// 设备上恒为测试专用入口（生产路径请用 [saveRestorePoint]）。
+  @visibleForTesting
+  void restoreToTrackForTest(String guid, Duration position) {
+    _pendingRestoreGuid = guid;
+    _pendingRestorePosition = position;
+  }
+
   // ── 基础查询 ──────────────────────────────────────────────
 
   /// 队列里是否还有下一首（不考虑播放模式的回绕）。
@@ -239,18 +320,7 @@ class PlaybackRepository extends ChangeNotifier
     _playCurrent();
   }
 
-  /// 追加歌曲到队列末尾（分页加载更多后调用）。
-  ///
-  /// ## 为什么需要它
-  /// 曲库是分页的：第 30 首播完时，第 31 首可能还没加载。
-  /// 若不追加，`PlaybackRepository` 的队列会在分页边界**断掉**，
-  /// 表现为「歌单一到 30 首就停止播放」。
-  ///
-  /// ## 关键：绝不能因为追加而移动 [_index]
-  /// 正在播放的是第 N 首，追加只影响 `_queue.length`，
-  /// `_index` 必须保持不动 —— 否则会出现「正在播的歌突然变了」。
-  ///
-  /// 去重按 `guid`：同一条曲目可能被多次回调（并发分页 / 重试）。
+  /// **不改变 currentIndex**：分页加载更多时调用，正在播放的歌不会被换掉。
   int appendToQueue(List<Track> tracks) {
     if (tracks.isEmpty) return _queue.length;
     final existing = <String>{for (final t in _queue) t.guid};
@@ -261,6 +331,23 @@ class PlaybackRepository extends ChangeNotifier
         'index=$_index');
     _safeNotify();
     return _queue.length;
+  }
+
+  /// 用整份曲库**建立**队列，但**不自动播放**。
+  ///
+  /// 用于「首屏曲库加载完，用户还没点歌」的场合：
+  /// 队列先就位（保证跨分页连续播放成立），但**不发任何播放请求**
+  /// （电视上开机不该突然放歌，V2 §14）。
+  ///
+  /// 已经有队列时**什么都不做** —— 不能覆盖搜索结果队列。
+  void adoptQueue(List<Track> tracks) {
+    if (tracks.isEmpty) return;
+    if (_queue.isNotEmpty) return;
+    _queue = List<Track>.unmodifiable(tracks);
+    _index = -1; // 未开始播放，current 为 null → Mini Player 隐藏
+    _source = QueueSource.library;
+    Log.i('QUEUE_ADOPT 已建立队列但未播放 total=${_queue.length}');
+    _safeNotify();
   }
 
   @override
