@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/fake_music_repository.dart';
 import 'support/fake_playback_engine.dart';
 import 'support/fake_lyric_source.dart';
+import 'support/fake_secure_store.dart';
 
 /// 把逐行歌词包成 [LyricDoc]（`LyricDoc.parseLrc` 返回的是 `List<LyricLine>`）。
 LyricDoc docOf(List<LyricLine> lines) => LyricDoc(lines: lines);
@@ -133,63 +134,81 @@ void main() {
 
   // ── 状态恢复（V2 §14）────────────────────────────────────
   group('APP 重启状态恢复', () {
-    test('Y 恢复只定位不自动播放（电视开机不该突然放歌）', () async {
+    /// 用同一份 [FakeSecureStore] 造两个仓储实例，模拟「退出 APP → 重启」。
+    ///
+    /// 关键：必须走**真实的持久化往返**（写 → 另一个实例读），
+    /// 而不是给两个实例塞同一个内存字段 —— 那样测不到 SecureStore 接线对不对。
+    (PlaybackRepository, FakePlaybackEngine) reboot(FakeSecureStore store) {
+      final e = FakePlaybackEngine();
+      final p = PlaybackRepository(
+        music: music,
+        handler: e,
+        store: store,
+      );
+      addTearDown(() async {
+        p.dispose();
+        await e.close();
+      });
+      return (p, e);
+    }
+
+    test('Z 保存当前曲目与进度后，新实例能读回并定位（不自动播放）', () async {
       music.catalogue = [for (var i = 0; i < 5; i++) makeTrack('g$i')];
       await library.loadFirst();
 
-      // 模拟「上次播放到 g2」
-      playback.restoreToTrackForTest('g2', const Duration(seconds: 42));
+      final store = FakeSecureStore();
+      // 第一次启动：放到第 2 首并产生进度
+      final (p1, _) = reboot(store);
+      p1.setQueue(library.tracks, startIndex: 2);
+      await settle();
+      await p1.saveRestorePoint();
 
-      // 新的仓储实例模拟重启后恢复
-      final engine2 = FakePlaybackEngine();
-      final playback2 = PlaybackRepository(music: music, handler: engine2);
-      addTearDown(() async {
-        playback2.dispose();
-        await engine2.close();
-      });
-
-      await playback2.loadRestorePoint();
-      final hit = playback2.restoreToTrack(library.tracks);
+      // 第二次启动：读回并定位
+      final (p2, e2) = reboot(store);
+      await p2.loadRestorePoint();
+      final hit = p2.restoreToTrack(library.tracks);
 
       expect(hit, isTrue, reason: '应能定位到 g2');
-      expect(playback2.current?.guid, 'g2');
-      expect(playback2.currentIndex, 2);
+      expect(p2.current?.guid, 'g2');
+      expect(p2.currentIndex, 2);
       expect(
-        engine2.loads,
+        e2.loads,
         isEmpty,
         reason: '⚠️ 恢复绝不能自动播放（否则电视开机突然放歌）',
       );
-      expect(engine2.isPlaying, isFalse);
+      expect(e2.isPlaying, isFalse, reason: '不应自动开始播放');
     });
 
     test('Z 恢复的曲库里已不存在该曲 → 返回 false，不崩溃', () async {
       music.catalogue = [makeTrack('a'), makeTrack('b')];
       await library.loadFirst();
 
-      final engine2 = FakePlaybackEngine();
-      final playback2 = PlaybackRepository(music: music, handler: engine2);
-      addTearDown(() async {
-        playback2.dispose();
-        await engine2.close();
-      });
+      final store = FakeSecureStore();
+      await store.writeLastTrackGuid('已删除的歌');
+      await store.writeLastPositionMs(0);
 
-      playback.restoreToTrackForTest('已删除的歌', Duration.zero);
-      await playback2.loadRestorePoint();
+      final (p2, _) = reboot(store);
+      await p2.loadRestorePoint();
 
-      expect(playback2.restoreToTrack(library.tracks), isFalse);
-      expect(playback2.current, isNull);
+      expect(p2.restoreToTrack(library.tracks), isFalse);
+      expect(p2.current, isNull);
+    });
+
+    test('Z 播放模式能跨实例恢复（持久化生效）', () async {
+      final store = FakeSecureStore();
+      final (p1, _) = reboot(store);
+      await p1.setMode(PlayMode.repeatAll);
+
+      final (p2, _) = reboot(store);
+      await p2.restoreMode();
+      expect(p2.mode, PlayMode.repeatAll, reason: '重启后应恢复上次播放模式');
     });
 
     test('没有上次记录时恢复不报错', () async {
-      final engine2 = FakePlaybackEngine();
-      final playback2 = PlaybackRepository(music: music, handler: engine2);
-      addTearDown(() async {
-        playback2.dispose();
-        await engine2.close();
-      });
-
-      await playback2.loadRestorePoint();
-      expect(playback2.restoreToTrack(const <Track>[]), isFalse);
+      final (p2, _) = reboot(FakeSecureStore());
+      await p2.loadRestorePoint();
+      expect(p2.pendingRestoreGuid, isNull);
+      expect(p2.restoreToTrack(const <Track>[]), isFalse);
     });
   });
 

@@ -215,12 +215,18 @@ void main() {
       final playingGuid = playback.current?.guid;
       expect(playingGuid, 'g5');
 
-      // 追加更多
-      playback.appendToQueue(<Track>[makeTrack('new1'), makeTrack('new2')]);
+      // 追加更多（用库里不存在的 guid，确保不会被去重掉）
+      playback.appendToQueue(<Track>[makeTrack('extra_1'), makeTrack('extra_2')]);
 
       expect(playback.current?.guid, playingGuid, reason: '正在播放的歌不能变');
       expect(playback.currentIndex, 5, reason: 'currentIndex 不能被追加影响');
-      expect(playback.queue.length, 32);
+      // 30 首（seed）+ 2 首（追加）= 32
+      expect(playback.queue.length, 32, reason: '30 首曲库 + 2 首新增');
+      expect(
+        playback.queue.last.guid,
+        'extra_2',
+        reason: '新增的曲目应在队尾',
+      );
     });
   });
 

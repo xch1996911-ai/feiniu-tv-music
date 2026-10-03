@@ -332,7 +332,18 @@ class PlaybackRepository extends ChangeNotifier
   int appendToQueue(List<Track> tracks) {
     if (tracks.isEmpty) return _queue.length;
     final existing = <String>{for (final t in _queue) t.guid};
-    final fresh = tracks.where((t) => t.guid.isNotEmpty && existing.add(t.guid));
+    // ⚠️ **必须用显式 for 循环，不能用 `tracks.where((t) => existing.add(t.guid))`。**
+    //
+    // `where` 是**惰性**的，而谓词里 `existing.add(...)` 有副作用：
+    // 上面的 `fresh.isEmpty` 会先消费掉第一个元素（把它的 guid 塞进 existing），
+    // 随后 `[...fresh]` 第二次遍历时，同一批 guid 被判为「已存在」而全部被丢弃
+    // → 追加 2 首实际只进 1 首，追加 50 首会变成隔一进一。
+    // 这会让「加载第 2 页后连续播放」莫名其妙断掉，且极难排查。
+    final fresh = <Track>[];
+    for (final t in tracks) {
+      if (t.guid.isEmpty) continue; // 无 guid 无法去重，宁可丢弃
+      if (existing.add(t.guid)) fresh.add(t);
+    }
     if (fresh.isEmpty) return _queue.length;
     _queue = List<Track>.unmodifiable(<Track>[..._queue, ...fresh]);
     Log.i('QUEUE_APPEND added=${fresh.length} total=${_queue.length} '
