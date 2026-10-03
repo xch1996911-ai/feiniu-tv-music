@@ -360,11 +360,6 @@ class RemoteControlServer {
     return pairing.validate(header ?? query);
   }
 
-  String _tokenOf(HttpRequest req) =>
-      req.headers.value('x-remote-token') ??
-      req.uri.queryParameters['token'] ??
-      '';
-
   Future<void> _html(HttpRequest req) async {
     final String? ip = await localIpv4();
     final Map<String, String> subs = <String, String>{
@@ -439,6 +434,10 @@ class RemoteControlServer {
     }
     // ⚠️ 封面必须由**电视代理**：手机没有 NAS 凭据，也不能给它。
     //    电视用自己的 Cookie 取图后原样转发字节。
+    //
+    // ⚠️ `HttpResponse` **没有** `headersSent`（曾经直接调它，编译不过）。
+    //    是否还能改状态码只能自己记：一旦开始 `pipe` 就已经把响应头发出去了。
+    bool headersWritten = false;
     try {
       final HttpClient client = HttpClient();
       final Uri uri = Uri.parse(_music.buildCoverUrl(coverId, size: size));
@@ -448,11 +447,12 @@ class RemoteControlServer {
       req.response.statusCode = resp.statusCode;
       final ContentType? ct = resp.headers.contentType;
       if (ct != null) req.response.headers.contentType = ct;
+      headersWritten = true;
       await resp.pipe(req.response);
       client.close();
     } catch (e) {
       Log.w('REMOTE 封面代理失败：$e');
-      if (!req.response.headersSent) {
+      if (!headersWritten) {
         req.response.statusCode = 502;
       }
       await req.response.close();

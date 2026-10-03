@@ -1,5 +1,3 @@
-import 'album.dart';
-import 'artist.dart';
 import 'pinyin_service.dart';
 import 'text_norm.dart';
 import 'track.dart';
@@ -233,7 +231,11 @@ class SearchIndex {
   final List<EntityHit> _artistSeeds;
   final List<EntityHit> _albumSeeds;
 
-  static const SearchIndex emptyIndex = SearchIndex(
+  /// 空索引（尚未整理曲库）。
+  ///
+  /// ⚠️ 是 `static final` 而**不是** `static const` —— `SearchIndex` 持有
+  /// `List`，构造它不是常量表达式（曾经写成 `const` 直接编译不过）。
+  static final SearchIndex emptyIndex = SearchIndex(
     docs: <SearchDoc>[],
     artistSeeds: <EntityHit>[],
     albumSeeds: <EntityHit>[],

@@ -132,9 +132,13 @@ class PinyinService {
     try {
       PinyinHelper.addPhraseMap(PinyinLexicon.entries);
       // 词典里有 8 字词组（"给我一首歌的时间"），必须保证最长匹配能覆盖到。
+      //
+      // ⚠️ `maxMultiLength` / `minMultiLength` 在 pinyin 3.x 里**已废弃**
+      //    （analyzer 会报 deprecated_member_use，本项目 info 也判失败），
+      //    新名字是 `maxPhraseLength` / `minPhraseLength`。
       final int need = PinyinLexicon.longestPhraseLength;
-      if (PinyinHelper.maxMultiLength < need) {
-        PinyinHelper.maxMultiLength = need;
+      if (PinyinHelper.maxPhraseLength < need) {
+        PinyinHelper.maxPhraseLength = need;
       }
     } catch (_) {
       // 词典注册失败不该让搜索整体不可用：内置读音仍然可用。

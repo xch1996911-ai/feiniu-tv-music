@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/diagnostics.dart';
 import '../core/log.dart';
 import '../core/result.dart';
 import '../domain/lyric.dart';
@@ -203,13 +204,28 @@ class LyricRepository extends ChangeNotifier {
       return;
     }
 
-    if (nasDoc != null && nasDoc.isNotEmpty) {
+    // ⚠️ V5 修复（图5 根因）：判据从「非空」改成「**有效**」。
+    //    NAS 常见返回是「list 非空但内容只有 ♪ / 空白 / 只有时间标签」，
+    //    用 isNotEmpty 会让流程在这里提前 return，**在线兜底永远不执行**，
+    //    界面上就只剩一个音乐符号。判据放这里改一处即可，
+    //    UI 不需要知道「占位符」这种概念。
+    if (nasDoc != null && nasDoc.isUsable) {
       _loading = false;
       _cachePut(track.guid, nasDoc, LyricOrigin.nas);
       _apply(track.guid, nasDoc, LyricOrigin.nas);
       Log.i('LYRIC_LOAD 完成（NAS）guid=${track.guid} '
           'lines=${nasDoc.lines.length}');
       return;
+    }
+    if (nasDoc != null && nasDoc.isNotEmpty && !nasDoc.isUsable) {
+      int chars = 0;
+      for (final LyricLine l in nasDoc.lines) {
+        chars += LyricDoc.informativeCharCount(l.text);
+      }
+      Log.i('LYRIC_LOAD NAS 返回了 ${nasDoc.lines.length} 行但只有 $chars 个'
+          '有效字符（占位符/空白），判为无歌词并转在线兜底');
+      Diagnostics.event(
+          'NAS 歌词判为无效（${nasDoc.lines.length} 行 / $chars 个有效字符），已转在线兜底');
     }
 
     // ── 2) 在线兜底 ──────────────────────────────────────────
@@ -241,7 +257,10 @@ class LyricRepository extends ChangeNotifier {
         //    `score <= 0` 表示标题根本不沾边，连候选都不该算。
         final List<OnlineLyricCandidate> scored = <OnlineLyricCandidate>[
           for (final OnlineLyricCandidate c in raw)
-            if (c.hasContent) c.withScore(OnlineLyricMatcher.score(query, c)),
+            if (c.hasContent &&
+                LyricDoc.informativeCharCount(c.content) >=
+                    LyricDoc.usableCharThreshold)
+              c.withScore(OnlineLyricMatcher.score(query, c)),
         ]..removeWhere((OnlineLyricCandidate c) => c.score <= 0);
 
         if (scored.isNotEmpty) {
@@ -251,7 +270,7 @@ class LyricRepository extends ChangeNotifier {
           );
           if (best.score >= OnlineLyricMatcher.acceptThreshold) {
             final LyricDoc doc = _parse(best.content);
-            if (doc.isNotEmpty) {
+            if (doc.isUsable) {
               _loading = false;
               _candidates = List<OnlineLyricCandidate>.unmodifiable(scored);
               _cachePut(track.guid, doc, LyricOrigin.online);
@@ -283,6 +302,13 @@ class LyricRepository extends ChangeNotifier {
     _origin = LyricOrigin.none;
     _loadedGuid = track.guid;
     _safeNotify();
+    // 「NAS 没给内容」和「NAS 自己就失败了」是两件事，诊断里分开记，
+    // 但用户看到的都是同一句「暂无歌词」。
+    Diagnostics.note(
+        '歌词',
+        nasError == null
+            ? 'NAS 无有效歌词${_online == null || !onlineEnabled ? '（在线兜底未启用）' : '，在线亦无可用匹配'}'
+            : 'NAS 请求失败（$nasError）');
     Log.i('LYRIC_LOAD 结束：无歌词 guid=${track.guid}');
   }
 

@@ -7,10 +7,12 @@ import '../../app/theme.dart';
 import '../../core/diagnostics.dart';
 import '../../core/log.dart';
 import '../../domain/track.dart';
+import '../../playback/playback_control.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/music_repository.dart';
+import '../../playback/playback_control.dart';
 import '../../repositories/playback_repository.dart';
 import '../pages/diagnostics_page.dart';
 import '../pages/favorites_page.dart';
@@ -235,8 +237,7 @@ class _AppShellState extends State<AppShell> {
     if (!_library.indexComplete) return; // 半成品不喂队列
     if (_indexSyncedCount == _library.tracks.length) return; // 无变化
     final QueueSource src = _playback.source;
-    if (src != QueueSource.library && src != QueueSource.restored) return;
-    _indexSyncedCount = _library.tracks.length;
+    if (src != QueueSource.library && src != QueueSource.restored) return;    _indexSyncedCount = _library.tracks.length;
     final int total = _playback.appendToQueue(_library.tracks);
     Log.i('QUEUE_APPEND 曲库整理推进 → 队列 $total 首');
   }

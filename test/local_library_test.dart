@@ -601,7 +601,7 @@ void main() {
         tr('b', genres: <String>['流行']),
       ];
       // '摇'(U+6447) < '流'(U+6D41)
-      final groups = LocalLibraryRepository.genreOverviews(catalogue);
+      final groups = LocalLibraryRepository.explicitGenreOverviews(catalogue);
       expect(
         groups.map((g) => g.title).toList(),
         <String>['摇滚', '流行'],
@@ -615,7 +615,7 @@ void main() {
     test('曲库完全没有风格标签 → 返回空列表（UI 应如实说「暂无风格标签」）', () {
       final catalogue = <Track>[tr('a'), tr('b')];
       expect(
-        LocalLibraryRepository.genreOverviews(catalogue),
+        LocalLibraryRepository.explicitGenreOverviews(catalogue),
         isEmpty,
         reason: '绝不能把全部歌曲塞进「未知风格」来假装有数据',
       );
@@ -625,11 +625,11 @@ void main() {
       final catalogue = <Track>[
         tr('a', genres: <String>['  ', '']),
       ];
-      expect(LocalLibraryRepository.genreOverviews(catalogue), isEmpty);
+      expect(LocalLibraryRepository.explicitGenreOverviews(catalogue), isEmpty);
     });
 
     test('空曲库返回空列表', () {
-      expect(LocalLibraryRepository.genreOverviews(const <Track>[]), isEmpty);
+      expect(LocalLibraryRepository.explicitGenreOverviews(const <Track>[]), isEmpty);
     });
   });
 

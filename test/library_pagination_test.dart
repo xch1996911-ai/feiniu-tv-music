@@ -379,7 +379,7 @@ void main() {
       await library.loadFirst();
       expect(library.tracks.length, 50);
 
-      await library.buildFullIndex();
+      await library.startSync('test@host#user');
 
       expect(library.tracks.length, 120, reason: '索引完成后应有全部 120 首');
       expect(library.hasMore, isFalse);
@@ -393,8 +393,8 @@ void main() {
       music.trackPageRequests.clear();
 
       await Future.wait<void>(<Future<void>>[
-        library.buildFullIndex(),
-        library.buildFullIndex(),
+        library.startSync('test@host#user'),
+        library.startSync('test@host#user'),
       ]);
 
       // 第 2、3 页各只应请求一次（第二个调用复用第一个的 Future）
@@ -410,7 +410,7 @@ void main() {
       music.failNextTrackRequest =
           const AppError('断了', kind: ErrorKind.network);
 
-      await library.buildFullIndex();
+      await library.startSync('test@host#user');
 
       // 应该停在部分数据，且没有死循环
       expect(library.tracks.length, 50, reason: '失败后不应继续拉');

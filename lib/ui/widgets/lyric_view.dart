@@ -155,6 +155,9 @@ class _LyricViewState extends State<LyricView> {
     }
 
     final lines = lyrics.doc.lines;
+    // 整篇是否有文字行 —— 决定「空行」要不要画成 ♪（见 _LyricLineRow 的说明）
+    final bool hasAnyText =
+        lines.any((LyricLine l) => l.text.trim().isNotEmpty);
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
@@ -172,6 +175,7 @@ class _LyricViewState extends State<LyricView> {
           itemBuilder: (BuildContext context, int i) {
             return _LyricLineRow(
               text: lines[i].text,
+              hasAnyText: hasAnyText,
               distance: _activeIndex < 0 ? -1 : (i - _activeIndex),
             );
           },
@@ -186,9 +190,20 @@ class _LyricViewState extends State<LyricView> {
 /// 用「与当前句的距离」算透明度：距离越远越暗，形成天然的渐隐观感，
 /// 不需要 `ShaderMask`（电视 GPU 上少一个全屏滤镜就少一分掉帧风险）。
 class _LyricLineRow extends StatelessWidget {
-  const _LyricLineRow({required this.text, required this.distance});
+  const _LyricLineRow({
+    required this.text,
+    required this.hasAnyText,
+    required this.distance,
+  });
 
   final String text;
+
+  /// 整篇歌词是否至少有一行文字。
+  ///
+  /// ⚠️ 用来避免「整篇只有空行时画出一串 ♪」—— 那种文档已经被
+  /// `LyricDoc.isUsable` 判为无效并转入在线兜底，但如果将来有别的
+  /// 入口塞进一个空行文档，这里也不会再变成「只有一个音乐符号」。
+  final bool hasAnyText;
 
   /// 与当前高亮行的距离；-1 表示当前没有高亮行。
   final int distance;
@@ -216,7 +231,10 @@ class _LyricLineRow extends StatelessWidget {
         const SizedBox(width: 14),
         Expanded(
           child: Text(
-            text.isEmpty ? '♪' : text,
+            // ⚠️ 只有「确实有别的文字行」时才用 ♪ 表示间奏停顿。
+            //    整篇都是空行的情况已经被 LyricDoc.isUsable 拦在仓库层，
+            //    不会走到这里（图5 那个孤零零的 ♪ 就是这么来的）。
+            text.isEmpty && hasAnyText ? '♪' : text,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

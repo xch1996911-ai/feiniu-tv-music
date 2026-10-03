@@ -99,7 +99,7 @@ class QrCode {
       put(b, 8);
     }
 
-    final int capacityBits = dataCodewords * 8;
+    const int capacityBits = dataCodewords * 8;
     // 结束符最多 4 个 0，且不能越过容量
     final int terminator = (capacityBits - bits.length).clamp(0, 4);
     put(0, terminator);

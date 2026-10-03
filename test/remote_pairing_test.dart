@@ -46,7 +46,7 @@ void main() {
 
     test('C 错误配对码被拒绝，且不会破坏已有会话', () {
       final String code = m.regenerateCode();
-      expect(m.pair(code: 'AAAAAA') == null || code == 'AAAAAA', isTrue);
+      expect(m.pair(code: 'AAAAAA'), isNull, reason: '错误的码必须被拒绝');
       expect(m.isPaired, isFalse);
       final String? token = m.pair(code: code);
       expect(token, isNotNull);
@@ -58,7 +58,7 @@ void main() {
       RemotePairingManager.pairingTtl = const Duration(milliseconds: -1);
       final String code = m.regenerateCode();
       expect(m.pairingCode, isNull, reason: '已过期的码等同于没有码');
-      expect(m.pair(code), isNull);
+      expect(m.pair(code: code), isNull);
     });
 
     test('E 凭证：正确通过、错误拒绝、撤销后立即失效', () {
@@ -95,8 +95,8 @@ void main() {
 
     test('H 会话标签被裁剪且可读（电视上要显示「哪台手机」）', () {
       final String token =
-          m.pair(code: m.regenerateCode(), label: '  iPhone 15 Pro  ');
-      expect(token, isNotNull);
+          m.pair(code: m.regenerateCode(), label: '  iPhone 15 Pro  ')!;
+      expect(token, isNotEmpty);
       expect(m.sessionLabel, 'iPhone 15 Pro');
     });
   });

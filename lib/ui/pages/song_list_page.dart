@@ -78,7 +78,9 @@ class _SongListPageState extends State<SongListPage> {
         _Header(
           total: library.total,
           loaded: library.tracks.length,
-          scanning: library.isIndexing,
+          // ⚠️ V5：`LibraryRepository` 的旧 `isIndexing` 已被
+          //    `syncStatus`（含「已索引 / 全库总数」两个口径）取代。
+          scanning: library.syncStatus.syncing,
         ),
         Expanded(child: _buildBody(library, currentGuid)),
       ],

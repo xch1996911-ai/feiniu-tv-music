@@ -498,7 +498,7 @@ class LocalLibraryRepository extends ChangeNotifier {
     ];
 
     // 排序：曲目多的在前；统一集合内按声明顺序；「待分类」永远沉底。
-    final List<String> order = GenreRules.unified;
+    const List<String> order = GenreRules.unified;
     out.sort((LibraryOverview a, LibraryOverview b) {
       final bool ap = a.title == GenreRules.unclassified;
       final bool bp = b.title == GenreRules.unclassified;

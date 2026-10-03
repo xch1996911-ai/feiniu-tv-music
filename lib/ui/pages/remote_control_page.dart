@@ -173,10 +173,10 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
                                   fontSize: 18, color: TvColors.textDim),
                             ),
                             const SizedBox(height: 6),
-                            Text(
+                            const Text(
                               '扫不出来也可以手动输入下面的地址与配对码',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 14, color: TvColors.textFaint),
                             ),
                           ],

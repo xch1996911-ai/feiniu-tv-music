@@ -177,7 +177,10 @@ class CatalogueStore {
       return snap;
     } catch (e, st) {
       // 损坏的缓存不该阻断启动：下一次成功扫描会整份覆盖它。
-      Log.w('CATALOGUE_STORE 索引读取失败（按无缓存继续）：$e', st);
+      //
+      // ⚠️ `Log.w` 只接受一个参数（见 `lib/core/log.dart`）；需要带堆栈时
+      //    必须用 `Log.e(message, error, stackTrace)`。
+      Log.e('CATALOGUE_STORE 索引读取失败（按无缓存继续）', e, st);
       return null;
     }
   }

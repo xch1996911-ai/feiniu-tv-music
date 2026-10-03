@@ -502,12 +502,12 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TvGlass(
+    return const TvGlass(
       radius: 24,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       width: 92,
       height: 92,
-      child: const Icon(Icons.music_note, size: 48, color: TvColors.brand),
+      child: Icon(Icons.music_note, size: 48, color: TvColors.brand),
     );
   }
 }

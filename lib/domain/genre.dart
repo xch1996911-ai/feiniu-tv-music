@@ -377,7 +377,7 @@ class GenreRules {
   static List<String> tokenize(String text) {
     final List<String> out = <String>[];
     final StringBuffer buf = StringBuffer();
-    bool? cjk = null;
+    bool? cjk;
     void flush() {
       if (buf.isNotEmpty) {
         out.add(buf.toString());

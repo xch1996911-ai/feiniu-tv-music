@@ -365,8 +365,8 @@ class LibraryRepository extends ChangeNotifier {
           _complete = false;
         }
         Diagnostics.note('曲库索引',
-            '本次在线核对未完成（第 ${res.pages} 页失败）：${res.error}；'
-            '当前显示 ${_tracks.length} 首（完整=${_complete}）');
+            '本次在线核对未完成（第 $res.pages 页失败）：${res.error}；'
+            '当前显示 ${_tracks.length} 首（完整=$_complete）');
         Diagnostics.event('曲库整理中断：${res.error}');
         _recomputeGenres();
         return;

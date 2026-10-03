@@ -183,7 +183,7 @@ void main() {
 
     test('K 一首歌可以属于多个风格（合唱/多标签）', () {
       final GenreInferenceResult r = GenreInferencer.infer(<Track>[
-        Track(
+        const Track(
           guid: 't1',
           title: '混搭',
           durationMs: 1000,

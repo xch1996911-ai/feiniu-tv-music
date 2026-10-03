@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/log.dart';
+import '../domain/json_util.dart';
 import '../domain/pinyin_lexicon.dart';
 import '../domain/pinyin_service.dart';
 import '../domain/text_norm.dart';
@@ -183,7 +184,8 @@ class SearchIndexStore {
         docs: docs,
       );
     } catch (e, st) {
-      Log.w('SEARCH_STORE 缓存读取失败（将重建）：$e', st);
+      // ⚠️ `Log.w` 只接受一个参数；带堆栈必须用 `Log.e`。
+      Log.e('SEARCH_STORE 缓存读取失败（将重建）', e, st);
       return null;
     }
   }
@@ -196,7 +198,7 @@ class SearchIndexStore {
     final Map<String, dynamic> json = <String, dynamic>{
       'versions': currentVersions(),
       'identity': snap.identity,
-      'savedAt': snap.savedAt?.millisecondsSinceEpoch ~/ 1000,
+      'savedAt': unixSecondsOf(snap.savedAt),
       'trackCount': snap.trackCount,
       'docs': <Map<String, dynamic>>[
         for (final CachedSearchDoc d in snap.docs.values) d.toJson(),

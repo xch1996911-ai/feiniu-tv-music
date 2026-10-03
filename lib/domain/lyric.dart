@@ -63,6 +63,55 @@ class LyricDoc {
   bool get isEmpty => lines.isEmpty;
   bool get isNotEmpty => lines.isNotEmpty;
 
+  /// 判定「一段歌词文本是否真的有内容」。
+  ///
+  /// ## 为什么必须有这个判定（V5 图5 的根因之一）
+  ///
+  /// 实机现象：播放页歌词区**只有一个音乐符号 `♪`**。
+  /// 链路是：NAS 的 `lyric/list` 返回了「非空」的 list，里面那条
+  /// `text` 只是占位符或空白 —— 于是 `nasDoc.isNotEmpty` 成立、
+  /// **提前 return，在线兜底根本没跑**，界面上就只剩下一个符号。
+  ///
+  /// 「非空」不等于「有效」：`♪`、`♫`、`·`、`---`、`[00:00.00]`
+  /// 这类内容没有任何歌词信息。
+  ///
+  /// ## 判定规则（刻意保守且可解释）
+  /// 去掉时间标签后，只统计**有信息量的字符**：
+  /// CJK 汉字 / 拉丁字母 / 数字。其余（符号、标点、空白）一律不算。
+  /// 全部行加起来 **≥ 4 个**才算有效。
+  ///
+  /// - `♪♪♪` → 0 → 无效 ✅
+  /// - `[00:12.00]` → 0 → 无效 ✅
+  /// - `纯音乐，请欣赏` → 6 → 有效 ✅（这确实是服务端给的告知）
+  /// - `Oh` → 2 → 无效（单行 2 个字母确实没有歌词价值）
+  static int informativeCharCount(String raw) {
+    if (raw.isEmpty) return 0;
+    final String stripped = raw.replaceAll(_timeTag, ' ');
+    int n = 0;
+    for (final int rune in stripped.runes) {
+      final String ch = String.fromCharCode(rune);
+      if (RegExp(r'[0-9A-Za-z]').hasMatch(ch)) {
+        n++;
+      } else if (rune >= 0x3400 && rune <= 0x9fff) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /// 本文档是否**真的有歌词内容**。
+  bool get isUsable {
+    int total = 0;
+    for (final LyricLine l in lines) {
+      total += informativeCharCount(l.text);
+      if (total >= usableCharThreshold) return true;
+    }
+    return false;
+  }
+
+  /// 有效歌词的最小信息字符数。
+  static const int usableCharThreshold = 4;
+
   /// 时间标签，形如 `[00:12.34]` / `[0:12]` / `[00:12:345]`。
   static final RegExp _timeTag =
       RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
