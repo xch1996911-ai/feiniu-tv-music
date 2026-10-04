@@ -346,19 +346,31 @@ class _PlayerPageState extends State<PlayerPage> {
     MusicRepository music,
   ) {
     // ── 尺寸预算（全部是显式常量，便于一眼核对）────────────────
-    // 文字块三个部件的高度：
-    //   标题 = 字号 × 1.15（已显式写 height），最多 2 行；
-    //   歌手行 = 20 × 1.43（**没写 height** → M3 默认行高 1.43，必须按 29 算）；
-    //   规格胶囊 ≈ 32（见 _Chip）。
+    // 文字块三个部件的高度 —— 逐项对齐**真实渲染高度**，不凭字号估：
+    //   ① 标题 `Text(fontSize:, height: 1.15)` → 行高 = ⌈字号 × 1.15⌉；
+    //   ② 歌手行 `Text(fontSize: 20)` **没写 height** → 用 M3 默认 1.43
+    //      → ⌈20 × 1.43⌉ = 29（按 20 算会少 9px）；
+    //   ③ 规格胶囊 `_Chip` = 上下 padding 12 + ⌈16 × 1.43⌉ = 35
+    //      （按 32 算会少 3px）；
+    //   ④ **系统字体缩放**（Android 的「字体大小 / 显示大小」）会整体放大文字。
+    //      老代码完全没算这一项 —— 字体放大到 1.3 就必然把封面栏顶破，
+    //      而溢出在 release 下是**静默裁切**，界面上只表现为「规格被切」。
+    //   Flutter 对**每一行**行盒向上取整，所以这里统一 `ceilToDouble()`。
+    final double ts = MediaQuery.textScalerOf(context).scale(1.0);
+
     final double titleSize = center ? 38 : 34;
-    final double titleLineH = titleSize * 1.15;
-    const double artistLineH = 20 * 1.43;
-    const double chipH = 32;
+    final double titleLineH = (titleSize * ts * 1.15).ceilToDouble();
+    final double artistLineH = (20 * ts * 1.43).ceilToDouble();
+    final double chipH = (16 * ts * 1.43).ceilToDouble() + 12;
     const double gapBig = 22;
     const double gapSmall = 10;
+    // 收尾余量：逐行取整 + 文字排版误差。不留这一项时，
+    // 「正好等于可用高度」的算式会被判 `overflowed by 0.4 pixels`。
+    const double slack = 2;
 
     // 最坏情况（2 行标题）先算一遍；装不下就退回 1 行。
-    final double fullText = titleLineH * 2 + gapSmall + artistLineH + gapSmall + chipH;
+    final double fullText =
+        titleLineH * 2 + gapSmall + artistLineH + gapSmall + chipH;
     final double availH = box.maxHeight.isFinite ? box.maxHeight : 400;
     final double availW = box.maxWidth.isFinite ? box.maxWidth : 400;
     final bool twoLineTitle = (availH - gapBig - fullText) >= 150;
@@ -370,13 +382,25 @@ class _PlayerPageState extends State<PlayerPage> {
         chipH;
 
     // 横向排布时文字在右边：封面可用宽度还要扣掉间距与文字宽度预算。
-    // 原来直接用 420 作为文字最大宽度却**没有从可用宽度里减掉**，窄屏会水平溢出。
-    final double textW = horizontal ? min(420.0, availW * 0.45) : 0;
+    // ⚠️ 这个 `textW` **必须同时用作下面 `ConstrainedBox` 的上限**：
+    //    否则一边按 textW 扣封面宽度、另一边却仍允许文字排到 420，
+    //    窄视口上就会水平溢出。
+    final double textW = horizontal ? min(420.0, availW * 0.45) : 0.0;
     final double coverByWidth =
-        horizontal ? (availW - 28 - textW) : availW;
-    final double coverByHeight = horizontal ? availH : (availH - gapBig - textBlock);
-    final double coverSize = min(coverByWidth, coverByHeight)
-        .clamp(110.0, horizontal ? 460.0 : 360.0);
+        horizontal ? (availW - 28 - textW - slack) : (availW - slack);
+    final double coverByHeight =
+        horizontal ? (availH - slack) : (availH - gapBig - textBlock - slack);
+
+    // ⚠️ 设计下限**不能覆盖实际可用空间**。
+    //    老代码写成 `.clamp(110.0, 360.0)`：逻辑视口偏小的电视
+    //    （720p 面板 + density 1.5 → 853×480，扣掉进度区与操作条后正文只剩
+    //    约 238）算出的可用封面高度只有 92，却被下限抬到 110 ——
+    //    整个封面栏比可用高度高 18px，release 下静默裁切。
+    //    规则：**装得下设计下限才用它，装不下就用实际装得下的值。**
+    const double designMin = 110;
+    final double upper = horizontal ? 460.0 : 360.0;
+    final double fit = min(max(0.0, coverByWidth), max(0.0, coverByHeight));
+    final double coverSize = fit >= designMin ? min(fit, upper) : fit;
 
     final Widget cover = DecoratedBox(
       decoration: BoxDecoration(
@@ -449,7 +473,10 @@ class _PlayerPageState extends State<PlayerPage> {
           cover,
           const SizedBox(width: 28),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            // ⚠️ 必须用上面算出的 `textW`，不能写死 420 ——
+            //    封面可用宽度是按 textW 扣的，文字却允许排到 420，
+            //    窄视口上两边对不上就会水平溢出。
+            constraints: BoxConstraints(maxWidth: textW),
             child: info,
           ),
         ],
@@ -498,6 +525,15 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // ── 底部操作栏（返回 / 模式 / 布局 / 收藏 / 上一首 / 播放 / 下一首 / 队列）──
 
+  /// 底部操作条：返回 / 布局 / 模式 / 收藏 / 上一首 / 播放 / 下一首 / 队列。
+  ///
+  /// ## 为什么要在这里做「装不装得下」的判断
+  ///
+  /// 一行的固有宽度是**固定值之和**（六个圆钮 + 三个胶囊）。在逻辑视口偏小的
+  /// 电视上（720p 面板 + density 1.5 → 853×480，扣掉页面内边距后只剩 749）
+  /// 或者系统字体放大时，这一行会顶出容器边界；而 `RenderFlex` 溢出在
+  /// **release 构建下是静默裁切** —— 电视上只看到「最右边那个按钮被切一半」，
+  /// 没有任何报错。所以这里显式判断：装得下用标准排布，装不下整体等比缩小。
   Widget _buildBottomBar(Track? song, PlayerLayout layout, bool fav) {
     final bool playing = context.select<PlaybackRepository, bool>(
       (PlaybackRepository p) => p.isPlaying,
@@ -512,155 +548,245 @@ class _PlayerPageState extends State<PlayerPage> {
       (PlaybackRepository p) => p.hasPrevious,
     );
     final PlaybackRepository p = context.read<PlaybackRepository>();
+    final double ts = MediaQuery.textScalerOf(context).scale(1.0);
 
-    return Row(
-      children: <Widget>[
-        // ── 左组：导航类（视觉顺序 = 焦点链顺序：返回 → 布局 → 模式 → 收藏）──
-        _RoundControl(
-          node: _backNode,
-          debugLabel: 'player.back',
-          icon: Icons.keyboard_arrow_down,
-          tooltip: '返回',
-          compact: true,
-          onPressed: widget.onBack,
-          nextLeft: _queueNode, // 环：左端接右端，左右永远有去有回
-          nextRight: _layoutNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const SizedBox(width: 12),
-        _PillControl(
-          node: _layoutNode,
-          debugLabel: 'player.layout',
-          icon: layout == PlayerLayout.stage
-              ? Icons.view_agenda
-              : Icons.wallpaper,
-          label: layout.shortLabel,
-          tooltip: '切换播放页布局（标准 / 大封面）',
-          onPressed: _cycleLayout,
-          nextLeft: _backNode,
-          nextRight: _modeNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const SizedBox(width: 10),
-        _PillControl(
-          node: _modeNode,
-          debugLabel: 'player.mode',
-          icon: _modeIcon(mode),
-          label: mode.shortLabel,
-          tooltip: '播放模式（${mode.label}）',
-          onPressed: () {
-            // ⚠️ 用 `mode.next` 而不是 `PlayMode.values[index+1]`：
-            // 循环顺序（顺序 → 列表循环 → 随机 → 单曲 → 顺序）是
-            // 在 `playback_control.dart` 里定义并注释的**唯一一处**，
-            // UI 不应该再自己推一遍（否则改顺序时两边会不一致）。
-            final PlayMode nextMode = mode.next;
-            Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → ${nextMode.storageKey}');
-            unawaited(p.setMode(nextMode));
-          },
-          nextLeft: _layoutNode,
-          nextRight: _favNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const SizedBox(width: 10),
-        _RoundControl(
-          node: _favNode,
-          debugLabel: 'player.fav',
-          icon: fav ? Icons.favorite : Icons.favorite_border,
-          iconColor: fav ? TvColors.brand : TvColors.text,
-          tooltip: fav ? '取消收藏' : '收藏',
-          compact: true,
-          onPressed: song == null
-              ? null
-              : () {
-                  Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${song.title}');
-                  unawaited(
-                    context
-                        .read<LocalLibraryRepository>()
-                        .toggleFavorite(song.guid),
-                  );
-                },
-          nextLeft: _modeNode,
-          nextRight: _prevNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const Spacer(),
-        // ── 中组：播放控制（电视上最常用的三个，放正中间）──
-        _RoundControl(
-          node: _prevNode,
-          debugLabel: 'player.prev',
-          icon: Icons.skip_previous,
-          // V5：没有上一首记录（或队列只有一首且当前模式不回绕）时置灰。
-          tooltip: canPrevious ? '上一首' : '没有上一首',
-          iconColor: canPrevious ? null : TvColors.textFaint,
-          onPressed: () {
-            Log.i('SKIP_PREVIOUS (player)');
-            unawaited(p.previous());
-          },
-          nextLeft: _favNode,
-          nextRight: _playNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const SizedBox(width: 30),
-        _RoundControl(
-          node: _playNode,
-          debugLabel: 'player.play',
-          icon: playing ? Icons.pause : Icons.play_arrow,
-          tooltip: playing ? '暂停' : '播放',
-          large: true,
-          onPressed: () {
-            Log.i('PLAY_TOGGLE (player) → ${playing ? '暂停' : '播放'}');
-            unawaited(p.togglePlay());
-          },
-          nextLeft: _prevNode,
-          nextRight: _nextNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const SizedBox(width: 30),
-        _RoundControl(
-          node: _nextNode,
-          debugLabel: 'player.next',
-          icon: Icons.skip_next,
-          tooltip: '下一首',
-          onPressed: () {
-            Log.i('SKIP_NEXT (player)');
-            unawaited(p.next());
-          },
-          nextLeft: _playNode,
-          nextRight: _queueNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-        const Spacer(),
-        // ── 右组：队列 ────────────────────────────────────
-        _PillControl(
-          node: _queueNode,
-          debugLabel: 'player.queue',
-          icon: Icons.queue_music,
-          label: '队列',
-          tooltip: '打开当前播放队列',
-          onPressed: _openQueue,
-          nextLeft: _nextNode,
-          nextRight: _backNode,
-          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-          nextUp: _seekNode,
-        ),
-      ],
+    List<Widget> children({required bool flexible}) => _bottomBarChildren(
+          song: song,
+          layout: layout,
+          fav: fav,
+          playing: playing,
+          mode: mode,
+          canPrevious: canPrevious,
+          p: p,
+          flexible: flexible,
+        );
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints c) {
+        final double need = _bottomBarIntrinsicWidth(
+          ts,
+          layout.shortLabel,
+          mode.shortLabel,
+        );
+        if (!c.maxWidth.isFinite || c.maxWidth >= need) {
+          return Row(children: children(flexible: true));
+        }
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Row(children: children(flexible: false)),
+        );
+      },
     );
   }
+
+  /// 底部操作条的一行控件。
+  ///
+  /// [flexible] = true：两端用 `Spacer` 撑开（宽屏的标准排布，一个像素都不改）；
+  /// false：两端换成固定间距 —— `FittedBox` 交给子树的宽度是**无界**的，
+  /// 里面放 `Spacer`/`Expanded` 会直接抛
+  /// 「RenderFlex children have non-zero flex but incoming width constraints
+  /// are unbounded」。
+  List<Widget> _bottomBarChildren({
+    required Track? song,
+    required PlayerLayout layout,
+    required bool fav,
+    required bool playing,
+    required PlayMode mode,
+    required bool canPrevious,
+    required PlaybackRepository p,
+    required bool flexible,
+  }) {
+    return <Widget>[
+      // ── 左组：导航类（视觉顺序 = 焦点链顺序：返回 → 布局 → 模式 → 收藏）──
+      _RoundControl(
+        node: _backNode,
+        debugLabel: 'player.back',
+        icon: Icons.keyboard_arrow_down,
+        tooltip: '返回',
+        compact: true,
+        onPressed: widget.onBack,
+        nextLeft: _queueNode, // 环：左端接右端，左右永远有去有回
+        nextRight: _layoutNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      const SizedBox(width: 12),
+      _PillControl(
+        node: _layoutNode,
+        debugLabel: 'player.layout',
+        icon: layout == PlayerLayout.stage
+            ? Icons.view_agenda
+            : Icons.wallpaper,
+        label: layout.shortLabel,
+        tooltip: '切换播放页布局（标准 / 大封面）',
+        onPressed: _cycleLayout,
+        nextLeft: _backNode,
+        nextRight: _modeNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      const SizedBox(width: 10),
+      _PillControl(
+        node: _modeNode,
+        debugLabel: 'player.mode',
+        icon: _modeIcon(mode),
+        label: mode.shortLabel,
+        tooltip: '播放模式（${mode.label}）',
+        onPressed: () {
+          // ⚠️ 用 `mode.next` 而不是 `PlayMode.values[index+1]`：
+          // 循环顺序（顺序 → 列表循环 → 随机 → 单曲 → 顺序）是
+          // 在 `playback_control.dart` 里定义并注释的**唯一一处**，
+          // UI 不应该再自己推一遍（否则改顺序时两边会不一致）。
+          final PlayMode nextMode = mode.next;
+          Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → ${nextMode.storageKey}');
+          unawaited(p.setMode(nextMode));
+        },
+        nextLeft: _layoutNode,
+        nextRight: _favNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      const SizedBox(width: 10),
+      _RoundControl(
+        node: _favNode,
+        debugLabel: 'player.fav',
+        icon: fav ? Icons.favorite : Icons.favorite_border,
+        iconColor: fav ? TvColors.brand : TvColors.text,
+        tooltip: fav ? '取消收藏' : '收藏',
+        compact: true,
+        onPressed: song == null
+            ? null
+            : () {
+                Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${song.title}');
+                unawaited(
+                  context
+                      .read<LocalLibraryRepository>()
+                      .toggleFavorite(song.guid),
+                );
+              },
+        nextLeft: _modeNode,
+        nextRight: _prevNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      flexible ? const Spacer() : const SizedBox(width: 24),
+      // ── 中组：播放控制（电视上最常用的三个，放正中间）──
+      _RoundControl(
+        node: _prevNode,
+        debugLabel: 'player.prev',
+        icon: Icons.skip_previous,
+        // V5：没有上一首记录（或队列只有一首且当前模式不回绕）时置灰。
+        tooltip: canPrevious ? '上一首' : '没有上一首',
+        iconColor: canPrevious ? null : TvColors.textFaint,
+        onPressed: () {
+          Log.i('SKIP_PREVIOUS (player)');
+          unawaited(p.previous());
+        },
+        nextLeft: _favNode,
+        nextRight: _playNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      const SizedBox(width: 30),
+      _RoundControl(
+        node: _playNode,
+        debugLabel: 'player.play',
+        icon: playing ? Icons.pause : Icons.play_arrow,
+        tooltip: playing ? '暂停' : '播放',
+        large: true,
+        onPressed: () {
+          Log.i('PLAY_TOGGLE (player) → ${playing ? '暂停' : '播放'}');
+          unawaited(p.togglePlay());
+        },
+        nextLeft: _prevNode,
+        nextRight: _nextNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      const SizedBox(width: 30),
+      _RoundControl(
+        node: _nextNode,
+        debugLabel: 'player.next',
+        icon: Icons.skip_next,
+        tooltip: '下一首',
+        onPressed: () {
+          Log.i('SKIP_NEXT (player)');
+          unawaited(p.next());
+        },
+        nextLeft: _playNode,
+        nextRight: _queueNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+      flexible ? const Spacer() : const SizedBox(width: 24),
+      // ── 右组：队列 ────────────────────────────────────
+      _PillControl(
+        node: _queueNode,
+        debugLabel: 'player.queue',
+        icon: Icons.queue_music,
+        label: '队列',
+        tooltip: '打开当前播放队列',
+        onPressed: _openQueue,
+        nextLeft: _nextNode,
+        nextRight: _backNode,
+        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        nextUp: _seekNode,
+      ),
+    ];
+  }
+}
+
+/// 估算 `_PillControl` 在给定字体缩放下的总宽度。
+///
+/// 用 `TextPainter` **实测**文字宽度，而不是写死一个阈值常量：
+/// 写死的阈值在系统字体放大（Android「字体大小」）时会被悄悄顶破，
+/// 而溢出在 release 下是静默裁切，没有任何提示。
+///
+/// 常量口径（对齐 `_PillControl` / `TvFocusRing` 的实际实现）：
+/// - `16 + 16` 左右内边距；
+/// - `+ 6`：`TvFocusRing` 的 `Border.all(width: 3)` —— `Container` 会把
+///   边框尺寸算进 padding（**焦点环会占位**，不占位的只有外发光）；
+/// - `22` 图标 + `8` 图文间距。
+double _pillWidthFor(String label, double ts) {
+  final TextPainter tp = TextPainter(
+    text: TextSpan(
+      text: label,
+      style: TextStyle(fontSize: 17 * ts, color: TvColors.text),
+    ),
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+  )..layout();
+  return 16 + 16 + 6 + 22 + 8 + tp.width;
+}
+
+/// 底部操作条一行的**固有宽度之和**（不含两端 `Spacer` 的余量）。
+double _bottomBarIntrinsicWidth(
+  double ts,
+  String layoutLabel,
+  String modeLabel,
+) {
+  // 左组：返回 54 + 间距 12 + 布局胶囊 + 10 + 模式胶囊 + 10 + 收藏 54
+  final double left = 54 +
+      12 +
+      _pillWidthFor(layoutLabel, ts) +
+      10 +
+      _pillWidthFor(modeLabel, ts) +
+      10 +
+      54;
+  // 中组：上一首 66 + 30 + 播放 82 + 30 + 下一首 66
+  const double center = 66 + 30 + 82 + 30 + 66;
+  // 右组：队列胶囊
+  final double right = _pillWidthFor('队列', ts);
+  return left + center + right;
 }
 
 /// 队列来源 / 当前序号 / 播放错误。既有信息，不能因为改版而丢掉。

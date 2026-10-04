@@ -18,24 +18,55 @@ import 'support/fake_music_repository.dart';
 import 'support/fake_playback_engine.dart';
 import 'support/fake_secure_store.dart';
 
-/// 【V5 修复】播放页布局的**可执行**回归（对应评审意见 C6）。
+/// 播放页布局的**可执行**分辨率矩阵（评审意见 C6）。
+///
+/// ## 先弄清一件事：面板分辨率对布局**没有任何直接影响**
+///
+/// Flutter 里所有尺寸都是**逻辑像素**（logical pixel），
+/// 界面能看到的视口只有：
+///
+/// ```
+/// 逻辑视口 = 物理像素 ÷ devicePixelRatio
+/// devicePixelRatio = densityDpi / 160
+/// ```
+///
+/// 所以「3840×2160 上布局会不会破」这个问题的前提是
+/// **这台设备把 densityDpi 报成多少**。实测/DTS 里常见的组合：
+///
+/// | 面板物理像素 | densityDpi | dpr | 实际逻辑视口 | 备注 |
+/// |---|---|---|---|---|
+/// | 1920×1080 | 320 | 2.0 | **960×540** | Android TV 最常见（图4 的实机口径） |
+/// | 1920×1080 | 240 | 1.5 | 1280×720 | |
+/// | 1920×1080 | 160 | 1.0 | 1920×1080 | |
+/// | 1280×720 | 240 | 1.5 | **853×480** | 最小的现实视口，压力用例 |
+/// | 1280×720 | 160 | 1.0 | 1280×720 | |
+/// | 3840×2160 | 640 | 4.0 | 960×540 | 4K 面板 + 高密度 |
+/// | 3840×2160 | 320 | 2.0 | 1920×1080 | 4K 面板常见上报值 |
+/// | 3840×2160 | 240 | 1.5 | 2560×1440 | |
+/// | 3840×2160 | 160 | 1.0 | **3840×2160** | 4K 原生（界面只有 1/4 物理大小） |
+///
+/// 只测「1920×1080 逻辑像素」会得出「一切正常」的错误结论，
+/// 而实机最常见的是 960×540 —— 这正是图4「一屏只有两张巨大专辑卡」的根因。
 ///
 /// ## 这组测试要抓什么
 ///
-/// 实机现象是「底部操作栏遮挡内容」/「歌曲规格信息被切掉」。
-/// 读代码可以看到真实的机制不是"浮层盖住"，而是：
-/// 1. 正文里封面栏的固有高度**超过**它所在 `Expanded` 的可用高度；
-/// 2. Flutter 在 **release 构建下把 `RenderFlex` 溢出静默裁切**
-///    （不打日志、不画黄黑条纹，条纹只在 debug 出现）。
+/// 1. **纵向溢出**：正文里封面栏的固有高度超过它所在 `Expanded` 的可用高度。
+///    在 debug 下 `RenderFlex` 溢出会抛异常（`takeException()` 拿得到），
+///    而在 **release 下是静默裁切**（不打日志、不画黄黑条纹），
+///    表现就是「歌曲规格信息被底部操作栏遮住」。
+/// 2. **横向溢出**：底部操作条那一行的固有宽度是固定值之和，
+///    逻辑视口偏小或系统字体放大时会顶破容器 —— 同样静默裁切。
+/// 3. **系统字体缩放**：Android 的「字体大小 / 显示大小」会整体放大文字，
+///    老代码的尺寸预算完全没算这一项。
+/// ⚠️ **每个用例的显式超时**。
 ///
-/// 于是「在 debug 下跑一遍测试」正好能抓住它 —— 溢出在 debug 会抛异常，
-/// `tester.takeException()` 拿得到。这比"看截图"客观得多，也能进 CI。
-///
-/// ## 为什么分辨率要写 1920×1080 + dpr 2.0
-///
-/// Android TV 在 1080p 面板上常见上报 **density 2.0**，Flutter 侧的逻辑视口
-/// 只有 **960×540** —— 这才是实机真正面对的尺寸。
-/// 只测 1920×1080 逻辑像素会得出"一切正常"的错误结论。
+/// `flutter_test` 的默认超时是 **10 分钟**。这条默认值在本项目里已经造成过
+/// 两次「CI 卡住 1 小时」：一个用例挂住 → 白白烧掉 10 分钟 → 而且它是在
+/// `flutter test` 步骤内部挂的，从日志上看不出是哪一条。
+/// 布局测试的正常耗时是**毫秒级**，45 秒已经宽到不可能误杀，
+/// 但能让「挂住」在 45 秒内变成一条带用例名的失败。
+const Timeout _fastFail = Timeout(Duration(seconds: 45));
+
 void main() {
   late FakeMusicRepository music;
   late FakePlaybackEngine engine;
@@ -78,12 +109,18 @@ void main() {
 
   final String chipText = longTrack().audioSpec.display;
 
-  /// 逻辑视口 = physicalSize / devicePixelRatio。
+  /// 按「物理像素 + dpr + 字体缩放」渲染播放页。
+  ///
+  /// 字体缩放刻意**不用** `MediaQuery.textScaler` 之外的 API：
+  /// 直接在 `MaterialApp` 的 `home` 外面套一层 `MediaQuery`，
+  /// 既不会碰到已废弃的 `textScaleFactorTestValue`，
+  /// 也能保证它盖住 `WidgetsApp` 自己插入的那层 `MediaQuery`。
   Future<void> pumpAt(
     WidgetTester tester, {
     required Size physical,
     required double dpr,
     required PlayerLayout layout,
+    double fontScale = 1.0,
   }) async {
     tester.view.physicalSize = physical;
     tester.view.devicePixelRatio = dpr;
@@ -105,7 +142,14 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildTvTheme(),
-          home: Scaffold(body: PlayerPage(onBack: () {})),
+          home: Builder(
+            builder: (BuildContext ctx) => MediaQuery(
+              data: MediaQuery.of(ctx).copyWith(
+                textScaler: TextScaler.linear(fontScale),
+              ),
+              child: Scaffold(body: PlayerPage(onBack: () {})),
+            ),
+          ),
         ),
       ),
     );
@@ -113,47 +157,129 @@ void main() {
     await tester.pump();
   }
 
-  /// 三种分辨率 × 两种布局。第一行才是实机的真实逻辑视口。
-  const List<List<Object>> cases = <List<Object>>[
-    <Object>['960×540（电视 1080p + density 2.0，实机口径）', Size(1920, 1080), 2.0],
-    <Object>['1280×720', Size(1280, 720), 1.0],
-    <Object>['1920×1080', Size(1920, 1080), 1.0],
+  /// (标签, 物理像素, dpr) —— 逻辑视口 = 物理 ÷ dpr，见文件头表格。
+  const List<List<Object>> panels = <List<Object>>[
+    <Object>[
+      '1080p 面板 · dpi320 → 960×540（Android TV 最常见）',
+      Size(1920, 1080),
+      2.0,
+    ],
+    <Object>['1080p 面板 · dpi240 → 1280×720', Size(1920, 1080), 1.5],
+    <Object>['1080p 面板 · dpi160 → 1920×1080', Size(1920, 1080), 1.0],
+    <Object>['720p 面板 · dpi240 → 853×480（最小现实视口）', Size(1280, 720), 1.5],
+    <Object>['720p 面板 · dpi160 → 1280×720', Size(1280, 720), 1.0],
+    <Object>['4K 面板 · dpi640 → 960×540', Size(3840, 2160), 4.0],
+    <Object>['4K 面板 · dpi320 → 1920×1080', Size(3840, 2160), 2.0],
+    <Object>['4K 面板 · dpi240 → 2560×1440', Size(3840, 2160), 1.5],
+    <Object>['4K 面板 · dpi160 → 3840×2160（4K 原生）', Size(3840, 2160), 1.0],
   ];
 
-  for (final List<Object> c in cases) {
-    final String label = c[0] as String;
-    final Size physical = c[1] as Size;
-    final double dpr = c[2] as double;
+  /// 系统字体缩放：1.0 = 默认；1.3 = Android「字体大小」调大一档（常见设置）。
+  const List<double> fontScales = <double>[1.0, 1.3];
+
+  for (final List<Object> panel in panels) {
+    final String label = panel[0] as String;
+    final Size physical = panel[1] as Size;
+    final double dpr = panel[2] as double;
 
     for (final PlayerLayout layout in PlayerLayout.values) {
-      testWidgets('$label · ${layout.name}：不得溢出，规格胶囊必须完整可见',
-          (WidgetTester tester) async {
-        await pumpAt(tester, physical: physical, dpr: dpr, layout: layout);
+      for (final double fs in fontScales) {
+        testWidgets('$label · ${layout.name} · 字体 ${fs}x',
+            timeout: _fastFail,
+            (WidgetTester tester) async {
+          await pumpAt(
+            tester,
+            physical: physical,
+            dpr: dpr,
+            layout: layout,
+            fontScale: fs,
+          );
 
-        // ① 溢出：debug 下 RenderFlex 溢出会抛异常，release 下则是静默裁切。
-        expect(tester.takeException(), isNull,
-            reason: '出现了 RenderFlex 溢出 —— 在 release 里这会表现为内容被静默裁掉');
+          final double vw = physical.width / dpr;
+          final double vh = physical.height / dpr;
 
-        // ② 规格胶囊（实机被切掉的就是它）必须完整落在视口内。
-        final Finder chip = find.text(chipText);
-        expect(chip, findsOneWidget, reason: '规格胶囊必须被渲染出来');
-        final Rect r = tester.getRect(chip);
-        final double vh = tester.view.physicalSize.height / dpr;
-        expect(r.top, greaterThanOrEqualTo(0), reason: '胶囊顶部被切: $r');
-        expect(r.bottom, lessThanOrEqualTo(vh),
-            reason: '胶囊底部被切（视口高 $vh）: $r');
+          // ① 先钉住「模型」本身：逻辑视口 = 物理 ÷ dpr。
+          //    这一条如果不成立，下面所有断言都是在测错的尺寸。
+          final Size page = tester.getSize(find.byType(PlayerPage));
+          expect(page.width, closeTo(vw, 0.5), reason: '逻辑视口宽应为 $vw');
+          expect(page.height, closeTo(vh, 0.5), reason: '逻辑视口高应为 $vh');
 
-        // ③ 进度区必须在操作条**上方**（顺序要求）。
-        final Rect? seek = _rectOf(tester, 'player.seek');
-        final Rect? play = _rectOf(tester, 'player.play');
-        expect(seek, isNotNull, reason: '进度区必须存在');
-        expect(play, isNotNull, reason: '操作条上的播放按钮必须存在');
-        expect(seek!.center.dy, lessThan(play!.center.dy),
-            reason: '“正文 → 进度区 → 最底部操作条”的顺序被破坏：'
-                'seek.dy=${seek.center.dy} play.dy=${play.center.dy}');
-      });
+          // ② 溢出：debug 下 RenderFlex 溢出会抛异常，
+          //    release 下则是**静默裁切**（实机表现就是「内容被遮住」）。
+          expect(tester.takeException(), isNull,
+              reason: '出现布局溢出（release 下会静默裁掉内容）');
+
+          // ③ 规格胶囊（实机被切掉的就是它）必须完整落在视口内。
+          final Finder chip = find.text(chipText);
+          expect(chip, findsOneWidget, reason: '规格胶囊必须被渲染出来');
+          final Rect chipRect = tester.getRect(chip);
+          expect(chipRect.width, greaterThan(0), reason: '胶囊宽度为 0');
+          expect(chipRect.top, greaterThanOrEqualTo(-0.5),
+              reason: '胶囊顶部被切: $chipRect');
+          expect(chipRect.bottom, lessThanOrEqualTo(vh + 0.5),
+              reason: '胶囊底部被切（视口高 $vh）: $chipRect');
+
+          // ④ 纵向顺序必须是「正文 → 进度区 → 最底部操作条」。
+          final Rect? seekN = _rectOf(tester, 'player.seek');
+          final Rect? playN = _rectOf(tester, 'player.play');
+          expect(seekN, isNotNull, reason: '找不到进度区');
+          expect(playN, isNotNull, reason: '找不到播放按钮');
+          expect(seekN!.center.dy, lessThan(playN!.center.dy),
+              reason: '顺序要求「正文 → 进度区 → 最底部操作条」：'
+                  'seek.dy=${seekN.center.dy} play.dy=${playN.center.dy}');
+
+          // ⑤ 操作条两端与底部都必须在视口内 —— 这一条专抓**水平**溢出
+          //    （老代码在 853×480 或字体放大时会把最右端切掉）。
+          final Rect? backN = _rectOf(tester, 'player.back');
+          final Rect? queueN = _rectOf(tester, 'player.queue');
+          expect(backN, isNotNull, reason: '找不到返回按钮');
+          expect(queueN, isNotNull, reason: '找不到队列按钮');
+          expect(backN!.left, greaterThanOrEqualTo(-0.5),
+              reason: '操作条左端被切: $backN');
+          expect(queueN!.right, lessThanOrEqualTo(vw + 0.5),
+              reason: '操作条右端被切（视口宽 $vw）: $queueN');
+          expect(queueN.bottom, lessThanOrEqualTo(vh + 0.5),
+              reason: '操作条底部被切（视口高 $vh）: $queueN');
+        });
+      }
     }
   }
+
+  testWidgets('4K 原生视口（3840×2160）不破版，但界面**不随视口放大**——记录当前口径',
+      timeout: _fastFail,
+      (WidgetTester tester) async {
+    // 结论要区分两件事，不能混着说：
+    //   · 布局**没有破**：上面的矩阵已断言无溢出、无裁切；
+    //   · 但界面元素仍是 960×540 那套**逻辑**尺寸，在 2160 高的面板上
+    //     只占 1/4 的物理高度 —— 客厅距离下会小到看不清。
+    // 这条用例把这个现状**固定下来**：一旦有人在某处引入「按视口缩放」的系数，
+    // 它会立刻变红，提醒把这里的断言和交付说明里的结论一起更新。
+    await pumpAt(
+      tester,
+      physical: const Size(1920, 1080),
+      dpr: 2.0,
+      layout: PlayerLayout.stage,
+    );
+    final Rect common = _rectOf(tester, 'player.play')!;
+
+    await pumpAt(
+      tester,
+      physical: const Size(3840, 2160),
+      dpr: 1.0,
+      layout: PlayerLayout.stage,
+    );
+    final Rect native4k = _rectOf(tester, 'player.play')!;
+
+    expect(native4k.size.width, closeTo(common.size.width, 0.01),
+        reason: '两处的**逻辑**尺寸相同 —— 说明按固定逻辑尺寸设计，未按视口缩放');
+
+    // 占屏幕高度的比例：960×540 下约 15%，4K 原生下约 3.8%。
+    expect(common.size.height / 540, greaterThan(0.13),
+        reason: '960×540 上播放按钮应占屏高 13% 以上');
+    expect(native4k.size.height / 2160, lessThan(0.05),
+        reason: '4K 原生视口下播放按钮只占屏高不到 5%（约 3.8%）—— '
+            '布局不破，但需要真机确认远距离可读性');
+  });
 }
 
 /// 用 `FocusNode.debugLabel` 找到控件的矩形。

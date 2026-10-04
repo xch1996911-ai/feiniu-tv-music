@@ -264,6 +264,10 @@ void main() {
     });
 
     testWidgets('收藏是持久的：新实例 restore 后仍能读出同一份',
+        // ⚠️ 显式短超时：这条用例曾因「假时钟 + 真异步」挂满 10 分钟默认超时，
+        //    在 CI 上表现为「flutter test 卡住 10 分钟且不说是哪一条」。
+        //    45 秒足够（正常耗时毫秒级），挂住会在 45 秒内变成一条带名字的失败。
+        timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpFavorites(
         tester,
