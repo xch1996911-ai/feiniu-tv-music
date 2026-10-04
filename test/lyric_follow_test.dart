@@ -332,7 +332,10 @@ void main() {
       engine.setPosition(const Duration(seconds: 45));
       await tester.pump();
       await tester.pump();
-      expect(isActive(tester, '第五句'), isTrue);
+      // ⚠️ 断言分层（见 H 的说明）：第五句在视口外，测试绑定下不构建，
+      //    机制层走 State 诊断面。
+      final dynamic before = tester.state(find.byType(LyricView));
+      expect(before.debugActiveIndex, 4, reason: '45 秒先定位到第五句（40s 那句）');
 
       // 切歌（播放页在曲目变化时会调用 lyrics.load —— 这里模拟同一路径）
       await tester.runAsync(() async {
