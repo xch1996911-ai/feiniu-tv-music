@@ -66,15 +66,14 @@ class TvExitDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
+              const Row(
                 children: <Widget>[
-                  const Icon(Icons.exit_to_app,
-                      size: 26, color: TvColors.accent),
-                  const SizedBox(width: 12),
+                  Icon(Icons.exit_to_app, size: 26, color: TvColors.accent),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       '要离开 XX音乐 吗？',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: TvColors.text,

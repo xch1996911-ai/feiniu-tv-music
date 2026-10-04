@@ -124,7 +124,6 @@ class FakePlaybackEngine implements PlaybackEngine {
     _emit();
   }
 
-  @override
   /// stopSession 被调用的次数（断言「退出并停止」确实走了这条路径）。
   int stopSessionCalls = 0;
 
@@ -134,6 +133,7 @@ class FakePlaybackEngine implements PlaybackEngine {
     await stop();
   }
 
+  @override
   Future<void> stop() async {
     stopCalls++;
     playing = false;
