@@ -1003,7 +1003,6 @@ class _PillControl extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
-    this.nextDown,
     this.nextUp,
   });
 
@@ -1015,10 +1014,6 @@ class _PillControl extends StatelessWidget {
   final VoidCallback onPressed;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  /// ↓ 的去处。**重排之后操作条已在最底部**，所以通常不需要它 ——
-  /// 保留可空是为了让「按钮位置变了但方向键没跟着改」这类问题不再出现。
-  final FocusNode? nextDown;
-
   /// ↑ 的去处（进度区）。
   final FocusNode? nextUp;
 
@@ -1032,7 +1027,6 @@ class _PillControl extends StatelessWidget {
         onPressed: onPressed,
         nextLeft: nextLeft,
         nextRight: nextRight,
-        nextDown: nextDown,
         nextUp: nextUp,
         builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
           status: s,

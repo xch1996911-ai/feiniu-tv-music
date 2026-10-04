@@ -64,11 +64,11 @@ void main() {
         guid: 'g1',
         title: '这是一个故意写得很长的歌曲标题用来强制折成两行',
         durationMs: 245000,
-        album: const AlbumRef(guid: 'al1', name: '同样很长的专辑名称占位'),
-        artists: const <ArtistRef>[
+        album: AlbumRef(guid: 'al1', name: '同样很长的专辑名称占位'),
+        artists: <ArtistRef>[
           ArtistRef(guid: 'ar1', name: '一位名字也不短的歌手'),
         ],
-        audioSpec: const AudioSpec(
+        audioSpec: AudioSpec(
           format: 'flac',
           sampleRate: 96000,
           bitDepth: 24,
