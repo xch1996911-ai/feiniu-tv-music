@@ -82,7 +82,28 @@ class RemotePairingManager {
   /// 已配对手机的名字（用于电视端显示「iPhone 15 已连接」）。
   String? get sessionLabel => isPaired ? _sessionLabel : null;
 
-  /// 生成（或刷新）配对码。老的码立即失效。
+  /// 确保「未使用且未过期」的配对码存在，**不会撤销已配对的会话**。
+  ///
+  /// ⚠️ 与 [regenerateCode] 的区别是本项目一个真实的坑：
+  /// 页面原来在 `initState` 里调 `regenerateCode()`，而定时器只 `setState`，
+  /// 于是「刷新页面/重进页面」就会**踢掉已连接的手机**；
+  /// 反过来若不刷新，配对码过期后页面又会一直显示一个失效码。
+  /// 正确的语义是两条：
+  /// - [refreshCode]：只续期「还没被用掉」的码 —— 无人配对时页面始终有可用码；
+  /// - [regenerateCode]：用户主动「重新配对」时才用 —— 明确要作废旧会话。
+  String refreshCode() {
+    if (isPaired) {
+      // 已经有手机连着：不动码，避免把人家踢下线
+      return pairingCode ?? '';
+    }
+    final String? alive = pairingCode;
+    if (alive != null) return alive;
+    return regenerateCode();
+  }
+
+  /// 生成（或刷新）配对码。老的码立即失效，**并作废已配对的会话**。
+  ///
+  /// 只有「用户主动重新配对」才该调用它（电视端页面的那个按钮）。
   String regenerateCode() {
     final StringBuffer buf = StringBuffer();
     for (int i = 0; i < codeLength; i++) {
@@ -230,22 +251,77 @@ class RemoteControlServer {
   ///
   /// ⚠️ 有多张网卡（有线 + 无线 + 虚拟网卡）时取**第一个非回环 IPv4**。
   /// 电视网线接路由器、手机走 Wi-Fi 时要能互通，因此不能用回环地址。
-  static Future<String?> localIpv4() async {
+  /// 明显不是「手机能到达的那个局域网口」的接口名前缀。
+  ///
+  /// ⚠️ 不能只靠白名单（不同 ROM 的接口名千差万别：`wlan0`/`eth0`/`ap0`/`wifi0`…），
+  /// 但**黑名单是必要的**：`NetworkInterface.list()` 的顺序没有保证，
+  /// 电视上常见同时存在 `p2p0`（Wi-Fi Direct）、`dummy0`、VPN 的 `tun0`、
+  /// `rmnet*`（蜂窝）、`veth*`/`docker0`（部分定制 ROM）。
+  /// 一旦把第一个非回环地址当成"本机地址"，二维码里就会写进一个
+  /// **手机根本不可达的 IP** —— 扫码成功却打不开，是最难查的一类现象。
+  static const List<String> _virtualPrefixes = <String>[
+    'p2p', 'dummy', 'tun', 'tap', 'vpn', 'ppp', 'rmnet', 'veth',
+    'docker', 'sit', 'ip6tnl', 'lo', 'bond',
+  ];
+
+  /// 倾向优先的接口名前缀（命中越靠前越优先）。
+  static const List<String> _preferredPrefixes = <String>['wlan', 'wifi', 'eth'];
+
+  /// 打分：越大越可能是「手机能连上的那个口」。负数 = 直接排除。
+  static int _scoreInterface(String name, String address) {
+    final String n = name.toLowerCase();
+    for (final String bad in _virtualPrefixes) {
+      if (n.startsWith(bad)) return -1;
+    }
+    // 169.254/16 是自动私有地址（DHCP 失败时的地址），对端不可达
+    if (address.startsWith('169.254.')) return -1;
+    for (int i = 0; i < _preferredPrefixes.length; i++) {
+      if (n.startsWith(_preferredPrefixes[i])) {
+        return 100 - i * 10;
+      }
+    }
+    return 10; // 其它名字：保留为候选，但排在已知的局域网接口后面
+  }
+
+  /// 按「最可能是手机可达地址」排序的候选列表。
+  ///
+  /// 页面会把它列出来，让用户在扫码失败时手动换一个（需求要求"提供必要的候选"）。
+  static Future<List<String>> localIpv4Candidates() async {
+    final List<String> out = <String>[];
     try {
       final List<NetworkInterface> ifaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLoopback: false,
         includeLinkLocal: false,
       );
+      final List<_ScoredAddress> scored = <_ScoredAddress>[];
       for (final NetworkInterface i in ifaces) {
         for (final InternetAddress a in i.addresses) {
-          if (a.address.isNotEmpty) return a.address;
+          if (a.address.isEmpty) continue;
+          final int sc = _scoreInterface(i.name, a.address);
+          if (sc < 0) continue;
+          if (out.contains(a.address)) continue;
+          scored.add(_ScoredAddress(a.address, sc, i.name));
         }
+      }
+      scored.sort((_ScoredAddress a, _ScoredAddress b) {
+        final int c = b.score.compareTo(a.score);
+        return c != 0 ? c : a.address.compareTo(b.address);
+      });
+      for (final _ScoredAddress s in scored) {
+        Log.i('REMOTE 候选地址 ${s.address}（接口 ${s.name}，评分 ${s.score}）');
+        out.add(s.address);
       }
     } catch (e) {
       Log.w('REMOTE 读取本机地址失败：$e');
     }
-    return null;
+    return out;
+  }
+
+  /// 最可能的那个地址（= 候选列表的第一个）。
+  static Future<String?> localIpv4() async {
+    final List<String> list = await localIpv4Candidates();
+    return list.isEmpty ? null : list.first;
   }
 
   /// 启动服务。返回 null 表示启动失败（端口被占 / 权限问题）。
@@ -267,7 +343,10 @@ class RemoteControlServer {
         }
       });
       unawaited(_serve(server));
-      pairing.regenerateCode();
+      // ⚠️ 这里**不能**用 `regenerateCode()`：它会撤销已配对的会话，
+      //    等于"一开服务就把已连接的手机踢下线"。
+      //    `refreshCode()` 只在"还没有可用且未使用的配对码"时才新生成一个。
+      pairing.refreshCode();
       Log.i('REMOTE 服务已启动，端口 ${server.port}');
       Diagnostics.note('手机遥控', '服务已启动，端口 ${server.port}');
       return server.port;
@@ -772,3 +851,11 @@ const String kRemoteAppName = kAppName;
 const String remoteHelpText =
     '手机与电视连同一个路由器/局域网，用相机或微信扫这个二维码，'
     '在打开的网页里输入配对码即可遥控。声音仍然由电视播放。';
+
+/// 候选地址 + 它的排序分与来源接口名（仅用于日志与排序）。
+class _ScoredAddress {
+  _ScoredAddress(this.address, this.score, this.name);
+  final String address;
+  final int score;
+  final String name;
+}

@@ -33,6 +33,32 @@ enum LyricOrigin {
       };
 }
 
+/// 歌词结果的**明确状态**（评审意见 D1）。
+///
+/// 之前只有「doc 空 / 非空 + 一个 error 字符串」，于是
+/// 「网络失败」「查不到词条」「有候选但没自动绑定」在界面上全变成同一句
+/// 「暂无歌词」—— 用户无法判断是该重试还是该手选，诊断里也会把
+/// 网络失败误描述成「在线亦无可用匹配」。
+enum LyricStatus {
+  /// 还没加载过任何歌词。
+  idle,
+
+  /// 正在查找（NAS → 在线）。
+  loading,
+
+  /// 已有可用歌词。
+  ready,
+
+  /// 查到了候选，但置信度不足，**等用户手选**（不是失败）。
+  needsSelection,
+
+  /// 确实没有匹配的歌词（两个来源都正常返回但都没有内容）。
+  notFound,
+
+  /// 请求层面失败（超时 / 断网 / 接口报错）。
+  failed,
+}
+
 class _CacheEntry {
   final LyricDoc doc;
   final LyricOrigin origin;
@@ -77,8 +103,17 @@ class LyricRepository extends ChangeNotifier {
   /// 正在加载。
   bool _loading = false;
 
-  /// 加载失败（界面显示「暂无歌词」而不是报错）。
+  /// 传给界面的错误描述（兼容旧调用方；优先展示 NAS，其次在线）。
   String? _error;
+
+  /// NAS 侧的失败原因（与在线侧**分开**保留，便于"重试哪一个"）。
+  String? _nasError;
+
+  /// 在线侧的失败原因。
+  String? _onlineError;
+
+  /// 当前结果状态。
+  LyricStatus _status = LyricStatus.idle;
 
   /// 当前歌词的来源。
   LyricOrigin _origin = LyricOrigin.none;
@@ -112,6 +147,11 @@ class LyricRepository extends ChangeNotifier {
   LyricDoc get doc => _doc;
   bool get isLoading => _loading;
   String? get error => _error;
+  String? get nasError => _nasError;
+  String? get onlineError => _onlineError;
+
+  /// 明确的加载结果状态（见 [LyricStatus]）。
+  LyricStatus get status => _status;
   String? get loadedGuid => _loadedGuid;
   bool get isEmpty => _doc.isEmpty;
   LyricOrigin get origin => _origin;
@@ -165,9 +205,15 @@ class LyricRepository extends ChangeNotifier {
     if (!force) {
       final _CacheEntry? cached = _cache[track.guid];
       if (cached != null) {
+        // ⚠️ 命中缓存也必须**先作废在途请求**（评审意见 D4）。
+        //    复现原来那条 bug：A 已缓存 → 开始请求 B（seq=5）→ 又切回 A
+        //    命中缓存直接 _apply(A) 并 return（seq 仍是 5）
+        //    → B 的响应回来时 seq==_requestSeq 通过校验，**把 A 覆盖成 B**。
+        //    用户看到的就是"切回上一首，歌词却是新的那首"。
+        _requestSeq++;
         Log.i('LYRIC_LOAD 命中缓存 guid=${track.guid} '
             'lines=${cached.doc.lines.length} origin=${cached.origin.name}');
-        _apply(track.guid, cached.doc, cached.origin);
+        _apply(track.guid, cached.doc, cached.origin, clearCandidates: true);
         return;
       }
     }
@@ -177,9 +223,12 @@ class LyricRepository extends ChangeNotifier {
     _doc = LyricDoc.empty;
     _docEpoch++;
     _error = null;
+    _nasError = null;
+    _onlineError = null;
     _origin = LyricOrigin.none;
     _candidates = const <OnlineLyricCandidate>[];
     _loading = true;
+    _status = LyricStatus.loading;
     _safeNotify();
     Log.i('LYRIC_LOAD guid=${track.guid}');
 
@@ -211,6 +260,7 @@ class LyricRepository extends ChangeNotifier {
     //    UI 不需要知道「占位符」这种概念。
     if (nasDoc != null && nasDoc.isUsable) {
       _loading = false;
+      _status = LyricStatus.ready;
       _cachePut(track.guid, nasDoc, LyricOrigin.nas);
       _apply(track.guid, nasDoc, LyricOrigin.nas);
       Log.i('LYRIC_LOAD 完成（NAS）guid=${track.guid} '
@@ -282,12 +332,17 @@ class LyricRepository extends ChangeNotifier {
           }
           // 置信度不足 → 只给候选，**不自动绑定**
           _candidates = List<OnlineLyricCandidate>.unmodifiable(scored);
+          _status = LyricStatus.needsSelection;
           Log.i('LYRIC_LOAD 在线候选 ${scored.length} 条，'
               '最高分 ${best.score.toStringAsFixed(2)} 未达阈值 '
               '${OnlineLyricMatcher.acceptThreshold} → 交由用户选择');
         }
       } catch (e) {
         // 断网 / 限流 / 解析失败：一律忽略，不影响播放。
+        // ⚠️ 但**必须记下原因**：原来只写日志，于是
+        //    「NAS 正常返回空 + 在线网络失败」在诊断里被写成
+        //    「在线亦无可用匹配」——把网络故障说成了"查不到"（评审意见 D1）。
+        _onlineError = '$e';
         Log.w('LYRIC_ERROR 在线歌词失败（已忽略）guid=${track.guid} · $e');
       }
     }
@@ -296,19 +351,26 @@ class LyricRepository extends ChangeNotifier {
 
     // ── 3) 都没有 ────────────────────────────────────────────
     _loading = false;
-    _error = nasError;
+    _nasError = nasError;
+    _error = nasError ?? _onlineError;
     _doc = LyricDoc.empty;
     _docEpoch++;
     _origin = LyricOrigin.none;
     _loadedGuid = track.guid;
+    // 「查不到」与「请求失败」必须分开：前者重试没用，后者重试有意义。
+    _status = (nasError != null || _onlineError != null)
+        ? LyricStatus.failed
+        : LyricStatus.notFound;
+    if (_status == LyricStatus.failed && _candidates.isNotEmpty) {
+      _status = LyricStatus.needsSelection;
+    }
     _safeNotify();
     // 「NAS 没给内容」和「NAS 自己就失败了」是两件事，诊断里分开记，
     // 但用户看到的都是同一句「暂无歌词」。
     Diagnostics.note(
         '歌词',
-        nasError == null
-            ? 'NAS 无有效歌词${_online == null || !onlineEnabled ? '（在线兜底未启用）' : '，在线亦无可用匹配'}'
-            : 'NAS 请求失败（$nasError）');
+        '状态=${_status.name} · NAS=${nasError ?? '正常但无有效内容'} · '
+        '在线=${_online == null || !onlineEnabled ? '未启用' : (_onlineError ?? '无可用匹配')}');
     Log.i('LYRIC_LOAD 结束：无歌词 guid=${track.guid}');
   }
 
@@ -342,11 +404,23 @@ class LyricRepository extends ChangeNotifier {
     return LyricDoc(lines: lines);
   }
 
-  void _apply(String guid, LyricDoc doc, LyricOrigin origin) {
+  void _apply(
+    String guid,
+    LyricDoc doc,
+    LyricOrigin origin, {
+    bool clearCandidates = false,
+  }) {
     _loadedGuid = guid;
     _doc = doc;
     _docEpoch++;
     _error = null;
+    _nasError = null;
+    _onlineError = null;
+    // ⚠️ 必须复位 `_loading` 与状态：缓存命中路径原来不复位，
+    //    于是界面上会一直停在"正在查找歌词"。
+    _loading = false;
+    _status = LyricStatus.ready;
+    if (clearCandidates) _candidates = const <OnlineLyricCandidate>[];
     _origin = origin;
     _safeNotify();
   }

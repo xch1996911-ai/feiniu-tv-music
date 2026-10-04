@@ -128,100 +128,12 @@ void main() {
     });
   });
 
-  group('二维码结构（版本 4-L，33×33）', () {
-    final QrCode qr = QrCode.encode(
-      remotePairingUrl(host: '192.168.1.20', port: 18080, code: 'A1B2C3'),
-    )!;
-
-    bool at(int r, int c) => qr.modules[r][c];
-
-    test('K 尺寸与三个定位图案', () {
-      expect(qr.size, 33);
-      // 三个 7×7 定位图案的角
-      for (final List<int> o in <List<int>>[
-        <int>[0, 0],
-        <int>[0, 26],
-        <int>[26, 0],
-      ]) {
-        final int r0 = o[0], c0 = o[1];
-        expect(at(r0, c0), isTrue, reason: '定位图案外框角 $o');
-        expect(at(r0 + 1, c0 + 1), isFalse, reason: '定位图案必须有白环 $o');
-        expect(at(r0 + 3, c0 + 3), isTrue, reason: '定位图案中心 3×3 $o');
-        expect(at(r0 + 6, c0 + 6), isTrue, reason: '定位图案外框角 $o');
-      }
-    });
-
-    test('L 时序图案交替（第 6 行 / 第 6 列）', () {
-      for (int i = 8; i < 25; i++) {
-        expect(at(6, i), i.isEven, reason: '第 6 行第 $i 列');
-        expect(at(i, 6), i.isEven, reason: '第 6 列第 $i 行');
-      }
-    });
-
-    test('M 暗模块固定为深色', () {
-      expect(at(25, 8), isTrue, reason: '4×4+9 位置的暗模块必须恒为深色');
-    });
-
-    test('N 格式信息两个副本一致（纠错等级 L + 掩码 0）', () {
-      // 第二副本：左下竖条 7 位（bit0..6）与右上横条 8 位（bit7..14）
-      final List<bool> second = <bool>[
-        for (int i = 0; i <= 6; i++) at(32 - i, 8),
-        for (int i = 7; i <= 14; i++) at(8, 25 + (i - 7)),
-      ];
-      final List<bool> first = <bool>[
-        for (int i = 0; i <= 5; i++) at(8, i),
-        at(8, 7),
-        at(8, 8),
-        at(7, 8),
-        for (int i = 9; i <= 14; i++) at(14 - i, 8),
-      ];
-      expect(first, second, reason: '两个副本必须是同一份 15 位格式信息');
-    });
-  });
-
-  group('纠错码字的数学正确性', () {
-    test('O 码字多项式在生成多项式的每个根上求值为 0', () {
-      final List<int> full = QrCode.debugFullCodewords(
-        remotePairingUrl(host: '192.168.1.20', port: 18080, code: 'A1B2C3'),
-      );
-      expect(full.length, QrCode.dataCodewords + QrCode.ecCodewords);
-
-      // 在 GF(256) 上求值：value = Σ c_i · x^(n-1-i)
-      int evalAt(int x) {
-        int v = 0;
-        for (final int c in full) {
-          v = QrCode.debugMul(v, x) ^ c;
-        }
-        return v;
-      }
-
-      // 生成多项式的根是 α^0 .. α^19（α = 2）
-      int x = 1;
-      for (int i = 0; i < QrCode.ecCodewords; i++) {
-        expect(evalAt(x), 0,
-            reason: '在 α^$i 处的求值必须为 0 —— 否则纠错码字算错了，'
-                '二维码在稍有污损时就会读不出来');
-        x = QrCode.debugMul(x, 2);
-      }
-    });
-
-    test('P 生成多项式首项为 1、次数为 ecCodewords', () {
-      final List<int> g = QrCode.debugGenerator(QrCode.ecCodewords);
-      expect(g.length, QrCode.ecCodewords + 1);
-      expect(g.first, 1);
-    });
-
-    test('Q GF(256) 乘法满足交换律与结合律抽样', () {
-      for (final List<int> pair in <List<int>>[
-        <int>[3, 7],
-        <int>[255, 128],
-        <int>[1, 200],
-      ]) {
-        expect(QrCode.debugMul(pair[0], pair[1]),
-            QrCode.debugMul(pair[1], pair[0]));
-      }
-      expect(QrCode.debugMul(0, 99), 0);
-      expect(QrCode.debugMul(1, 99), 99);
-    });
-  });
+  // ⚠️ 原来这里还有两组测试：「二维码结构（版本 4-L，33×33）」与
+  //    「纠错码字的数学正确性」。它们验证的是项目自写的编码器内部
+  //    （`debugFullCodewords` / `debugGenerator` / 固定 33×33 / 两个格式副本互比），
+  //    而那套实现本身是错的（功能区域未预留 + 格式信息位转置），
+  //    这两组「自证」测试也正是没能发现问题的原因。
+  //    手写编码器已删除，二维码的验证改为 `test/qr_roundtrip_test.dart`：
+  //    按规范另写一份解码器，把矩阵解回字节与原 URL 逐字节比对，
+  //    并独立校验纠错码字的校验子为 0。
 }

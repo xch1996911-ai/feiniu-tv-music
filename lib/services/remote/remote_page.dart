@@ -216,14 +216,18 @@ const String remotePageHtml = r'''<!DOCTYPE html>
   }
 
   // ── 配对 ────────────────────────────────────────────────
-  function doPair() {
-    var code = ($('code').value || '').trim().toUpperCase();
+  function doPair(codeArg) {
+    var code = String(codeArg || $('code').value || '').trim().toUpperCase();
     if (code.length !== 6) {
       $('pairErr').textContent = '请输入 6 位配对码';
       $('pairErr').classList.remove('hidden');
       return;
     }
+    $('code').value = code;
+    $('pairErr').classList.add('hidden');
     $('doPair').disabled = true;
+    // 明确反馈「正在连接」：扫码后自动配对时，用户不该面对一个静默等待的界面
+    setConn(false, '正在连接电视…');
     fetch('/api/pair', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -289,9 +293,16 @@ const String remotePageHtml = r'''<!DOCTYPE html>
     setTimeout(function () { $('cmdErr').classList.add('hidden'); }, 4000);
   }
 
+  // ⚠️ 命令 id 必须「每个页面实例唯一 + 单调递增」。
+  //    原来用 'c1','c2'…，而服务端会按 id 去重（抗弱网重发的切歌指令）。
+  //    页面刷新后 seq 归零 → 新的 'c1' 被当成「重发过的旧命令」直接忽略，
+  //    表现就是：**明明显示已连接，按钮按了却没反应**。
+  //    加一段每次加载都不同的随机前缀即可根治，同时保留同一次重试复用原 id 的能力。
+  var SESSION_ID = Math.random().toString(36).slice(2, 10);
+
   function cmd(name, args) {
     if (!token) return Promise.resolve();
-    var payload = {type: 'cmd', cmd: name, args: args || {}, id: 'c' + (++seq)};
+    var payload = {type: 'cmd', cmd: name, args: args || {}, id: SESSION_ID + '-' + (++seq)};
     if (ws && ws.readyState === 1) {
       ws.send(JSON.stringify(payload));
       return Promise.resolve();
@@ -452,17 +463,31 @@ const String remotePageHtml = r'''<!DOCTYPE html>
   });
 
   // ── 启动 ────────────────────────────────────────────────
-  // 二维码里带了 `#CODE`，扫码打开时自动填好配对码（fragment 不会发给服务端）
-  var hash = (location.hash || '').replace('#', '').trim();
-  if (hash.length === 6) {
-    $('code').value = hash.toUpperCase();
-    location.hash = '';
-  }
+  // 二维码里带了 `#CODE`（fragment 不会发给服务端）。
+  var hash = (location.hash || '').replace('#', '').trim().toUpperCase();
+  try { location.hash = ''; } catch (e) {}
   try { token = localStorage.getItem(TOKEN_KEY); } catch (e) { token = null; }
-  if (token) {
-    enterRemote();
+
+  if (hash.length === 6) {
+    // ⚠️ **新配对码优先于本地旧 token**。
+    //    旧 token 很可能已被服务端撤销（在电视上重新配对过 / 登出过），
+    //    如果先拿它去连，用户会先看到一个失败态，再被告知"请重新配对"。
+    //    有码就直接配对 —— 而且**自动执行**，不让用户再点一次按钮。
+    $('code').value = hash;
+    doPair(hash);
+  } else if (token) {
+    // 没有新码时才复用本地凭证，并且**先校验**：
+    //    GET /api/state 返回 401 就清掉旧凭证回到配对界面，
+    //    而不是带着一个失效 token 去无限重连（用户会一直看到"正在重连…"）。
+    setConn(false, '正在校验连接…');
+    api('/api/state').then(function () {
+      enterRemote();
+    }).catch(function () {
+      fail('上次的配对已失效，请输入电视上显示的配对码');
+    });
   } else {
     $('pair').classList.remove('hidden');
+    setConn(false, '未连接');
   }
 })();
 </script>

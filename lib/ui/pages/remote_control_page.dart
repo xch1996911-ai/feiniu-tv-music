@@ -52,26 +52,36 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
   /// 本机局域网地址（异步解析一次）。
   String? _host;
 
+  /// 所有候选地址（第一个是当前使用的）。用于扫码失败时手动换一个。
+  List<String> _hosts = const <String>[];
+
   /// 当前配对码（生成后保持，直到用户点「重新生成」）。
-  String? _code;
 
   @override
   void initState() {
     super.initState();
-    _code = widget.server.pairing.pairingCode ??
-        widget.server.pairing.regenerateCode();
     unawaited(_resolveHost());
     // 1 秒刷新一次连接状态：服务端状态不在 Flutter 的通知体系里
     //（它由 Socket 事件驱动），轮询是最简单且不会漏更新的做法。
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      // ⚠️ 每轮都确保「未使用的配对码」可用（过期就续期），但**绝不撤销已配对会话**。
+      //    放在定时器里而不是 build 里：build 必须保持无副作用。
+      //    这样配对码过期时页面会**自动换成新码**，而不是显示一个已经失效的码 ——
+      //    上一版材料里写的「过期后二维码消失」是不对的，正确的是"显示失效码且不自动续期"，
+      //    现在两条都修掉了。
+      widget.server.pairing.refreshCode();
+      setState(() {});
     });
   }
 
   Future<void> _resolveHost() async {
-    final String? ip = await RemoteControlServer.localIpv4();
+    final List<String> ips = await RemoteControlServer.localIpv4Candidates();
     if (!mounted) return;
-    setState(() => _host = ip);
+    setState(() {
+      _hosts = ips;
+      _host = ips.isEmpty ? null : ips.first;
+    });
   }
 
   @override
@@ -84,10 +94,11 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
     super.dispose();
   }
 
+  /// 用户**主动**重新配对：这会作废已连接的手机（按钮文案已写明）。
   void _regenerate() {
-    Log.i('UI 重新生成遥控配对码');
+    Log.i('UI 重新生成遥控配对码（主动重新配对，旧手机会被踢下线）');
     setState(() {
-      _code = widget.server.pairing.regenerateCode();
+      widget.server.pairing.regenerateCode();
     });
   }
 
@@ -96,7 +107,7 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
     final bool running = widget.server.isRunning;
     final int? port = widget.server.port;
     final String? host = _host;
-    final String? code = _code;
+    final String? code = widget.server.pairing.pairingCode;
     final bool paired = widget.server.pairing.isPaired;
     final int clients = widget.server.clientCount;
 
@@ -158,28 +169,59 @@ class _RemoteControlPageState extends State<RemoteControlPage> {
                       child: TvGlass(
                         blur: false,
                         padding: const EdgeInsets.all(20),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            if (qr != null)
-                              QrView(code: qr, size: 230)
-                            else
-                              const Icon(Icons.qr_code_2,
-                                  size: 200, color: TvColors.textFaint),
-                            const SizedBox(height: 16),
-                            const Text(
-                              '手机扫这个二维码',
-                              style: TextStyle(
-                                  fontSize: 18, color: TvColors.textDim),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              '扫不出来也可以手动输入下面的地址与配对码',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 14, color: TvColors.textFaint),
-                            ),
-                          ],
+                        child: LayoutBuilder(
+                          builder:
+                              (BuildContext context, BoxConstraints c) {
+                            // ⚠️ 二维码尺寸按**可用空间**算，不写死：
+                            //    电视上常见逻辑视口只有 960×540（density 2.0），
+                            //    写死大尺寸会把下面的说明顶出屏幕；但太小又会让
+                            //    模块的物理尺寸过小（3mm 级在客厅距离下极难对焦）。
+                            //    取「宽、高都装得下」的最大值，并夹在 [200, 400]。
+                            const double textBlock = 86;
+                            final double byHeight = c.maxHeight - textBlock;
+                            final double byWidth = c.maxWidth;
+                            final double side =
+                                (byHeight < byWidth ? byHeight : byWidth)
+                                    .clamp(200.0, 400.0);
+                            return Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                if (qr != null)
+                                  QrView(code: qr, size: side)
+                                else
+                                  const Icon(Icons.qr_code_2,
+                                      size: 200, color: TvColors.textFaint),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  '手机扫这个二维码',
+                                  style: TextStyle(
+                                      fontSize: 18, color: TvColors.textDim),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  '扫不出来也可以手动输入下面的地址与配对码；\n'
+                                  '尽量靠近电视扫（模块约 4mm）',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontSize: 14, color: TvColors.textFaint),
+                                ),
+                                // 提示其它候选地址：`localIpv4Candidates()` 会按
+                                // 「最可能是手机可达」排序，第一个用于二维码与地址；
+                                // 若电视有多张网卡（含虚拟网卡），这里给出手动兜底。
+                                if (_hosts.length > 1) ...<Widget>[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '其它可试地址：'
+                                    '${_hosts.skip(1).take(3).join(' / ')}',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        color: TvColors.textFaint),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),

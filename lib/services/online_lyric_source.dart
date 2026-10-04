@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../core/log.dart';
 import '../domain/json_util.dart';
+import '../domain/lyric.dart';
 
 /// 一次在线歌词查询的输入（全部来自曲库元数据）。
 class OnlineLyricQuery {
@@ -52,15 +53,36 @@ class OnlineLyricCandidate {
   });
 
   /// 是否真的有歌词内容（有些条目只有元数据）。
-  bool get hasContent =>
-      (syncedLyrics != null && syncedLyrics!.trim().isNotEmpty) ||
-      (plainLyrics != null && plainLyrics!.trim().isNotEmpty);
+  bool get hasContent => content.isNotEmpty;
 
-  /// 优先用带时间轴的；没有就退回纯文本。
+  /// 取该条目**实际可用**的歌词文本。
+  ///
+  /// ⚠️ 判据是「解析后有效」，不是「非空」（评审意见 D5）：
+  /// 有些条目 `syncedLyrics` 非空但内容只有 `♪` 或时间标签，
+  /// 而 `plainLyrics` 是有正文的 —— 只看非空会把有效正文丢掉，
+  /// 于是"明明有纯文本歌词却什么都看不到"。
+  /// 顺序仍是「先同步歌词，后纯文本」，只是每一步都要求有效。
   String get content {
-    final s = syncedLyrics;
-    if (s != null && s.trim().isNotEmpty) return s;
-    return plainLyrics ?? '';
+    final String synced = syncedLyrics ?? '';
+    if (synced.trim().isNotEmpty && isUsableLyricText(synced)) return synced;
+    final String plain = plainLyrics ?? '';
+    if (plain.trim().isNotEmpty && isUsableLyricText(plain)) return plain;
+    return '';
+  }
+
+  /// 一段歌词文本「解析后」是否达到 [LyricDoc.usableCharThreshold]。
+  static bool isUsableLyricText(String raw) {
+    final List<LyricLine> lines = LyricDoc.parseLrc(raw);
+    if (lines.isEmpty) {
+      // 不是 LRC：把整段当纯文本评估
+      return LyricDoc.informativeCharCount(raw) >= LyricDoc.usableCharThreshold;
+    }
+    int total = 0;
+    for (final LyricLine l in lines) {
+      total += LyricDoc.informativeCharCount(l.text);
+      if (total >= LyricDoc.usableCharThreshold) return true;
+    }
+    return false;
   }
 
   OnlineLyricCandidate withScore(double value) => OnlineLyricCandidate(

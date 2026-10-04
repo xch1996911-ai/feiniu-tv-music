@@ -206,7 +206,19 @@ class _PlayerPageState extends State<PlayerPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       Expanded(child: _buildBody(song, layout, fav)),
+                      // ⚠️ 纵向顺序必须是：正文 → 进度/队列状态区 → **最底部**操作条。
+                      //    原来把操作条放在进度条**上面**，与需求相反，
+                      //    也让「进度条在最下方」这个通用预期落空。
                       const SizedBox(height: 8),
+                      _SeekRow(
+                        playbackNode: _seekNode,
+                        // 方向键：进度条↓ 回操作条（操作条现在在它下面）
+                        downNode: _playNode,
+                        upNode: _backNode,
+                      ),
+                      const SizedBox(height: 6),
+                      const _StatusLine(),
+                      const SizedBox(height: 10),
                       // 底部操作栏是一整块玻璃条（与全站毛玻璃视觉一致）
                       TvGlass(
                         radius: 20,
@@ -214,10 +226,6 @@ class _PlayerPageState extends State<PlayerPage> {
                             horizontal: 16, vertical: 10),
                         child: _buildBottomBar(song, layout, fav),
                       ),
-                      const SizedBox(height: 12),
-                      _SeekRow(playbackNode: _seekNode, upNode: _playNode),
-                      const SizedBox(height: 6),
-                      const _StatusLine(),
                     ],
                   ),
                 ),
@@ -249,15 +257,15 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _buildStageLayout(Track song, bool fav) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
-        // 封面按**可用高度**自适应：小屏不会把标题挤出去，
-        // 大屏也不会留一大片空。
-        // （注意不能用 Column 里的 LayoutBuilder —— 那时 maxHeight 是
-        //  infinity，clamp 会静默退化成固定值。）
-        final double cover = (c.maxHeight * 0.52).clamp(180.0, 360.0);
+        // 封面尺寸**不在这里算**：交给 `_buildCoverPane` 用它自己的约束反推
+        //（见那里的说明 —— 用外层高度算会导致大封面模式溢出裁切）。
         return Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Expanded(flex: 5, child: _buildCoverPane(song, fav, cover, center: false)),
+            Expanded(
+              flex: 5,
+              child: _buildCoverPane(song, fav, center: false),
+            ),
             const SizedBox(width: 30),
             Expanded(flex: 4, child: _buildLyricPane(song)),
           ],
@@ -270,10 +278,7 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _buildCoverLayout(Track song, bool fav) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
-        // 封面同时受可用高度与宽度约束，取较小者 ——
-        // 这样在超宽屏上也不会把歌词挤没。
-        final double cover = min(c.maxHeight * 0.62, c.maxWidth * 0.42)
-            .clamp(200.0, 460.0);
+        // 同上：封面尺寸由 `_buildCoverPane` 用**子区域**约束反推。
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -282,7 +287,6 @@ class _PlayerPageState extends State<PlayerPage> {
               child: _buildCoverPane(
                 song,
                 fav,
-                cover,
                 center: true,
                 horizontal: true,
               ),
@@ -303,14 +307,76 @@ class _PlayerPageState extends State<PlayerPage> {
   ///
   /// ⚠️ 本方法**只做布局**，任何 provider 订阅都由调用方（真正的 `build()`）
   /// 传进来 —— 它被 `LayoutBuilder` 的 builder 调用，那里不允许 `context.select`。
+  /// 封面 + 曲目信息。
+  ///
+  /// [center] = true 时整体水平居中（大封面模式）；
+  /// [horizontal] = true 时曲目信息放在封面**右侧**而不是下方。
+  ///
+  /// ## ⚠️ 为什么封面尺寸必须在这里算，而不是由调用方传进来
+  ///
+  /// 原来 `_buildStageLayout` / `_buildCoverLayout` 用**外层整页高度**算好
+  /// `coverSize` 再传进来。但 `_buildCoverLayout` 里封面所在的 `Expanded`
+  /// 只占正文的 **60%** —— 于是「按整页 0.62 算出的封面」比它实际能用的高度还高，
+  /// 在 release 构建下 `RenderFlex` 溢出**被静默裁切**（不打日志、不画条纹），
+  /// 表现就是规格胶囊被切掉、看起来像被底部栏遮住。
+  ///
+  /// 现在改为：**用本子区域的约束**反推封面边长，并把文字块的固有高度先扣掉。
+  /// 空间实在不够时把标题从 2 行降到 1 行（而不是溢出）。
   Widget _buildCoverPane(
     Track song,
-    bool fav,
-    double coverSize, {
+    bool fav, {
     required bool center,
     bool horizontal = false,
   }) {
     final MusicRepository music = context.read<MusicRepository>();
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) {
+        return _buildCoverPaneInner(song, fav, box, center, horizontal, music);
+      },
+    );
+  }
+
+  Widget _buildCoverPaneInner(
+    Track song,
+    bool fav,
+    BoxConstraints box,
+    bool center,
+    bool horizontal,
+    MusicRepository music,
+  ) {
+    // ── 尺寸预算（全部是显式常量，便于一眼核对）────────────────
+    // 文字块三个部件的高度：
+    //   标题 = 字号 × 1.15（已显式写 height），最多 2 行；
+    //   歌手行 = 20 × 1.43（**没写 height** → M3 默认行高 1.43，必须按 29 算）；
+    //   规格胶囊 ≈ 32（见 _Chip）。
+    final double titleSize = center ? 38 : 34;
+    final double titleLineH = titleSize * 1.15;
+    const double artistLineH = 20 * 1.43;
+    const double chipH = 32;
+    const double gapBig = 22;
+    const double gapSmall = 10;
+
+    // 最坏情况（2 行标题）先算一遍；装不下就退回 1 行。
+    final double fullText = titleLineH * 2 + gapSmall + artistLineH + gapSmall + chipH;
+    final double availH = box.maxHeight.isFinite ? box.maxHeight : 400;
+    final double availW = box.maxWidth.isFinite ? box.maxWidth : 400;
+    final bool twoLineTitle = (availH - gapBig - fullText) >= 150;
+    final int titleLines = twoLineTitle ? 2 : 1;
+    final double textBlock = titleLineH * titleLines +
+        gapSmall +
+        artistLineH +
+        gapSmall +
+        chipH;
+
+    // 横向排布时文字在右边：封面可用宽度还要扣掉间距与文字宽度预算。
+    // 原来直接用 420 作为文字最大宽度却**没有从可用宽度里减掉**，窄屏会水平溢出。
+    final double textW = horizontal ? min(420.0, availW * 0.45) : 0;
+    final double coverByWidth =
+        horizontal ? (availW - 28 - textW) : availW;
+    final double coverByHeight = horizontal ? availH : (availH - gapBig - textBlock);
+    final double coverSize = min(coverByWidth, coverByHeight)
+        .clamp(110.0, horizontal ? 460.0 : 360.0);
 
     final Widget cover = DecoratedBox(
       decoration: BoxDecoration(
@@ -338,7 +404,8 @@ class _PlayerPageState extends State<PlayerPage> {
       children: <Widget>[
         Text(
           song.title,
-          maxLines: 2,
+          // 空间不够时降为 1 行：宁可少一行，也不要整块被裁切
+          maxLines: titleLines,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: center ? 38 : 34,
@@ -347,7 +414,7 @@ class _PlayerPageState extends State<PlayerPage> {
             color: TvColors.text,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: gapSmall),
         Row(
           children: <Widget>[
             Icon(
@@ -368,7 +435,8 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: gapSmall),
+        // ⚠️ 规格胶囊必须完整可见（实机问题就是它被切掉）
         _Chip(text: song.audioSpec.display),
       ],
     );
@@ -394,7 +462,7 @@ class _PlayerPageState extends State<PlayerPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         cover,
-        const SizedBox(height: 22),
+        const SizedBox(height: gapBig),
         info,
       ],
     );
@@ -457,7 +525,9 @@ class _PlayerPageState extends State<PlayerPage> {
           onPressed: widget.onBack,
           nextLeft: _queueNode, // 环：左端接右端，左右永远有去有回
           nextRight: _layoutNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const SizedBox(width: 12),
         _PillControl(
@@ -471,7 +541,9 @@ class _PlayerPageState extends State<PlayerPage> {
           onPressed: _cycleLayout,
           nextLeft: _backNode,
           nextRight: _modeNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const SizedBox(width: 10),
         _PillControl(
@@ -491,7 +563,9 @@ class _PlayerPageState extends State<PlayerPage> {
           },
           nextLeft: _layoutNode,
           nextRight: _favNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const SizedBox(width: 10),
         _RoundControl(
@@ -513,7 +587,9 @@ class _PlayerPageState extends State<PlayerPage> {
                 },
           nextLeft: _modeNode,
           nextRight: _prevNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const Spacer(),
         // ── 中组：播放控制（电视上最常用的三个，放正中间）──
@@ -530,7 +606,9 @@ class _PlayerPageState extends State<PlayerPage> {
           },
           nextLeft: _favNode,
           nextRight: _playNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const SizedBox(width: 30),
         _RoundControl(
@@ -545,7 +623,9 @@ class _PlayerPageState extends State<PlayerPage> {
           },
           nextLeft: _prevNode,
           nextRight: _nextNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const SizedBox(width: 30),
         _RoundControl(
@@ -559,7 +639,9 @@ class _PlayerPageState extends State<PlayerPage> {
           },
           nextLeft: _playNode,
           nextRight: _queueNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
         const Spacer(),
         // ── 右组：队列 ────────────────────────────────────
@@ -572,7 +654,9 @@ class _PlayerPageState extends State<PlayerPage> {
           onPressed: _openQueue,
           nextLeft: _nextNode,
           nextRight: _backNode,
-          nextDown: _seekNode,
+          // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
+          //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+          nextUp: _seekNode,
         ),
       ],
     );
@@ -626,10 +710,17 @@ class _SeekRow extends StatefulWidget {
   /// 本行的焦点节点（由 PlayerPage 创建，用于串联焦点链）。
   final FocusNode playbackNode;
 
-  /// ↑ 的去处：播放/暂停按钮。
-  final FocusNode upNode;
+  /// ↑ 的去处（顶部返回按钮）。
+  final FocusNode? upNode;
 
-  const _SeekRow({required this.playbackNode, required this.upNode});
+  /// ↓ 的去处（最底部操作条上的播放/暂停按钮）。
+  final FocusNode? downNode;
+
+  const _SeekRow({
+    required this.playbackNode,
+    this.upNode,
+    this.downNode,
+  });
 
   @override
   State<_SeekRow> createState() => _SeekRowState();
@@ -705,6 +796,7 @@ class _SeekRowState extends State<_SeekRow> {
       onArrowRight: () => _seekBy(1),
       onPressed: () => unawaited(p.togglePlay()),
       nextUp: widget.upNode,
+      nextDown: widget.downNode,
       // 进度区是**最下一层**：↓ 指回自己 = 「原地不动」。
       // 显式写成自己而不是留空，是为了避免框架的方向遍历把焦点
       // 甩到某个不可预期的节点上（那正是「按 ↓ 焦点就不见了」的来源）。
