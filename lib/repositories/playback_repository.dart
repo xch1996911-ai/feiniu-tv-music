@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 
+import '../core/diagnostics.dart';
 import '../core/log.dart';
 import '../domain/track.dart';
 import '../playback/playback_control.dart';
@@ -445,7 +446,36 @@ class PlaybackRepository extends ChangeNotifier
     _playQueueImpl(tracks, source: source, startIndex: startIndex);
   }
 
+  /// 建立队列并起播。**任何异常都必须在这里被兜住**。
+  ///
+  /// ⚠️ 为什么必须兜：所有调用方（搜索页 / 首页 / 收藏 / 概览）都是
+  /// `unawaited(playQueue(...))` 或 `setQueue(...)` 的即发即忘用法 ——
+  /// 一旦内部抛异常，`playQueue` 只会变成一个**被丢弃的失败 Future**，
+  /// 页面照样跳转、歌却没换、旧音源继续响，用户看到的就是
+  /// 「点了搜索结果，播放页出来了，还是在放原来那首」。
+  ///
+  /// 真实的触发场景很具体：`MusicRepository.buildStreamUrl()` /
+  /// `authHeaders` 在**未登录或会话失效**时会抛
+  /// `StateError('尚未登录，无法访问音乐库')`，
+  /// 而它正是在 `_playCurrent()` 里被调用的。
   void _playQueueImpl(
+    List<Track> tracks, {
+    required QueueSource source,
+    int startIndex = 0,
+  }) {
+    try {
+      _startQueue(tracks, source: source, startIndex: startIndex);
+    } catch (e, st) {
+      Log.e('QUEUE_SET_FAIL 建立队列/起播失败（已兜住，不静默）', e, st);
+      Diagnostics.note('最近播放失败', '建立队列异常 ${e.runtimeType}: $e');
+      _lastError = '无法播放这首歌曲（登录状态或音源不可用）';
+      // 关键：保留旧音源=最坏结果 → 显式压掉。
+      unawaited(_pauseQuietly());
+      _safeNotify();
+    }
+  }
+
+  void _startQueue(
     List<Track> tracks, {
     required QueueSource source,
     int startIndex = 0,
@@ -509,12 +539,36 @@ class PlaybackRepository extends ChangeNotifier
       return;
     }
 
+    // ⚠️ 「点了某一首、但它在队列里映射不到」必须**明确失败**，绝不能静默跳过。
+    //
+    // 老实现会走到 `_index = -1` → `_playCurrent()` 因 `current == null` 直接
+    // return：界面上队列已经换成新列表（用户以为在播新歌），而**引擎里还在
+    // 放上一首** —— 这正是「点了搜索结果的歌，却还在播原来那首」的一条成因。
+    // 现在这里显式报错 + 压掉旧音源，任何情况下都不会出现
+    // 「界面换了、声音没换」。
+    if (mapped < 0) {
+      _index = -1;
+      _generation++; // 作废在飞的加载
+      _lastError = '这首歌曲无法播放（条目缺少有效标识）';
+      Log.w('QUEUE_SET 起点无法映射（startIndex=$startIndex）'
+          '→ 停止播放并报错，绝不静默保留旧音源');
+      unawaited(_pauseQuietly());
+      _safeNotify();
+      return;
+    }
+
     // 从列表中间某首开始播时，回填它**之前**的条目，使「上一首」有意义
     // （见 [_seedHistory] 的说明）。
     _seedHistory(mapped);
     if (_mode == PlayMode.shuffle) {
       _rebuildPlan();
     }
+    // 诊断页留痕：真机上「点了歌但没换源」这类问题，现场只有这一步的记录能作证。
+    Diagnostics.note(
+      '最近播放请求',
+      '来源=${source.storageKey} · 队列=${_queue.length}首 · 起点=$mapped · '
+          'guid=${_queue[mapped].guid} · 模式=${_mode.storageKey}',
+    );
     _playCurrent();
   }
 
@@ -767,9 +821,36 @@ class PlaybackRepository extends ChangeNotifier
     return null;
   }
 
+  /// 起播当前曲目。**任何异常都必须在这里兜住**（原因见 [_playQueueImpl]）：
+  /// `MusicRepository.buildStreamUrl()` / `authHeaders` 在未登录、会话失效时会抛
+  /// `StateError`，而本方法还会被 `next()` / `previous()` / `onTrackCompleted()` /
+  /// `play()` 这些**即发即忘**的调用者触发 —— 抛出去就是一个被丢弃的
+  /// 失败 Future，表现为「界面换了、声音没换」。
   void _playCurrent() {
+    try {
+      _playCurrentInner();
+    } catch (e, st) {
+      Log.e('PLAY_ERROR 起播失败（登录态或音源不可用）', e, st);
+      Diagnostics.note('最近播放失败', '起播异常 ${e.runtimeType}: $e');
+      _loadFailed = true;
+      _lastError = '无法播放这首歌曲（登录状态或音源不可用）';
+      unawaited(_pauseQuietly());
+      _safeNotify();
+    }
+  }
+
+  void _playCurrentInner() {
     final t = current;
-    if (t == null) return;
+    if (t == null) {
+      // ⚠️ 没有可播曲目（`_index == -1`）时**不能静默 return**：
+      //    引擎里可能还留着上一首在放，而界面已经换成新队列 ——
+      //    用户听到的就是「点了新歌，声音还是旧的」。显式压掉旧音源并报错。
+      Log.w('PLAY_SKIP 无当前曲目（index=$_index），压掉旧音源并提示');
+      _lastError = '这首歌曲无法播放';
+      unawaited(_pauseQuietly());
+      _safeNotify();
+      return;
+    }
 
     // 失效曲目（accessStatus==3 等）→ 向后找下一首可播的，最多扫一轮。
     if (!t.isAccessible) {
@@ -815,6 +896,24 @@ class PlaybackRepository extends ChangeNotifier
     );
   }
 
+  /// 静默暂停引擎（失败只记日志，绝不上抛）。
+  ///
+  /// 用途：**任何「新请求无法交付」的路径**（起点映射不到、无当前曲目、
+  /// 加载失败）都必须显式压掉旧音源。否则会出现
+  /// 「播放页/迷你栏已经显示新歌，耳朵里还是上一首」这种最伤信任的状态 ——
+  /// 用户无法判断到底是点了没生效，还是 App 坏了。
+  ///
+  /// 刻意用 `pause()` 而不是 `stop()`：`stop()` 会把 processingState 打到
+  /// `idle`，audio_service 0.18 会据此**结束前台服务**（通知消失→再出现），
+  /// 在一次正常的切歌/失败重试里这是不必要的抖动。
+  Future<void> _pauseQuietly() async {
+    try {
+      await _handler.pause();
+    } catch (e) {
+      Log.w('PLAY_PAUSE_FAIL 压掉旧音源失败（忽略）：$e');
+    }
+  }
+
   /// 真正下发一次播放请求。**只在串行链上被调用**，因此无需担心并发交错。
   Future<void> _load(
     int gen,
@@ -834,8 +933,12 @@ class PlaybackRepository extends ChangeNotifier
         return;
       }
       Log.e('PLAY_ERROR gen=$gen guid=${item.id}', e, st);
+      Diagnostics.note('最近播放失败', 'guid=${item.id} · ${e.runtimeType}: $e');
       _loadFailed = true;
       _lastError = '播放失败：正在跳过这首';
+      // ⚠️ **必须压掉旧音源**：`setAudioSource` 抛异常时引擎里可能仍留着
+      //    上一首在放 —— 那就是「界面已切到新歌、耳朵里还是旧歌」。
+      await _pauseQuietly();
       // 加载失败 = 这首**根本没播出来**，不该留在播放历史里，
       // 否则「上一首」会回退到一首放不出来的歌上。
       if (_history.isNotEmpty && _history.last == item.id) {

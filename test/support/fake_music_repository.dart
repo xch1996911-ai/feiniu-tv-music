@@ -47,11 +47,22 @@ class FakeMusicRepository extends MusicRepository {
   /// 记录被请求过的曲目 guid，便于断言 URL 构造用对了曲目。
   final List<String> requestedGuids = <String>[];
 
+  /// 模拟「未登录 / 会话失效」：真实 `buildStreamUrl` 走
+  /// `MusicRepository._provider`，provider 为 null 时抛
+  /// `StateError('尚未登录，无法访问音乐库')`。
+  ///
+  /// ⚠️ 这条路径正是「点了搜索结果但没换源」的元凶之一：异常抛出后
+  /// `playQueue` 变成被丢弃的失败 Future，页面照跳、歌不换。
+  bool failStreamUrl = false;
+
   @override
   Map<String, String> get authHeaders => _headers;
 
   @override
   String buildStreamUrl(String trackGuid) {
+    if (failStreamUrl) {
+      throw StateError('尚未登录，无法访问音乐库');
+    }
     requestedGuids.add(trackGuid);
     return 'http://nas.example.invalid:5666/music/api/v1/track/stream?guid=$trackGuid';
   }

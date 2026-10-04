@@ -155,8 +155,20 @@ class _SearchPageState extends State<SearchPage> {
 
   void _playSongs(List<Track> tracks, int index) {
     if (index < 0 || index >= tracks.length) return;
-    Log.i('SEARCH_PLAY index=$index guid=${tracks[index].guid}');
+    final Track picked = tracks[index];
+    // ⚠️ 选中的条目必须能建立身份，否则播放层无法生成音频源。
+    //    这里显式拦一道并留日志（真机上出事时能从 boot.log 一眼看出是
+    //    「条目本身没有 guid」还是「播放层没换源」）。
+    if (picked.guid.isEmpty) {
+      Log.w('SEARCH_PLAY 选中条目缺少 guid，无法播放：${picked.title}');
+      return;
+    }
+    Log.i('SEARCH_PLAY index=$index guid=${picked.guid} '
+        'title=${picked.title} queue=${tracks.length}');
     // 搜索结果建立**独立**队列，不污染「全部歌曲」队列。
+    // ⚠️ 这是**唯一**的播放入口：把被点那首交给全局播放控制器
+    //    （同一份 PlaybackRepository，队列/索引/媒体会话全部随之切换），
+    //    搜索页自己**不持有**任何播放状态或 AudioPlayer。
     context.read<PlaybackRepository>().playQueue(
           tracks,
           source: QueueSource.search,
