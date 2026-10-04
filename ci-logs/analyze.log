@@ -1,2 +1,12 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 9.8s)
+
+   info • Type could be non-nullable. Try changing the type to be non-nullable • lib/ui/pages/login_page.dart:278:21 • unnecessary_nullable_for_final_variable_declarations
+  error • The argument type '_Field?' can't be assigned to the parameter type '_Field'.  • lib/ui/pages/login_page.dart:279:16 • argument_type_not_assignable
+  error • The argument type '_Field?' can't be assigned to the parameter type '_Field'.  • lib/ui/pages/login_page.dart:280:28 • argument_type_not_assignable
+warning • The value of the field '_pendingFocus' isn't used. Try removing the field, or using it • lib/ui/widgets/tv_keyboard.dart:161:14 • unused_field
+  error • The name 'SingleChildWidget' isn't a type, so it can't be used as a type argument. Try correcting the name to an existing type, or defining a type named 'SingleChildWidget' • test/login_keyboard_test.dart:242:23 • non_type_as_type_argument
+  error • Expected an identifier • test/switch_track_test.dart:234:38 • missing_identifier
+  error • Expected an identifier • test/switch_track_test.dart:257:63 • missing_identifier
+  error • Expected an identifier • test/switch_track_test.dart:292:49 • missing_identifier
+
+8 issues found. (ran in 9.9s)
