@@ -1,5 +1,5 @@
 Analyzing feiniu-tv-music...                                    
 
-   info • 'cacheExtent' is deprecated and shouldn't be used. Use scrollCacheExtent instead. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/widgets/lyric_view.dart:246:17 • deprecated_member_use
+  error • The argument type 'int' can't be assigned to the parameter type 'ScrollCacheExtent?'.  • lib/ui/widgets/lyric_view.dart:246:36 • argument_type_not_assignable
 
-1 issue found. (ran in 6.8s)
+1 issue found. (ran in 9.5s)
