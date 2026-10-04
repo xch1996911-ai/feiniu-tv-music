@@ -124,8 +124,8 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 所有 APK 来自同一 commit、同一份 Dart 业务代码，只有构建配置不同。
 
 [A] app-hisense-no-impeller-debug.apk
-    字节数          : 125,891,140
-    sha256          : f13d183d715a19b9fb83355d2cb05262fa82a48bf5e303fe65fc3eac1b9e7274
+    字节数          : 125,890,728
+    sha256          : 2dc817646bc60f6ef5104a58f340f2d8b4ea447716b2a41cd8762953ff88a0d2
     applicationId   : com.feiniu.tv.music.diaga
     桌面显示名      : 飞牛A·关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -136,8 +136,8 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
     DIAG_TAG        : (无)
 
 [B] app-hisense-impeller-default-debug.apk
-    字节数          : 125,891,108
-    sha256          : 8725024d12430dc66ee3f34ab440579442743b85fb44ce02929946a1083e749e
+    字节数          : 125,890,700
+    sha256          : 7e40902b426e52c07840624aaef8ad7ba8bfc53f9b177a3ef7f157d8697dc924
     applicationId   : com.feiniu.tv.music.diagb
     桌面显示名      : 飞牛B·默认后端
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -148,8 +148,8 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
     DIAG_TAG        : (无)
 
 [C] app-hisense-impeller-gles-debug.apk
-    字节数          : 125,891,156
-    sha256          : 21d111b0e291f30b9d444e740eb93d92756844cc6732adf41b67135a077f502e
+    字节数          : 125,890,748
+    sha256          : 48ad2ed7dd3a5d1b7bc0233581a06ef373d013ca1829e0a9ba7a2f88b4f06199
     applicationId   : com.feiniu.tv.music.diagc
     桌面显示名      : 飞牛C·GLES后端
     Renderer        : ImpellerBackend=opengles
@@ -160,8 +160,8 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
     DIAG_TAG        : (无)
 
 [D] app-hisense-no-impeller-release.apk
-    字节数          : 44,150,551
-    sha256          : 3a51bc3bec03e70dd3e57caeac1451de06488a2803db4f290d8b62909e00cb7d
+    字节数          : 44,166,891
+    sha256          : a0fb89b0cf121c28340e998f35c6fe719798e4e1710bca32ad492ae1f7dff3ae
     applicationId   : com.feiniu.tv.music.diagd
     桌面显示名      : 飞牛D·Rel关Impeller
     Renderer        : EnableImpeller=false（关闭 Impeller）
@@ -173,7 +173,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [E] app-hisense-engine-smoke.apk
     字节数          : 120,438,504
-    sha256          : 772e438d929fe0abe193d0eb7e12a8be8be210228d3861453dd775623c6d626c
+    sha256          : a95c497af044853b4ddde9d0566d9204e4ee6e7a70281b8cfbf8742cee262174
     applicationId   : com.feiniu.tv.music.smoke
     桌面显示名      : Smoke·插件版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -185,7 +185,7 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
 
 [F] app-hisense-engine-smoke-no-plugins.apk
     字节数          : 120,438,488
-    sha256          : 3df735c4e5a05ec8fb5aa02b0c50d059f94e3bb7e23acb629460e8362ad95822
+    sha256          : 5cf796145c53ac0d25fee078dc7f35fb299863aabc2b19d49a383e770a49c65d
     applicationId   : com.feiniu.tv.music.smokenp
     桌面显示名      : Smoke·无插件
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
@@ -196,8 +196,8 @@ boot.log 路径：/storage/emulated/0/Android/data/<applicationId>/files/bootlog
     DIAG_TAG        : smoke-no-plugins
 
 [G] app-hisense-release.apk
-    字节数          : 44,150,511
-    sha256          : 112de36207912af07abe567944b1707577774aed77b4f21beb866ebf452b1aa6
+    字节数          : 44,166,851
+    sha256          : 74859d9109449c33978bd4ec548e971436e5d03c7d7f1cc82136b0420eaddbce
     applicationId   : com.feiniu.tv.music.rel
     桌面显示名      : 飞牛·正式版
     Renderer        : 无任何后端 meta-data（Flutter 默认后端）
