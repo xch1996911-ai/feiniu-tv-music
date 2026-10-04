@@ -275,7 +275,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     });
     WidgetsBinding.instance.addPostFrameCallback((Duration _) {
       if (!mounted) return;
-      final _Field? target = f ?? _Field.host;
+      final _Field target = f ?? _Field.host;
       _focusOf(target).requestFocus();
       _scrollFieldIntoView(target);
     });

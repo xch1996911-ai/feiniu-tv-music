@@ -231,7 +231,7 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('按入库时间倒序展示（最新的在最上面）',,
+    testWidgets('按入库时间倒序展示（最新的在最上面）',
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpRecentAdded(
@@ -254,7 +254,7 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('方向键选中第二行 + OK → 交给全局播放层的 guid/下标正确，且只开一次播放器',,
+    testWidgets('方向键选中第二行 + OK → 交给全局播放层的 guid/下标正确，且只开一次播放器',
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       var openCalls = 0;
@@ -289,7 +289,7 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('先播 A，再回「最近添加」点 B：显示与音频都必须换成 B',,
+    testWidgets('先播 A，再回「最近添加」点 B：显示与音频都必须换成 B',
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       var openCalls = 0;

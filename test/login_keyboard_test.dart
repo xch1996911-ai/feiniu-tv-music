@@ -239,7 +239,7 @@ void main() {
 
       await tester.pumpWidget(
         MultiProvider(
-          providers: <SingleChildWidget>[
+          providers: [
             ChangeNotifierProvider<AuthRepository>.value(
               value: AuthRepository(store: FakeSecureStore()),
             ),

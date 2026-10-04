@@ -157,9 +157,6 @@ class TvKeyboardState extends State<TvKeyboard> {
   /// 当前是否掩码显示（回显行用）。
   bool _obscure = false;
 
-  /// 需要在键盘重建时把焦点还回来的目标。
-  FocusNode? _pendingFocus;
-
   @override
   void initState() {
     super.initState();
@@ -233,24 +230,34 @@ class TvKeyboardState extends State<TvKeyboard> {
     setState(() {});
   }
 
+  /// 执行一颗按键。
+  ///
+  /// ⚠️ 每个分支显式 `return`：不依赖「非空 case 隐式 break」这类语言版本敏感的写法。
   void _activate(TvKeySpec key) {
     switch (key.action) {
       case TvKeyAction.backspace:
         _backspace();
+        return;
       case TvKeyAction.space:
         _insert(' ');
+        return;
       case TvKeyAction.clear:
         _clear();
+        return;
       case TvKeyAction.shift:
         setState(() => _shift = !_shift);
+        return;
       case TvKeyAction.obscure:
         setState(() => _obscure = !_obscure);
         widget.onObscureChanged?.call(_obscure);
+        return;
       case TvKeyAction.done:
         _close();
+        return;
       case TvKeyAction.none:
         final String? ins = key.insert;
         if (ins != null) _insert(_shift ? ins.toUpperCase() : ins);
+        return;
     }
   }
 
