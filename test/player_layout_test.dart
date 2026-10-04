@@ -223,8 +223,27 @@ void main() {
             // ⚠️ `takeException()` 把异常吞掉了，flutter_test 就不会打印
             //    RenderFlex 的完整转储（含 constraints 与 creator 链），
             //    日志里只剩一句「overflowed by N pixels」——定位不到是谁。
-            //    这里显式打进日志，CI 上就能直接看到溢出的是哪个控件。
+            //    这里把 diagnostics 与关键几何一起打进日志。
             debugPrint('LAYOUT_OVERFLOW_DETAIL >>> $layoutError');
+            if (layoutError is FlutterError) {
+              // 刻意用 `dynamic` 迭代：`DiagnosticsNode` 不一定被
+              // `package:flutter/material.dart` 的 `show` 列表导出，
+              // 显式写下类型名会让 analyze 直接失败（本项目 info 也判失败）。
+              for (final dynamic node in layoutError.diagnostics) {
+                debugPrint('LAYOUT_OVERFLOW_NODE >>> '
+                    '${node.toStringDeep().replaceAll('\n', ' | ')}');
+              }
+            }
+            final Rect? seekRect = _rectOf(tester, 'player.seek');
+            final Rect? backRect = _rectOf(tester, 'player.back');
+            final Rect chipRect = tester.getRect(find.text(chipText));
+            final String lyricTitle =
+                '${longTrack().title} - ${longTrack().artistNames}';
+            final Finder lyricFinder = find.text(lyricTitle);
+            debugPrint('LAYOUT_GEOMETRY >>> viewport=${vw}×$vh '
+                'seekTop=${seekRect?.top} barTop=${backRect?.top} '
+                'barBottom=${backRect?.bottom} chip=$chipRect '
+                'lyricTitle=${lyricFinder.evaluate().isEmpty ? '—' : tester.getRect(lyricFinder)}');
           }
           expect(layoutError, isNull,
               reason: '出现布局溢出（release 下会静默裁掉内容）');

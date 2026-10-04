@@ -475,6 +475,24 @@ class _PlayerPageState extends State<PlayerPage> {
       ],
     );
 
+    /// 给文字块套一层「必要时整体等比缩小」的兜底。
+    ///
+    /// ⚠️ 为什么必须有：上面的预算表是**按字号推算**的，而文字真实高度还受
+    ///    系统字体缩放、字体回退（fallback font）、逐行向上取整影响 ——
+    ///    推算偏小就会把封面栏顶破，而 release 下溢出是**静默裁切**
+    ///    （电视上就是「歌手行/规格胶囊不见了」）。有了这层兜底，
+    ///    文字块最多是变小，**永远不会被裁掉**。
+    ///    `SizedBox(width: …)` 是必需的：`FittedBox` 交给子树的宽度是**无界**的，
+    ///    而歌手行里有一个 `Expanded`，无界宽度会直接抛异常。
+    Widget shrinkable(double width, double maxHeight) => ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: SizedBox(width: width, child: info),
+          ),
+        );
+
     if (useRow) {
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -482,13 +500,10 @@ class _PlayerPageState extends State<PlayerPage> {
         children: <Widget>[
           cover,
           const SizedBox(width: 28),
-          ConstrainedBox(
-            // ⚠️ 必须用上面算出的 `textW`，不能写死 420 ——
-            //    封面可用宽度是按 textW 扣的，文字却允许排到 420，
-            //    窄视口上两边对不上就会水平溢出。
-            constraints: BoxConstraints(maxWidth: textW),
-            child: info,
-          ),
+          // ⚠️ 必须用上面算出的 `textW`，不能写死 420 ——
+          //    封面可用宽度是按 textW 扣的，文字却允许排到 420，
+          //    窄视口上两边对不上就会水平溢出。
+          shrinkable(textW, availH - slack),
         ],
       );
     }
@@ -500,7 +515,7 @@ class _PlayerPageState extends State<PlayerPage> {
       children: <Widget>[
         cover,
         const SizedBox(height: gapBig),
-        info,
+        shrinkable(availW, max(0.0, availH - gapBig - coverSize)),
       ],
     );
   }
