@@ -1,2 +1,6 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 12.0s)
+
+   info • The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive • lib/ui/widgets/lyric_view.dart:3:8 • unnecessary_import
+   info • The local variable '_diag' starts with an underscore. Try renaming the variable to not start with an underscore • test/lyric_follow_test.dart:82:8 • no_leading_underscores_for_local_identifiers
+
+2 issues found. (ran in 10.1s)
