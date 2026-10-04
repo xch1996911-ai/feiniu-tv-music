@@ -354,6 +354,9 @@ class PlaybackRepository extends ChangeNotifier
 
   bool get isPlaying => _handler.isPlaying;
   Duration? get position => _handler.position;
+
+  /// 「退出应用」专用：停音源并结束 MediaSession 前台会话（见引擎接口注释）。
+  Future<void> stopSession() => _handler.stopSession();
   Duration? get duration => _handler.duration;
 
   QueueSource get source => _source;

@@ -125,6 +125,15 @@ class FakePlaybackEngine implements PlaybackEngine {
   }
 
   @override
+  /// stopSession 被调用的次数（断言「退出并停止」确实走了这条路径）。
+  int stopSessionCalls = 0;
+
+  @override
+  Future<void> stopSession() async {
+    stopSessionCalls++;
+    await stop();
+  }
+
   Future<void> stop() async {
     stopCalls++;
     playing = false;

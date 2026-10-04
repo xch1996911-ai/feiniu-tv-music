@@ -41,6 +41,16 @@ abstract class PlaybackEngine {
 
   Future<void> stop();
 
+  /// 「退出应用」专用：停音源，**并结束 MediaSession 的前台会话**。
+  ///
+  /// ⚠️ 与 [stop] 的区别是本项目一个真实的坑：audio_service 0.18 的
+  /// `BaseAudioHandler.stop()` 默认是**空操作**，前台服务进入 `stopped`
+  /// 状态由「`processingState` 变为 `idle`」驱动 —— 只调 `_player.stop()`
+  /// 而不广播 idle，媒体通知 / 前台服务会一直挂着。
+  /// 平时的「停止播放」继续用 [stop]（MediaSession 保留，媒体键仍可用）；
+  /// 只有用户明确选择「退出并停止播放」才走本方法。
+  Future<void> stopSession();
+
   /// 注入队列控制回调（由 `PlaybackRepository` 在构造时注册）。
   ///
   /// 这样 MediaSession 的传输键与页面按钮最终都落到**同一个** `PlaybackRepository`，

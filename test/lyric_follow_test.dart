@@ -50,8 +50,8 @@ void main() {
         guid: guid,
         title: '测试歌',
         durationMs: 90000,
-        album: AlbumRef(guid: 'al1', name: '专辑'),
-        artists: <ArtistRef>[ArtistRef(guid: 'ar1', name: '歌手')],
+        album: const AlbumRef(guid: 'al1', name: '专辑'),
+        artists: <ArtistRef>[const ArtistRef(guid: 'ar1', name: '歌手')],
         audioSpec: const AudioSpec(format: 'flac'),
       );
 

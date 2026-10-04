@@ -48,10 +48,12 @@ class NavRail extends StatelessWidget {
     required this.logoutNode,
     required this.diagnosticsNode,
     required this.remoteNode,
+    required this.exitNode,
     required this.onSelected,
     required this.onLogout,
     required this.onDiagnostics,
     required this.onRemote,
+    required this.onExit,
     this.width = 206,
   });
 
@@ -69,6 +71,9 @@ class NavRail extends StatelessWidget {
   /// 「手机遥控」入口的焦点节点（V5 §七）。
   final FocusNode remoteNode;
 
+  /// 「返回桌面」入口的焦点节点（V5 补充任务）。
+  final FocusNode exitNode;
+
   final ValueChanged<int> onSelected;
   final VoidCallback onLogout;
 
@@ -77,6 +82,9 @@ class NavRail extends StatelessWidget {
 
   /// 打开手机遥控页。
   final VoidCallback onRemote;
+
+  /// 弹出「后台继续 / 退出并停止 / 取消」三选弹窗。
+  final VoidCallback onExit;
   final double width;
 
   @override
@@ -140,6 +148,13 @@ class NavRail extends StatelessWidget {
                     node: diagnosticsNode,
                     onOpen: onDiagnostics,
                     nextUp: remoteNode,
+                    nextDown: exitNode,
+                  ),
+                  const SizedBox(height: 2),
+                  _ExitTile(
+                    node: exitNode,
+                    onExit: onExit,
+                    nextUp: diagnosticsNode,
                   ),
                 ],
               ),
@@ -374,6 +389,53 @@ class _RemoteTile extends StatelessWidget {
   }
 }
 
+/// 「返回桌面」入口（V5 补充任务）。
+///
+/// 打开「后台继续 / 退出并停止 / 取消」三选弹窗 ——
+/// 与「退出登录」并列放底部：它是设备级操作，不是内容页。
+/// 系统 Home 键由电视 Launcher 处理、应用收不到，这是 App 内
+/// 唯一明确的「离开」入口（另一个是首页按返回键）。
+class _ExitTile extends StatelessWidget {
+  const _ExitTile({
+    required this.node,
+    required this.onExit,
+    this.nextUp,
+  });
+
+  final FocusNode node;
+  final VoidCallback onExit;
+  final FocusNode? nextUp;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocus(
+      focusNode: node,
+      debugLabel: 'nav.exit',
+      onPressed: onExit,
+      nextUp: nextUp,
+      builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
+        status: s,
+        radius: 10,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: const Row(
+          children: <Widget>[
+            Icon(Icons.exit_to_app, size: 19, color: TvColors.textFaint),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '返回桌面',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 15, color: TvColors.textFaint),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 「诊断与帮助」入口（V5）。
 ///
 /// 需求 §一.4 / §二.3 要求「原始异常、堆栈、版本、请求地址、初始化阶段等
@@ -385,11 +447,13 @@ class _DiagnosticsTile extends StatelessWidget {
     required this.node,
     required this.onOpen,
     this.nextUp,
+    this.nextDown,
   });
 
   final FocusNode node;
   final VoidCallback onOpen;
   final FocusNode? nextUp;
+  final FocusNode? nextDown;
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +462,7 @@ class _DiagnosticsTile extends StatelessWidget {
       debugLabel: 'nav.diagnostics',
       onPressed: onOpen,
       nextUp: nextUp,
+      nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
         radius: 10,

@@ -151,6 +151,26 @@ class MainActivity : AudioServiceActivity() {
                         result.success(null)
                     }
                     "deviceId" -> result.success(deviceId())
+                    // 「后台继续播放」：只把 Activity/task 退到后台。
+                    // ⚠️ 这里**不做**任何音频操作 —— audio_service 的前台服务
+                    //    本来就不依赖 Activity 在前台，返回 true 后音频继续、
+                    //    媒体键继续可用。Dart 侧（AppExit.moveToBackground）
+                    //    负责保证调用前没有 pause/stop/dispose。
+                    "moveTaskToBack" -> {
+                        val moved = moveTaskToBack(true)
+                        BootTrace.note(this, "[dart] moveTaskToBack -> $moved")
+                        result.success(moved)
+                    }
+                    // 「退出并停止播放」的最后一步：结束 Activity 并从最近任务移除。
+                    // ⚠️ 调用顺序由 Dart 侧保证：先停音源、广播 MediaSession idle
+                    //    （撤前台通知/停服务）、停遥控 HTTP/WS 服务，**最后**才到这里。
+                    //    这里不做任何业务清理 —— 那些是 Dart 侧的职责，
+                    //    本方法只负责「窗口层」的收尾。
+                    "exitApp" -> {
+                        BootTrace.note(this, "[dart] exitApp（finishAndRemoveTask）")
+                        result.success(null)
+                        finishAndRemoveTask()
+                    }
                     else -> result.notImplemented()
                 }
             }

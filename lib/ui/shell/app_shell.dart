@@ -21,9 +21,11 @@ import '../pages/player_page.dart';
 import '../pages/search_page.dart';
 import '../pages/song_list_page.dart';
 import '../pages/track_list_page.dart';
+import '../widgets/exit_dialog.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/nav_rail.dart';
 import '../widgets/queue_sheet.dart';
+import '../../services/app_exit.dart';
 import '../../services/remote/remote_server.dart';
 import '../pages/remote_control_page.dart';
 import '../widgets/tv_focus.dart';
@@ -124,6 +126,12 @@ class _AppShellState extends State<AppShell> {
   final FocusNode _logoutNode = FocusNode(debugLabel: 'nav.logout');
   final FocusNode _diagNode = FocusNode(debugLabel: 'nav.diagnostics');
   final FocusNode _remoteNode = FocusNode(debugLabel: 'nav.remote');
+  final FocusNode _exitNode = FocusNode(debugLabel: 'nav.exit');
+
+  /// 「离开应用」弹窗是否已打开 —— **防重入**：
+  /// 电视上快速连按返回键时，弹窗尚未完成 Navigator 入栈动画，
+  /// 第二次 back 不会再走 showDialog（它自己会再弹一个）。
+  bool _exitDialogOpen = false;
 
   final FocusNode _searchNode = FocusNode(debugLabel: 'shell.search');
   final FocusNode _miniCover = FocusNode(debugLabel: 'mini.cover');
@@ -176,6 +184,7 @@ class _AppShellState extends State<AppShell> {
     _logoutNode.dispose();
     _diagNode.dispose();
     _remoteNode.dispose();
+    _exitNode.dispose();
     _searchNode.dispose();
     _miniCover.dispose();
     _miniPrev.dispose();
@@ -398,14 +407,19 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final bool overlayOpen =
         _playerOpen || _queueOpen || _diagOpen || _remoteOpen;
-    final bool atRoot =
-        !overlayOpen && _openOverview == null && _stage == ShellStage.home;
-
     // Flutter 3.47 已废弃 WillPopScope，用 PopScope。
     // ⚠️ 只在这里注册**一个** PopScope：`PopScope.canPop` 是所有注册者的与运算，
     //    嵌套注册会让「关播放页」和「回首页」同时触发。
+    //
+    // ⚠️ V5 补充任务：`canPop` 现在恒为 false —— 以前 `atRoot` 时按返回键
+    //    会直接结束 Activity（系统默认 pop），那是**静默退出**：音频还在播、
+    //    遥控服务还开着，用户却以为已经退出了。现在根层级的返回键改为弹出
+    //    「后台继续 / 退出并停止 / 取消」三选弹窗（[_confirmLeaveApp]）。
+    //
+    //    系统弹出层（播放页 / 队列 / 弹窗）的返回键不受影响：
+    //    showDialog 的路由在 shell 路由之上，返回键先被它们消费。
     return PopScope(
-      canPop: atRoot,
+      canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (didPop) return;
         // 由内到外逐层关闭，每次只关一层。
@@ -419,8 +433,11 @@ class _AppShellState extends State<AppShell> {
           _closePlayer();
         } else if (_openOverview != null) {
           _closeDetail();
-        } else {
+        } else if (_stage != ShellStage.home) {
           _goStage(ShellStage.home);
+        } else {
+          // 已经在最根上：这次返回键 = 「我想离开应用」。
+          _confirmLeaveApp();
         }
       },
       child: Scaffold(
@@ -453,10 +470,15 @@ class _AppShellState extends State<AppShell> {
                         logoutNode: _logoutNode,
                         diagnosticsNode: _diagNode,
                         remoteNode: _remoteNode,
+                        exitNode: _exitNode,
                         onSelected: (int i) => _goStage(_navStages[i]),
                         onLogout: _logout,
                         onDiagnostics: _openDiagnostics,
                         onRemote: _openRemote,
+                        // ⚠️ `_confirmLeaveApp` 是异步的：VoidCallback 里必须
+                        //    unawaited（否则 analyzer 报 unawaited_futures，
+                        //    本项目 info 也判失败）。
+                        onExit: () => unawaited(_confirmLeaveApp()),
                       ),
                       Expanded(
                         child: Column(
@@ -513,6 +535,62 @@ class _AppShellState extends State<AppShell> {
   bool get _hasSong => context.select<PlaybackRepository, bool>(
         (PlaybackRepository p) => p.current != null,
       );
+
+  // ── 离开应用（V5 补充任务）────────────────────────────────────
+
+  /// 弹出「后台继续 / 退出并停止 / 取消」三选弹窗。
+  ///
+  /// ⚠️ 系统.Home 键由电视 Launcher 处理，应用收不到（不申请默认桌面权限
+  ///    就无法拦截）—— 所以只覆盖 App 内可控的离开入口：
+  ///    首页按返回键、侧栏「返回桌面」。这一点要在交付说明里如实写明。
+  Future<void> _confirmLeaveApp() async {
+    // 快速连按返回的防重入：上一轮弹窗还没关闭就不再弹
+    //（showDialog 本身会为每次调用各开一条路由，不加这层会叠出多个弹窗）。
+    if (_exitDialogOpen) return;
+    _exitDialogOpen = true;
+    try {
+      final AppExitChoice? choice = await TvExitDialog.show(context);
+      if (!mounted) return;
+      switch (choice) {
+        case AppExitChoice.background:
+          Log.i('UI 选择后台继续播放');
+          Diagnostics.event('应用退到后台，播放继续');
+          // ⚠️ 只退后台：不 pause / 不 stop / 不 dispose 任何播放资源 ——
+          //    audio_service 的前台服务不依赖 Activity 在前台。
+          await AppExit.moveToBackground();
+        case AppExitChoice.exitAndStop:
+          await _exitAndStop();
+        case AppExitChoice.cancel || null:
+          Log.i('UI 留在应用');
+          // 什么都不做：页面与播放状态原样保留。
+      }
+    } finally {
+      _exitDialogOpen = false;
+    }
+  }
+
+  /// 「退出并停止播放」的完整清理链。**顺序有讲究**：
+  /// 先停业务（音源 → MediaSession 会话 → 遥控服务），最后才结束 Activity ——
+  /// 反过来的话 FlutterEngine 可能在异步清理完成前就被销毁。
+  Future<void> _exitAndStop() async {
+    Log.i('UI 退出应用：停播放 → 关会话 → 关遥控 → 结束 Activity');
+    Diagnostics.event('应用退出：停止播放并关闭服务');
+    // ① 停音源 + 结束 MediaSession 前台会话（广播 idle → 系统撤通知、停服务）。
+    try {
+      await _playback.stopSession();
+    } catch (e) {
+      Log.w('EXIT 停止播放失败（继续退出）：$e');
+    }
+    // ② 停手机遥控 HTTP/WS 服务（内部会 revoke 手机会话，令牌立即失效）。
+    try {
+      await _remote?.stop(reason: '退出应用');
+    } catch (e) {
+      Log.w('EXIT 停止遥控服务失败（继续退出）：$e');
+    }
+    _remote = null;
+    // ③ 结束 Activity（finishAndRemoveTask；通道失败时退回 SystemNavigator.pop）。
+    await AppExit.exitApp();
+  }
 
   Future<void> _logout() async {
     Log.i('UI 退出登录');

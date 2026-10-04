@@ -65,18 +65,9 @@ void main() {
     await engine.close();
   });
 
-  /// 3 位歌手 / 4 张专辑 / 4 种风格 / 7 首歌（满足 ≥3 / ≥4 / ≥3 的验收下限）。
-  List<Track> catalogue() => <Track>[
-        _t('a1', '歌一', '歌手A', 'arA', '专辑一', 'al1', '流行'),
-        _t('a2', '歌二', '歌手A', 'arA', '专辑一', 'al1', '流行'),
-        _t('a3', '歌三', '歌手A', 'arA', '专辑二', 'al2', '摇滚'),
-        _t('b1', '歌四', '歌手B', 'arB', '专辑三', 'al3', '摇滚'),
-        _t('b2', '歌五', '歌手B', 'arB', '专辑三', 'al3', '电子'),
-        _t('c1', '歌六', '歌手C', 'arC', '专辑四', 'al4', '电子'),
-        _t('c2', '歌七', '歌手C', 'arC', '专辑四', 'al4', '爵士'),
-      ];
-
-  Track _t(
+  /// 造一首歌（局部函数必须**先声明后使用** —— Dart 对局部函数
+  /// 不做提升，先在 `catalogue()` 里引用再声明会直接编译错）。
+  Track makeTrack(
     String guid,
     String title,
     String artist,
@@ -98,6 +89,17 @@ void main() {
           bitDepth: 16,
         ),
       );
+
+  /// 3 位歌手 / 4 张专辑 / 4 种风格 / 7 首歌（满足 ≥3 / ≥4 / ≥3 的验收下限）。
+  List<Track> catalogue() => <Track>[
+        makeTrack('a1', '歌一', '歌手A', 'arA', '专辑一', 'al1', '流行'),
+        makeTrack('a2', '歌二', '歌手A', 'arA', '专辑一', 'al1', '流行'),
+        makeTrack('a3', '歌三', '歌手A', 'arA', '专辑二', 'al2', '摇滚'),
+        makeTrack('b1', '歌四', '歌手B', 'arB', '专辑三', 'al3', '摇滚'),
+        makeTrack('b2', '歌五', '歌手B', 'arB', '专辑三', 'al3', '电子'),
+        makeTrack('c1', '歌六', '歌手C', 'arC', '专辑四', 'al4', '电子'),
+        makeTrack('c2', '歌七', '歌手C', 'arC', '专辑四', 'al4', '爵士'),
+      ];
 
   group('导航页内容与分类数据源', () {
     testWidgets('冷启动直接进歌手 → 完整歌手分组（3 位）',
@@ -287,7 +289,7 @@ void main() {
       // 60 首：3 位歌手 × 20 首，4 张专辑轮转，4 种风格轮转
       music.catalogue = <Track>[
         for (int i = 0; i < 60; i++)
-          _t(
+          makeTrack(
             'g$i',
             '曲$i',
             '歌手${i % 3}',
@@ -463,7 +465,9 @@ Future<_HostHandle> _pump(
   required ShellStage stage,
   bool useKeys = true,
 }) async {
-  music.catalogue = catalogue();
+  // ⚠️ `catalogue` 是 `main()` 里的**局部函数**，顶层函数看不到它 ——
+  //    每个用例在调用 `_pump` 之前已经自己设好 `music.catalogue`，
+  //    这里不能再赋值（曾写成 `music.catalogue = catalogue()`，直接编译错）。
   await tester.runAsync(() async {
     await library.loadFirst();
   });

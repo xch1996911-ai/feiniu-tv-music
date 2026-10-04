@@ -92,6 +92,24 @@ class PlaybackHandler extends BaseAudioHandler with SeekHandler implements Playb
   @override
   Future<void> stop() => _player.stop();
 
+  @override
+  Future<void> stopSession() async {
+    await _player.stop();
+    // ⚠️ 必须显式广播 idle：audio_service 0.18 的 `BaseAudioHandler.stop()`
+    //    默认是空操作，前台服务进入 `stopped` 状态由「processingState == idle」
+    //    驱动（Android 官方文档原文："enters the stopped state whenever
+    //    PlaybackState.processingState becomes idle"）。
+    //    只停音源不广播的话，媒体通知 / 前台服务会一直挂着 ——
+    //    这正是「退出并停止播放」要避免的「只隐藏窗口、服务还在」。
+    //    controls 清空是为了让通知上的播放/暂停按钮一并消失。
+    playbackState.add(playbackState.value.copyWith(
+      processingState: AudioProcessingState.idle,
+      playing: false,
+      controls: const <MediaControl>[],
+    ));
+    Log.i('STOP_SESSION 音源已停，MediaSession 会话已置 idle（前台服务随之结束）');
+  }
+
   /// MediaSession「下一曲」→ 交给队列控制方（`PlaybackRepository`）。
   ///
   /// ⚠️ 不重写 `UnimplementedError` 之前，Android 媒体键的下一曲是**直接抛异常**的：
