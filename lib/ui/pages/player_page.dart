@@ -243,43 +243,61 @@ class _PlayerPageState extends State<PlayerPage> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(36, 14, 36, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  // 顶部左上角：收起/返回小图标（遥控器返回键仍走页面层级）。
-                  SizedBox(
-                    height: 44,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _RoundControl(
-                        node: _backNode,
-                        debugLabel: 'player.back',
-                        icon: Icons.keyboard_arrow_down,
-                        iconSize: 28,
-                        size: 44,
-                        tooltip: '收起播放页',
-                        onPressed: widget.onBack,
-                        nextLeft: _backNode, // 左端：原地不动
-                        nextRight: layout == PlayerLayout.stage
-                            ? _favNode
-                            : _seekNode,
-                        nextUp: _backNode,
-                        nextDown: _seekNode,
+              // ⚠️ 队列/菜单打开时把**整个播放页**（含顶栏）排除出焦点树，
+              //    否则方向键会跑到被遮住的按钮上（焦点"消失"）。
+              child: ExcludeFocus(
+                excluding: overlayOpen,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    // 顶部：左上角收起/返回；大封面布局时右侧补「更多」入口
+                    //（该布局没有信息行，菜单必须可达才能切回融合布局）。
+                    SizedBox(
+                      height: 44,
+                      child: Row(
+                        children: <Widget>[
+                          _RoundControl(
+                            node: _backNode,
+                            debugLabel: 'player.back',
+                            icon: Icons.keyboard_arrow_down,
+                            iconSize: 28,
+                            size: 44,
+                            tooltip: '收起播放页',
+                            onPressed: widget.onBack,
+                            nextLeft: _backNode, // 左端：原地不动
+                            nextRight: layout == PlayerLayout.stage
+                                ? _favNode
+                                : _moreNode,
+                            nextUp: _backNode,
+                            nextDown: _seekNode,
+                          ),
+                          const Spacer(),
+                          if (layout == PlayerLayout.cover)
+                            _RoundControl(
+                              node: _moreNode,
+                              debugLabel: 'player.more',
+                              icon: Icons.more_vert,
+                              iconSize: 26,
+                              size: 44,
+                              iconColor: TvColors.textDim,
+                              tooltip: '更多（布局 / 歌词操作）',
+                              onPressed: _openMenu,
+                              nextLeft: _backNode,
+                              nextRight: _moreNode, // 右端：原地不动
+                              nextUp: _moreNode,
+                              nextDown: _seekNode,
+                            ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    // ⚠️ 队列/菜单打开时把底下的播放页排除出焦点树，
-                    //    否则方向键会跑到被遮住的按钮上（焦点"消失"）。
-                    child: ExcludeFocus(
-                      excluding: overlayOpen,
+                    const SizedBox(height: 6),
+                    Expanded(
                       child: layout == PlayerLayout.stage
                           ? _buildStageBody(song, fav)
                           : _buildCoverBody(song, fav),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
