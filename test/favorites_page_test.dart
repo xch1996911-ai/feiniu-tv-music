@@ -276,7 +276,13 @@ void main() {
       final LocalLibraryRepository reopened =
           LocalLibraryRepository(store: store);
       addTearDown(reopened.dispose);
-      await reopened.restore();
+      // ⚠️ `restore()` 里含真实异步路径（安全存储 / 本地文件 / 平台通道）。
+      //    `testWidgets` 用的是**假时钟**，只有 `pump` 才推进 ——
+      //    直接在测试体里 `await` 这类异步会一路挂到 10 分钟超时
+      //    （本项目已有同类故障记录）。`runAsync` 让这段跑在真实事件循环上。
+      await tester.runAsync(() async {
+        await reopened.restore();
+      });
 
       expect(reopened.isFavorite('a'), isTrue);
       expect(reopened.favoriteCount, 1);

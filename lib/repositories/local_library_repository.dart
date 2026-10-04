@@ -201,8 +201,14 @@ class LocalLibraryRepository extends ChangeNotifier {
     }
 
     try {
-      final Map<String, List<String>> overrides =
-          await _catalogue.loadOverrides();
+      // ⚠️ 必须带硬超时：`loadOverrides()` 会经 `LocalPaths.dataDir()` 走
+      //    `feiniu/boot` 平台通道，而平台通道**可能既不返回也不抛异常**
+      //    （"不回调"是它的典型故障形态）。拆成两段 try 时曾经把这条超时漏掉，
+      //    结果在 `testWidgets` 的假时钟下这个 await 永不完成、用例挂到
+      //    10 分钟上限。`try/catch` 对"挂起"完全无效，只能靠超时。
+      final Map<String, List<String>> overrides = await _catalogue
+          .loadOverrides()
+          .timeout(const Duration(seconds: 4));
       _genreOverrides
         ..clear()
         ..addAll(overrides);
