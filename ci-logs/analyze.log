@@ -1,5 +1,5 @@
 Analyzing feiniu-tv-music...                                    
 
-  error • Undefined name 'ScrollCacheExtent'. Try correcting the name to one that is defined, or defining the name • lib/ui/widgets/lyric_view.dart:246:36 • undefined_identifier
+   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/lyric_view.dart:248:36 • prefer_const_constructors
 
-1 issue found. (ran in 8.9s)
+1 issue found. (ran in 9.4s)
