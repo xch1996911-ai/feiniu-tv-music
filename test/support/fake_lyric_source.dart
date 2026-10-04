@@ -9,8 +9,9 @@ import 'package:feiniu_tv_music/repositories/music_repository.dart';
 /// 与 [FakeMusicRepository] 同样的思路 —— 真实实现未登录时会抛
 /// `StateError`，因此覆写 [getLyrics]。
 class FakeLyricSource extends MusicRepository {
-  FakeLyricSource({this.fail = false, LyricDoc? doc})
+  FakeLyricSource({this.fail = false, LyricDoc? doc, Map<String, LyricDoc>? docsByGuid})
       : _doc = doc ?? LyricDoc.empty,
+        docsByGuid = docsByGuid ?? const <String, LyricDoc>{},
         super(AuthRepository());
 
   /// 让 getLyrics 返回错误（测「歌词失败不影响播放」）。
@@ -18,12 +19,17 @@ class FakeLyricSource extends MusicRepository {
 
   final LyricDoc _doc;
 
+  /// 按曲目 guid 给不同的歌词（切歌用例用）。命中时优先于 [_doc]。
+  final Map<String, LyricDoc> docsByGuid;
+
   /// 记录被请求过的曲目 guid（断言只加载当前歌曲）。
   final List<String> requestedGuids = <String>[];
 
   @override
   Future<Result<LyricDoc>> getLyrics(String trackGuid) async {
     requestedGuids.add(trackGuid);
+    final LyricDoc? perTrack = docsByGuid[trackGuid];
+    if (perTrack != null) return Result<LyricDoc>.ok(perTrack);
     if (fail) {
       return const Result<LyricDoc>.err(
         AppError('歌词接口失败', kind: ErrorKind.network),

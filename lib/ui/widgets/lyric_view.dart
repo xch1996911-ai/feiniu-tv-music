@@ -39,7 +39,10 @@ class LyricView extends StatefulWidget {
 class _LyricViewState extends State<LyricView> {
   final ScrollController _scroll = ScrollController();
 
-  Timer? _timer;
+  /// 播放进度的订阅。**必须**在 `dispose` 里 cancel：
+  /// 播放页每次开关都会新建/销毁一个 `LyricView`，
+  /// 不取消的话旧订阅还在向已卸载的 State `setState`（既泄漏又抛异常）。
+  StreamSubscription<Duration>? _positionSub;
 
   int _activeIndex = -1;
 
@@ -47,7 +50,12 @@ class _LyricViewState extends State<LyricView> {
   int _seenEpoch = -1;
 
   /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
-  static const double _lineExtent = 58;
+  ///
+  /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 25 × 行高 1.25 × **最多 2 行**
+  ///    = 62.5。旧值 58 会把活动行内容顶出自身边界 —— debug 里是
+  ///    RenderFlex 溢出异常，release 里是**静默裁掉第二行**，
+  ///    表现就是「正在唱的那句显示不全」。64 留 1.5px 余量。
+  static const double _lineExtent = 64;
 
   /// 滚动动画时长。太短会显得跳，太长会跟不上快进。
   static const Duration _scrollDuration = Duration(milliseconds: 280);
@@ -55,15 +63,30 @@ class _LyricViewState extends State<LyricView> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(
-      const Duration(milliseconds: 400),
-      (_) => _refresh(),
-    );
+    // ⚠️ 进度来源改用**引擎的 positionStream**，不再用 400ms 轮询。
+    //
+    // 旧实现依赖定时器轮询 `playback.position`，有三个问题：
+    //   1. seek（遥控器 / 手机 / 拖动）之后要等最多 400ms 才重算 —— 拖到某句
+    //      中间时先显示上一句，再「慢慢」跳过来；
+    //   2. 定时器与播放状态毫无关联，暂停时也在空转，恢复播放后第一拍
+    //      可能读到旧值；
+    //   3. 「定时器存在」不等于「同步正确」—— 真正决定跟随的是
+    //      进度是否实时 + 歌词是否有时间轴（见 `LyricDoc.isSyncable`）。
+    //
+    // `positionStream` 由 just_audio 以固定间隔发值，**seek 时立即发**，
+    // 暂停时不发（位置本来就没变）⇒ 语义与「当前播放位置」严格一致。
+    // 订阅在 `dispose` 取消，不重复、不泄漏。
+    _positionSub = context
+        .read<PlaybackRepository>()
+        .handler
+        .positionStream
+        .listen((_) => _refresh());
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _positionSub?.cancel();
+    _positionSub = null;
     _scroll.dispose();
     super.dispose();
   }
@@ -109,7 +132,9 @@ class _LyricViewState extends State<LyricView> {
     );
   }
 
-  /// 文档被替换（换歌 / 加载完成 / 被清空）→ 视口回到顶部。
+  /// 文档被替换（换歌 / 加载完成 / 被清空）→ 视口回到顶部，
+  /// 并**立刻按当前播放进度定位**（旧实现要等下一个 400ms 拍，
+  /// 于是切歌/换布局后总是先停在开头一瞬间）。
   void _syncDoc(int epoch) {
     if (epoch == _seenEpoch) return;
     _seenEpoch = epoch;
@@ -119,6 +144,9 @@ class _LyricViewState extends State<LyricView> {
       if (_scroll.hasClients) {
         _scroll.jumpTo(0);
       }
+      // 首帧布局完成后再定位：此时视口尺寸与 maxScrollExtent 都已就绪，
+      // 不会被「ScrollController 尚未 attach / 视口尺寸为 0」吞掉首次定位。
+      _refresh();
     });
   }
 
@@ -160,28 +188,49 @@ class _LyricViewState extends State<LyricView> {
     final bool hasAnyText =
         lines.any((LyricLine l) => l.text.trim().isNotEmpty);
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        final double viewport = c.maxHeight;
-        final double pad = ((viewport - _lineExtent) / 2).clamp(
-          0.0,
-          double.infinity,
-        );
-        return ListView.builder(
-          controller: _scroll,
-          itemExtent: _lineExtent,
-          physics: const ClampingScrollPhysics(),
-          padding: EdgeInsets.symmetric(vertical: pad),
-          itemCount: lines.length,
-          itemBuilder: (BuildContext context, int i) {
-            return _LyricLineRow(
-              text: lines[i].text,
-              hasAnyText: hasAnyText,
-              distance: _activeIndex < 0 ? -1 : (i - _activeIndex),
-            );
-          },
-        );
-      },
+    // ⚠️ 「有歌词」≠「能逐句同步」。NAS 的歌词源可能是纯文本（无时间轴），
+    //    解析出来每行 `time == null`：这时高亮与滚动**本来就不会动**
+    //    （`activeLineIndex` 恒为 -1）。必须把这一点明说，
+    //    而不是让用户以为「歌词坏了」—— 正文照常显示与上下浏览。
+    final bool syncable = lyrics.doc.isSyncable;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (!syncable)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 6),
+            child: Text(
+              '纯文本歌词 · 不支持逐句同步',
+              style: TextStyle(fontSize: 15, color: TvColors.textFaint),
+            ),
+          ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints c) {
+              final double viewport = c.maxHeight;
+              final double pad = ((viewport - _lineExtent) / 2).clamp(
+                0.0,
+                double.infinity,
+              );
+              return ListView.builder(
+                controller: _scroll,
+                itemExtent: _lineExtent,
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.symmetric(vertical: pad),
+                itemCount: lines.length,
+                itemBuilder: (BuildContext context, int i) {
+                  return _LyricLineRow(
+                    text: lines[i].text,
+                    hasAnyText: hasAnyText,
+                    distance: _activeIndex < 0 ? -1 : (i - _activeIndex),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

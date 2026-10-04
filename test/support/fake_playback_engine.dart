@@ -152,8 +152,14 @@ class FakePlaybackEngine implements PlaybackEngine {
   }
 
   /// 手动设置当前位置（用于「播放超过 3 秒则上一首回到开头」这条语义）。
+  ///
+  /// ⚠️ 必须向 [positionStream] 发值：真机上的 just_audio 在 **seek 时会立即
+  /// 发一个进度值**（这正是「seek 后歌词立即跟随」的依据）。
+  /// 假引擎不发值的话，订阅进度流的组件在测试里就永远收不到 seek，
+  /// 与真机行为不一致。
   void setPosition(Duration position) {
     _position = position;
+    _emit();
   }
 
   /// 当前真正在播放的曲目 id（用于断言「界面与实际播放一致」）。

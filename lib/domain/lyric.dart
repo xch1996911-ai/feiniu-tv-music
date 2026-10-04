@@ -63,6 +63,14 @@ class LyricDoc {
   bool get isEmpty => lines.isEmpty;
   bool get isNotEmpty => lines.isNotEmpty;
 
+  /// 是否**真的有可逐句同步的时间轴**。
+  ///
+  /// ⚠️ 「有歌词」与「能同步」是两回事：NAS 的歌词源可能是**纯文本**
+  /// （没有 `[mm:ss]` 标签），解析出来每一行的 `time` 都是 `null` ——
+  /// 这种文档能正常显示与浏览，但 `activeLineIndex()` 永远返回 -1，
+  /// 于是高亮与滚动都不会动（实机「歌词不跟随」的根因之一）。
+  bool get isSyncable => lines.any((LyricLine l) => l.time != null);
+
   /// 判定「一段歌词文本是否真的有内容」。
   ///
   /// ## 为什么必须有这个判定（V5 图5 的根因之一）
@@ -138,27 +146,72 @@ class LyricDoc {
 
     final index = _preferredIndex(json['preferred'], entries);
     final entry = entries[index];
+    // 源级偏移（秒）：官方前端同样会把 `metadata.offset` 与源级 offset 叠加
+    // 进播放时间轴。不叠的话整份歌词会整体偏移（快/慢几秒）。
+    final Duration sourceOffset =
+        _secondsToDuration(entry['offset']) ?? Duration.zero;
 
     final text = jsonStringOrNull(entry['text']);
     if (text != null && _looksLikeLrc(text)) {
       final parsed = parseLrc(text);
       if (parsed.isNotEmpty) {
         return LyricDoc(
-          lines: parsed,
+          // LRC 文本自身的 `[offset:+ms]` 已在 parseLrc 里叠加过；
+          // 源级 offset（秒）在这里统一补上。
+          lines: sourceOffset == Duration.zero
+              ? parsed
+              : parsed
+                  .map((LyricLine l) => l.time == null
+                      ? l
+                      : LyricLine(
+                          text: l.text,
+                          time: l.time! + sourceOffset,
+                          duration: l.duration,
+                          offset: l.offset,
+                        ))
+                  .toList(),
           sourceCount: entries.length,
           preferredIndex: index,
         );
       }
     }
 
-    // 非 LRC 文本：按单条歌词处理（time / duration / offset 单位是秒）。
+    // 非 LRC 文本（纯文本歌词）：**按换行拆成多行**，`time` 全部为 null
+    // —— 它没有逐句时间轴，显示与浏览都正常，只是不参与高亮/滚动
+    //（UI 会显示「纯文本歌词 · 不支持逐句同步」）。
+    //
+    // ⚠️ 旧实现把整段文本塞成**一行**：
+    //    · 多段歌词只显示第一行（或挤成一行）
+    //    · `time` 取的是「这个歌词源的开始时间」，一旦为 null，
+    //      `activeLineIndex()` 永远返回 -1 ⇒ 高亮与滚动都不动
+    //      （实机「歌曲有歌词但不跟随」的根因）。
+    final List<LyricLine> plainLines = (text ?? '')
+        .split(RegExp(r'\r\n|\r|\n'))
+        .map((String l) => l.trim())
+        .where((String l) => l.isNotEmpty)
+        .map((String l) => LyricLine(
+              text: l,
+              time: null,
+              duration: _secondsToDuration(entry['duration']),
+              offset: sourceOffset == Duration.zero ? null : sourceOffset,
+            ))
+        .toList();
+    if (plainLines.isNotEmpty) {
+      return LyricDoc(
+        lines: plainLines,
+        sourceCount: entries.length,
+        preferredIndex: index,
+      );
+    }
+
+    // 兜底：连文本都没有（理论到不了这里，isUsable 已在仓库层过滤）
     return LyricDoc(
       lines: <LyricLine>[
         LyricLine(
           text: text ?? '',
           time: _secondsToDuration(entry['time']),
           duration: _secondsToDuration(entry['duration']),
-          offset: _secondsToDuration(entry['offset']),
+          offset: sourceOffset == Duration.zero ? null : sourceOffset,
         ),
       ],
       sourceCount: entries.length,
@@ -212,9 +265,24 @@ class LyricDoc {
       }
     }
 
-    out.sort((a, b) =>
-        (a.time ?? Duration.zero).compareTo(b.time ?? Duration.zero));
-    return out;
+    // ⚠️ 必须用「下标打破平局」的稳定排序：`List.sort` 不是稳定排序，
+    //    而「同一时刻多句」和「纯文本（全部 time == null）」都依赖
+    //    **保持输入顺序** —— 否则纯文本歌词会被打乱、同刻两句会被调换。
+    final List<int> order = List<int>.generate(out.length, (int i) => i);
+    order.sort((int a, int b) {
+      final Duration ta = out[a].time ?? Duration.zero;
+      final Duration tb = out[b].time ?? Duration.zero;
+      if (ta != tb) return ta.compareTo(tb);
+      return a.compareTo(b);
+    });
+    return <LyricLine>[for (final int i in order) out[i]];
+  }
+
+  /// 便捷构造：直接解析一段 LRC 或纯文本。
+  static LyricDoc parse(String raw) {
+    final List<LyricLine> lines = parseLrc(raw);
+    if (lines.isNotEmpty) return LyricDoc(lines: lines);
+    return LyricDoc(lines: <LyricLine>[LyricLine(text: raw)]);
   }
 
   /// 文本看起来是不是 LRC（含时间标签）。
