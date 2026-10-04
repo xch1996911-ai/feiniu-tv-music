@@ -100,7 +100,12 @@ class LyricDoc {
   /// **比少一次兜底更糟**。
   static int informativeCharCount(String raw) {
     if (raw.isEmpty) return 0;
-    final String stripped = raw.replaceAll(_timeTag, ' ');
+    // ⚠️ **两类**时间标签都要先剥离，否则标签里的数字会被算成「歌词内容」：
+    //    方括号 `[00:09.71]` 与增强型 LRC 的行内尖括号 `<00:09.71>`。
+    //    实测后果：`<00:09.71><00:10.01>` 这类「只剩标签」的内容会被判为
+    //    「有歌词」，从而**阻断在线兜底**（界面上就是一串标签而找不到词）。
+    final String stripped =
+        raw.replaceAll(_timeTag, ' ').replaceAll(_inlineTimeTag, ' ');
     int n = 0;
     for (final int rune in stripped.runes) {
       final String ch = String.fromCharCode(rune);
@@ -129,6 +134,13 @@ class LyricDoc {
   /// 时间标签，形如 `[00:12.34]` / `[0:12]` / `[00:12:345]`。
   static final RegExp _timeTag =
       RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
+
+  /// **增强型 LRC（逐字/卡拉 OK）** 的行内时间标签：`<00:12.34>` / `<0:12>`。
+  ///
+  /// 真实故障（用户截图为证）：歌词区把 `<00:09.71>` `<00:10.01>` 原样显示出来，
+  /// 句子被拆碎。原因就是旧解析器只认方括号，把行内尖括号标签当成了歌词正文。
+  static final RegExp _inlineTimeTag =
+      RegExp(r'<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>');
 
   /// 文档级偏移标签 `[offset:+500]`（毫秒）。
   static final RegExp _offsetTag =
@@ -252,7 +264,20 @@ class LyricDoc {
     );
   }
 
-  /// 解析 LRC 文本为逐行歌词。
+  /// 解析 LRC / 增强型 LRC / 纯文本为逐行歌词。
+  ///
+  /// ## 支持的四种形态（都要保证「正文干净、能同步」）
+  ///
+  /// | 输入 | 行起始时间 | 正文 |
+  /// |---|---|---|
+  /// | `[00:09.71]示例歌词` | 9.71s（方括号） | `示例歌词` |
+  /// | `[00:09.71] 示 <00:09.95> 例` | 9.71s（方括号优先） | `示例`（标签剥离 + 中文间空格清理） |
+  /// | `<00:09.71>示例歌词` | 9.71s（**取首个尖括号**） | `示例歌词` |
+  /// | 无任何标签的纯文本 | null（不参与高亮滚动） | 原文本 |
+  ///
+  /// ⚠️ **不允许**把标签留在正文里显示（用户截图里的 `<00:09.71>` 就是这么来的）；
+  /// 也不允许把一句话按每个字拆成多行 —— 逐字标签只用来**推导行时间**，
+  /// 本轮不实现逐字高亮（那需要独立的逐字时间片段模型）。
   static List<LyricLine> parseLrc(String raw) {
     final out = <LyricLine>[];
     var docOffsetMs = 0;
@@ -268,33 +293,36 @@ class LyricDoc {
       }
 
       final matches = _timeTag.allMatches(line).toList();
-      if (matches.isEmpty) {
-        // 纯元数据标签（`[ar:xxx]` / `[ti:xxx]`）或没有时间轴的裸文本。
+      final inline = _inlineTimeTag.allMatches(line).toList();
+
+      if (matches.isEmpty && inline.isEmpty) {
+        // 纯元数据标签（`[ar:xxx]` / `[ti:xxx]`）或无时间轴的裸文本。
         if (line.startsWith('[') && line.endsWith(']')) continue;
-        out.add(LyricLine(text: line));
+        out.add(LyricLine(text: _cleanText(line)));
         continue;
       }
 
-      final text = line.substring(matches.last.end).trim();
-      for (final m in matches) {
-        final minutes = int.tryParse(m.group(1)!) ?? 0;
-        final seconds = int.tryParse(m.group(2)!) ?? 0;
-        final frac = m.group(3);
-        var millis = 0;
-        if (frac != null && frac.isNotEmpty) {
-          millis = frac.length == 1
-              ? int.parse(frac) * 100
-              : frac.length == 2
-                  ? int.parse(frac) * 10
-                  : int.parse(frac.padRight(3, '0').substring(0, 3));
-        }
+      // 正文 = 去掉所有时间标签后的剩余文本。
+      // 有方括号行标签时以**最后一个**方括号为界（同一行多标签 = 多个时间点）；
+      // 行内尖括号标签由 `_cleanText` 处理（它会区分「标签带来的空格」与正文空格）。
+      String body = line;
+      if (matches.isNotEmpty) {
+        body = body.substring(matches.last.end);
+      }
+      body = _cleanText(body);
+
+      if (matches.isEmpty) {
+        // 只有逐字标签：**取该行第一个尖括号时间作为行起始时间**，
+        // 这样即使没有方括号，逐行高亮与滚动仍然可用（旧实现 time=null → 不动）。
         out.add(LyricLine(
-          text: text,
-          time: Duration(
-            milliseconds:
-                minutes * 60000 + seconds * 1000 + millis + docOffsetMs,
-          ),
+          text: body,
+          time: _timeOf(inline.first, docOffsetMs),
         ));
+        continue;
+      }
+
+      for (final m in matches) {
+        out.add(LyricLine(text: body, time: _timeOf(m, docOffsetMs)));
       }
     }
 
@@ -311,6 +339,132 @@ class LyricDoc {
     return <LyricLine>[for (final int i in order) out[i]];
   }
 
+  /// 从一个时间标签匹配里取出 [Duration]（含文档级 offset）。
+  ///
+  /// 分组语义与 [_timeTag] / [_inlineTimeTag] 共用：1=分、2=秒、3=小数。
+  static Duration _timeOf(RegExpMatch m, int docOffsetMs) {
+    final minutes = int.tryParse(m.group(1)!) ?? 0;
+    final seconds = int.tryParse(m.group(2)!) ?? 0;
+    final frac = m.group(3);
+    var millis = 0;
+    if (frac != null && frac.isNotEmpty) {
+      millis = frac.length == 1
+          ? int.parse(frac) * 100
+          : frac.length == 2
+              ? int.parse(frac) * 10
+              : int.parse(frac.padRight(3, '0').substring(0, 3));
+    }
+    return Duration(
+      milliseconds: minutes * 60000 + seconds * 1000 + millis + docOffsetMs,
+    );
+  }
+
+  /// 正文清理：剥离行内时间标签，**只删掉「标签带来的」空格**，保留真正的正文空格。
+  ///
+  /// ## 为什么不能简单地「删掉所有中文之间的空格」
+  /// 增强型 LRC 剥离 `<00:09.95>` 后会在片段之间留下空格
+  /// （`示 <00:09.95> 例` → 若不处理会显示成「示 例 歌 词」，句子像被拆碎）。
+  /// 但「中文之间本来就有空格」的歌词是合法写法，一刀切会**误删正文**。
+  ///
+  /// ## 采用的规则（可解释、可测）
+  /// 1. 先把每个行内标签替换成一个**哨兵字符** —— 于是「标签带来的空格」
+  ///    与「正文里本来就有的空格」在数据上被区分开；
+  /// 2. 合并连续空白（哨兵不参与合并），去掉首尾空白；
+  /// 3. 对每个哨兵：
+  ///    - 两侧（跳过空白后）都是 CJK 字符 → 删除哨兵**连同紧邻空白**（这些空白是标签造成的）；
+  ///    - 否则 → 退化成**一个普通空格**（英文词间、拉丁文与中文之间需要它）；
+  /// 4. 收尾再合并一次连续空格。
+  ///
+  /// 于是：`示 <..> 例` → `示例`；`Hello <..> world` → `Hello world`；
+  /// `第一段 文字`（正文里就有空格、没有标签）→ 原样保留。
+  static String _cleanText(String raw) {
+    if (raw.isEmpty) return '';
+
+    // ① 行内标签 → 哨兵
+    final StringBuffer buf = StringBuffer();
+    int last = 0;
+    for (final RegExpMatch m in _inlineTimeTag.allMatches(raw)) {
+      buf.write(raw.substring(last, m.start));
+      buf.writeCharCode(_tagMark);
+      last = m.end;
+    }
+    buf.write(raw.substring(last));
+
+    // ② 合并连续空白（哨兵不参与），并去掉首尾空白
+    final List<int> chars = <int>[];
+    for (final int r in buf.toString().runes) {
+      if (r == 0x20 || r == 0x09 || r == 0x3000 || r == 0x00A0) {
+        if (chars.isEmpty) continue; // 前导空白直接丢
+        if (chars.last == 0x20) continue; // 连续空白只留一个
+        chars.add(0x20);
+      } else {
+        chars.add(r);
+      }
+    }
+    while (chars.isNotEmpty && chars.last == 0x20) {
+      chars.removeLast();
+    }
+
+    // ③ 哨兵决策
+    for (int i = 0; i < chars.length; i++) {
+      if (chars[i] != _tagMark) continue;
+      int p = i - 1;
+      while (p >= 0 && (chars[p] == 0x20 || chars[p] == _tagMark)) {
+        p--;
+      }
+      int n = i + 1;
+      while (n < chars.length && (chars[n] == 0x20 || chars[n] == _tagMark)) {
+        n++;
+      }
+      final bool cjkBoth =
+          p >= 0 && n < chars.length && _isCjkLike(chars[p]) && _isCjkLike(chars[n]);
+      if (cjkBoth) {
+        chars[i] = _dropMark;
+        for (int k = i - 1; k >= 0 && chars[k] == 0x20; k--) {
+          chars[k] = _dropMark;
+        }
+        for (int k = i + 1; k < chars.length && chars[k] == 0x20; k++) {
+          chars[k] = _dropMark;
+        }
+      } else {
+        chars[i] = 0x20;
+      }
+    }
+
+    // ④ 收尾：丢掉标记、合并可能相邻的空格
+    final List<int> finalChars = <int>[];
+    for (final int r in chars) {
+      if (r == _dropMark) continue;
+      if (r == 0x20 && finalChars.isNotEmpty && finalChars.last == 0x20) {
+        continue;
+      }
+      finalChars.add(r);
+    }
+    while (finalChars.isNotEmpty && finalChars.last == 0x20) {
+      finalChars.removeLast();
+    }
+    return String.fromCharCodes(finalChars);
+  }
+
+  /// 行内标签的哨兵字符（Unicode 私用区，歌词正文不可能出现）。
+  static const int _tagMark = 0xE000;
+
+  /// 待删除标记。
+  static const int _dropMark = 0xE001;
+
+  /// 是否 CJK 系字符（汉字 / 假名 / 谚文 / CJK 标点 / 全角符号）。
+  ///
+  /// 刻意**不**包含 ASCII 标点与拉丁字母：那些之间的空格是有效内容。
+  static bool _isCjkLike(int rune) {
+    return (rune >= 0x3000 && rune <= 0x303F) || // CJK 标点
+        (rune >= 0x3040 && rune <= 0x30FF) || // 假名
+        (rune >= 0x3400 && rune <= 0x4DBF) || // 扩展 A
+        (rune >= 0x4E00 && rune <= 0x9FFF) || // 基本区
+        (rune >= 0xAC00 && rune <= 0xD7AF) || // 谚文
+        (rune >= 0xF900 && rune <= 0xFAFF) || // 兼容汉字
+        (rune >= 0xFF00 && rune <= 0xFFEF); // 全角形式
+  }
+
   /// 便捷构造：直接解析一段 LRC 或纯文本。
   static LyricDoc parse(String raw) {
     final List<LyricLine> lines = parseLrc(raw);
@@ -318,8 +472,13 @@ class LyricDoc {
     return LyricDoc(lines: <LyricLine>[LyricLine(text: raw)]);
   }
 
-  /// 文本看起来是不是 LRC（含时间标签）。
-  static bool _looksLikeLrc(String text) => _timeTag.hasMatch(text);
+  /// 文本看起来是不是 LRC（含**任一种**时间标签）。
+  ///
+  /// ⚠️ 必须同时认增强型 `<mm:ss.xx>`：只认方括号时，
+  /// 「全篇只有尖括号标签」的歌词会被当成纯文本（time 全为 null），
+  /// 于是高亮与滚动完全不动 —— 用户看到的是「歌词有，但不跟着唱」。
+  static bool _looksLikeLrc(String text) =>
+      _timeTag.hasMatch(text) || _inlineTimeTag.hasMatch(text);
 
   /// 秒（可能带小数）→ [Duration]。
   static Duration? _secondsToDuration(dynamic v) {

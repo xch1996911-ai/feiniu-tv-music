@@ -106,7 +106,31 @@ class FakePlaybackEngine implements PlaybackEngine {
     currentItem = item;
     playing = true;
     _position = Duration.zero;
+    // ⚠️ 本方法**只代表「换源完成」**，绝不等整首歌播完 ——
+    //    真实 `PlaybackHandler.loadAndPlay` 亦然（见 `PlaybackLauncher`）。
+    //    [playbackSessions] 记录「仍在挂着的播放会话」，
+    //    用于断言「切歌不依赖上一首的播放生命周期」。
+    playbackSessions.add(item.id);
     _emit();
+  }
+
+  /// 仍未结束的「播放会话」（真实 just_audio 的 `play()` Future 只在
+  /// **播放结束 / 暂停 / 停止**时完成）。
+  ///
+  /// ## 为什么要在假引擎里显式建模它
+  /// 旧引擎写成 `await _player.play()`，于是 A 的播放会话未结束时，
+  /// B 的 `setAudioSource` 会被串行链挡在后面 —— 表现就是
+  /// 「界面是 B、耳朵里还是 A」。测试必须能表达「A 的会话还挂着的**同时**
+  /// 已经换到了 B」，否则这条回归永远测不出来。
+  final Set<String> playbackSessions = <String>{};
+
+  /// 模拟「播放期间」的异常（网络中断 / 解码失败）。
+  ///
+  /// 真实链路：`PlaybackHandler` 里那个**不被 await** 的 `play()` Future
+  /// 失败 → `PlaybackLauncher` 的错误通道 → `PlaybackCommandListener.onPlaybackError`
+  /// → 仓储置错误态（界面可见）。这里直接走最后一步，验证界面可见性。
+  void simulatePlaybackError(Object error) {
+    _listener?.onPlaybackError(error, StackTrace.current);
   }
 
   @override
@@ -120,6 +144,8 @@ class FakePlaybackEngine implements PlaybackEngine {
   Future<void> pause() async {
     pauseCalls++;
     playing = false;
+    // 暂停会结束当前播放会话（just_audio 语义）。
+    playbackSessions.clear();
     _emit();
   }
 
@@ -144,6 +170,7 @@ class FakePlaybackEngine implements PlaybackEngine {
   Future<void> stop() async {
     stopCalls++;
     playing = false;
+    playbackSessions.clear();
     _emit();
   }
 
@@ -162,6 +189,7 @@ class FakePlaybackEngine implements PlaybackEngine {
   /// 模拟当前曲目**自然播放结束**（对应真实引擎 completed 状态的边沿）。
   Future<void> simulateTrackCompleted() async {
     playing = false;
+    playbackSessions.clear(); // 播完 = 会话结束
     _position = _duration;
     _emit();
     await _listener?.onTrackCompleted();

@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../core/log.dart';
+import 'play_launcher.dart';
 import 'playback_port.dart';
 
 /// 播放引擎：封装 just_audio（ExoPlayer / AVPlayer，系统解码优先）并桥接 MediaSession。
@@ -61,6 +62,24 @@ class PlaybackHandler extends BaseAudioHandler with SeekHandler implements Playb
   Stream<void> get stateChanges => _stateChanges.stream;
 
   /// 加载并播放一首歌。headers 携带认证（如 Cookie: music-token）。
+  ///
+  /// ## ⚠️ 绝不可改回 `await _player.play()`（V6 事故根因）
+  ///
+  /// `just_audio` 的 `play()` Future **不是在播放开始时完成**，而是在
+  /// **播放结束 / 被暂停 / 被停止**时才完成。而 `PlaybackRepository` 的加载链是
+  /// 串行的（`_loadChain.then(_load)`）—— 一旦这里 `await`，就会变成：
+  ///
+  ///     A 正在播放时点 B ⇒ B 的 setAudioSource 排在 A 的 play() 后面
+  ///     ⇒ A 播完/被暂停之前根本不会换源
+  ///     ⇒ 但仓储里「当前曲目」已经是 B
+  ///     ⇒ 实机表现：「界面/歌词都是 B，耳朵里还是 A」
+  ///
+  /// 正确做法：**只等待 setAudioSource（换源）完成**，然后经 [PlaybackLauncher]
+  /// 触发播放并立即返回。串行链因此只串行化「换源」这一关键阶段，
+  /// 不会被任何一首歌的播放生命周期占住。
+  ///
+  /// 播放期间的异常不吞：交给 [PlaybackLauncher] 的错误通道，
+  /// 由仓储转成界面可见的提示（见 [PlaybackCommandListener.onPlaybackError]）。
   @override
   Future<void> loadAndPlay({
     required String url,
@@ -73,15 +92,55 @@ class PlaybackHandler extends BaseAudioHandler with SeekHandler implements Playb
         AudioSource.uri(Uri.parse(url), headers: headers),
         preload: true,
       );
-      await _player.play();
     } catch (e, st) {
       Log.e('播放失败 url=$url', e, st);
       rethrow;
     }
+    _playingGuid = item.id;
+    Log.i('PLAY_SOURCE_SET guid=${item.id}（换源完成，播放命令不等待生命周期）');
+    _launcher.launch(
+      () => _player.play(),
+      onError: (Object e, StackTrace st) {
+        Log.e('PLAY_ERROR 播放期间异常 guid=${item.id}', e, st);
+        _listener?.onPlaybackError(e, st);
+      },
+      // 只有「当前音源仍是这首」时错误才有意义：
+      // 用户已经点了别的歌，就不该再报上一首的错。
+      isCurrent: () => _playingGuid == item.id,
+    );
   }
 
+  /// 当前已换源的曲目 id（[isCurrent] 判据）。
+  String? _playingGuid;
+
+  /// 启动/播放期间的错误通道（见 [PlaybackLauncher]）。
+  final PlaybackLauncher _launcher = PlaybackLauncher();
+
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() {
+    _startPlay();
+    // ⚠️ 立即返回：不能把「整首播完」的 Future 交给调用方（仓储会 await 它）。
+    return Future<void>.value();
+  }
+
+  /// 显式「播放」命令（暂停后恢复 / 重试）。
+  ///
+  /// ⚠️ 同样**不能直通 `await _player.play()`**：仓储的 `play()` / `togglePlay()`
+  /// 会 `await` 本方法，一旦等待「整首播完」，按钮回调就永远不返回
+  /// （旧实现在暂停后按播放，Future 会一直挂到这首放完）。
+  /// 这里改成「触发 + 独立错误通道 + 立即返回」，
+  /// 播放态由 `playbackEventStream` 正常刷新。
+  void _startPlay() {
+    final String? guid = _playingGuid;
+    _launcher.launch(
+      () => _player.play(),
+      onError: (Object e, StackTrace st) {
+        Log.e('PLAY_ERROR 播放期间异常（play 命令）guid=${guid ?? '-'}', e, st);
+        _listener?.onPlaybackError(e, st);
+      },
+      isCurrent: () => guid == null || _playingGuid == guid,
+    );
+  }
 
   @override
   Future<void> pause() => _player.pause();
@@ -90,10 +149,17 @@ class PlaybackHandler extends BaseAudioHandler with SeekHandler implements Playb
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
-  Future<void> stop() => _player.stop();
+  Future<void> stop() {
+    // 作废当前播放会话：之后迟到的播放期异常不再上报给队列层。
+    _launcher.invalidate();
+    _playingGuid = null;
+    return _player.stop();
+  }
 
   @override
   Future<void> stopSession() async {
+    _launcher.invalidate();
+    _playingGuid = null;
     await _player.stop();
     // ⚠️ 必须显式广播 idle：audio_service 0.18 的 `BaseAudioHandler.stop()`
     //    默认是空操作，前台服务进入 `stopped` 状态由「processingState == idle」

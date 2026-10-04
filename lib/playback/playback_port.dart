@@ -71,4 +71,15 @@ abstract class PlaybackCommandListener {
 
   /// MediaSession 的「上一曲」。
   Future<void> onSkipToPrevious();
+
+  /// **播放期间**（已成功换源之后）发生的异常：网络中断、解码失败等。
+  ///
+  /// 为什么必须有这条通道：`play()` 的 Future 只会「在播放结束/暂停/停止时完成」，
+  /// 它的失败**不会被任何 `await` 接住**（调用方早就返回了）。
+  /// 不显式上报的话，这类错误就是**静默丢弃** ——
+  /// 用户看到进度条在走、却没有声音，页面上没有任何提示。
+  ///
+  /// ⚠️ 语义与「换源失败」不同：这时音源**已经是新歌**了，
+  /// 因此只做「提示 + 标记失败（按播放可重试）」，不自动跳歌。
+  void onPlaybackError(Object error, StackTrace? stackTrace);
 }

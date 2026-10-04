@@ -185,6 +185,14 @@ class PlaybackSnapshot {
   /// 而不是让用户按了没反应（需求「用户没有上一首记录时，显示无操作」）。
   final bool hasPrevious;
 
+  /// 是否正在「换源」中：新歌已被选中（[currentSong] 已是它），
+  /// 但音频源尚未就绪。
+  ///
+  /// 这段窗口**无法彻底消除**（换源本身是异步的），但必须对用户可见：
+  /// 否则「界面已经切了、声音还是上一首」会被理解成「点了没生效/App 坏了」。
+  /// UI 据此显示「正在切换音源…」。
+  final bool isSwitchingSource;
+
   const PlaybackSnapshot({
     required this.source,
     required this.sourceLabel,
@@ -197,6 +205,7 @@ class PlaybackSnapshot {
     required this.mode,
     this.error,
     this.hasPrevious = false,
+    this.isSwitchingSource = false,
   });
 
   static const PlaybackSnapshot empty = PlaybackSnapshot(

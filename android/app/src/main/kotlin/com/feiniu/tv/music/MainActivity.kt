@@ -171,11 +171,97 @@ class MainActivity : AudioServiceActivity() {
                         result.success(null)
                         finishAndRemoveTask()
                     }
+                    // ── 系统软键盘（小米电视 S Pro 2025 登录故障修复）──────
+                    //
+                    // 现象：登录页能选中输入框，按 OK 系统键盘不弹 ⇒ 完全无法输入。
+                    // 键盘弹不弹取决于 ROM 的 IME，Flutter 自己的
+                    // `TextInputPlugin.show()` 在部分电视 ROM 上调用时机不对（焦点尚未稳定）。
+                    // 这里提供「焦点稳定后再显式唤一次」的能力，Dart 侧在字段获得焦点后调用；
+                    // 若仍失败，Dart 侧会自动改用**应用内遥控器键盘**（不依赖 IME）。
+                    //
+                    // ⚠️ 只操作输入法，不涉及任何凭据：IME 信息里只有包名（非敏感）。
+                    "showSoftKeyboard" -> result.success(showSoftKeyboard())
+                    "hideSoftKeyboard" -> result.success(hideSoftKeyboard())
+                    "imeInfo" -> result.success(imeInfo())
                     else -> result.notImplemented()
                 }
             }
 
         BootTrace.note(this, "MethodChannel($CHANNEL) 注册完成")
+    }
+
+    // ── 软键盘 / 输入法 ─────────────────────────────────────────────────
+
+    private fun imm(): android.view.inputmethod.InputMethodManager? =
+        getSystemService(Context.INPUT_METHOD_SERVICE)
+            as? android.view.inputmethod.InputMethodManager
+
+    /**
+     * 找到真正持有输入连接的 View（FlutterView）。
+     *
+     * 不能用 `flutterEngine` 直接拿：FlutterActivity 没有公开暴露它的 FlutterView。
+     * 这里从 decorView 广度优先找类名含 "FlutterView" 的子 View，
+     * 找不到就退回 decorView（多数 ROM 上 showSoftInput(decorView) 也能生效）。
+     */
+    private fun findInputTargetView(): android.view.View {
+        val root = window.decorView
+        val queue = ArrayDeque<android.view.View>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val v = queue.removeFirst()
+            if (v.javaClass.name.contains("FlutterView")) return v
+            if (v is android.view.ViewGroup) {
+                for (i in 0 until v.childCount) queue.add(v.getChildAt(i))
+            }
+        }
+        return root
+    }
+
+    private fun showSoftKeyboard(): Boolean {
+        val manager = imm() ?: return false
+        return try {
+            val target = findInputTargetView()
+            target.requestFocus()
+            val ok = manager.showSoftInput(target, 0)
+            BootTrace.note(this, "[dart] showSoftKeyboard -> $ok")
+            ok
+        } catch (e: Throwable) {
+            BootTrace.note(this, "[dart] showSoftKeyboard 异常（已忽略）：$e")
+            false
+        }
+    }
+
+    private fun hideSoftKeyboard(): Boolean {
+        val manager = imm() ?: return false
+        return try {
+            manager.hideSoftInputFromWindow(window.decorView.windowToken, 0)
+            true
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * 输入法可用性摘要（**非敏感**）：可用输入法数量 + 默认输入法包名。
+     *
+     * 用途：电视上没有 adb，屏幕上/诊断页里能直接读到「这台电视到底有没有输入法」，
+     * 而不是靠猜。Android 11+ 的包可见性要求清单里声明
+     * `<queries><intent><action android:name="android.view.InputMethod"/>`（见 Manifest）。
+     */
+    private fun imeInfo(): String = try {
+        val manager = imm()
+        if (manager == null) {
+            "系统输入法：无法访问 InputMethodManager"
+        } else {
+            val enabled = manager.enabledInputMethodList
+            val current = android.provider.Settings.Secure.getString(
+                contentResolver,
+                android.provider.Settings.Secure.DEFAULT_INPUT_METHOD,
+            )
+            "系统输入法：可用 ${enabled.size} 个 · 默认 ${current ?: "未设置"}"
+        }
+    } catch (e: Throwable) {
+        "系统输入法：查询失败（$e）"
     }
 
     // ── 启动计数（自动安全模式的依据） ────────────────────────────────────

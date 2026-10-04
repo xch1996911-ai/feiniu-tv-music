@@ -114,5 +114,13 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 输入法可见性（Android 11+ 包可见性）：
+             登录页要用 InputMethodManager.getEnabledInputMethodList() 读出
+             「这台电视到底有没有可用输入法」，把结论显示在屏幕上（电视没有 adb）。
+             不声明 queries 时该调用返回空列表，会把「有输入法但被过滤」误判成「没有输入法」。
+             ⚠️ 只查询输入法能力，不涉及任何凭据。 -->
+        <intent>
+            <action android:name="android.view.InputMethod"/>
+        </intent>
     </queries>
 </manifest>

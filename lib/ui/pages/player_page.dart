@@ -1498,16 +1498,34 @@ class _ErrorLine extends StatelessWidget {
     final String? error = context.select<PlaybackRepository, String?>(
       (PlaybackRepository p) => p.state.error,
     );
-    if (error == null || error.isEmpty) return const SizedBox.shrink();
-    return Text(
-      error,
-      maxLines: 2,
+    if (error != null && error.isNotEmpty) {
+      return Text(
+        error,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 14,
+          height: 1.2,
+          color: Color(0xFFFF8A8F),
+        ),
+      );
+    }
+    // 换源中：新歌已选中、音频还没就绪。必须**显式**告诉用户，
+    // 否则「界面切了、声音还是上一首」会被理解成「点了没生效」。
+    final bool switching = context.select<PlaybackRepository, bool>(
+      (PlaybackRepository p) => p.isSwitchingSource,
+    );
+    if (!switching) return const SizedBox.shrink();
+    return const Text(
+      '正在切换音源…',
+      maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         height: 1.2,
-        color: Color(0xFFFF8A8F),
+        color: Color(0xB3FFFFFF),
       ),
     );
   }

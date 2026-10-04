@@ -395,6 +395,7 @@ class PlaybackRepository extends ChangeNotifier
         mode: _mode,
         error: _lastError,
         hasPrevious: hasPrevious,
+        isSwitchingSource: _switchingSource,
       );
 
   static String sourceLabelOf(QueueSource s) => switch (s) {
@@ -469,6 +470,7 @@ class PlaybackRepository extends ChangeNotifier
       Log.e('QUEUE_SET_FAIL 建立队列/起播失败（已兜住，不静默）', e, st);
       Diagnostics.note('最近播放失败', '建立队列异常 ${e.runtimeType}: $e');
       _lastError = '无法播放这首歌曲（登录状态或音源不可用）';
+      _switchingSource = false;
       // 关键：保留旧音源=最坏结果 → 显式压掉。
       unawaited(_pauseQuietly());
       _safeNotify();
@@ -833,6 +835,7 @@ class PlaybackRepository extends ChangeNotifier
       Log.e('PLAY_ERROR 起播失败（登录态或音源不可用）', e, st);
       Diagnostics.note('最近播放失败', '起播异常 ${e.runtimeType}: $e');
       _loadFailed = true;
+      _switchingSource = false;
       _lastError = '无法播放这首歌曲（登录状态或音源不可用）';
       unawaited(_pauseQuietly());
       _safeNotify();
@@ -847,6 +850,7 @@ class PlaybackRepository extends ChangeNotifier
       //    用户听到的就是「点了新歌，声音还是旧的」。显式压掉旧音源并报错。
       Log.w('PLAY_SKIP 无当前曲目（index=$_index），压掉旧音源并提示');
       _lastError = '这首歌曲无法播放';
+      _switchingSource = false;
       unawaited(_pauseQuietly());
       _safeNotify();
       return;
@@ -915,6 +919,14 @@ class PlaybackRepository extends ChangeNotifier
   }
 
   /// 真正下发一次播放请求。**只在串行链上被调用**，因此无需担心并发交错。
+  ///
+  /// ## 串行链的边界（V6 修正，别再改回去）
+  ///
+  /// 这条链**只串行化「设置/替换音源」这一关键阶段**：
+  /// `_handler.loadAndPlay()` 在换源完成后立刻返回，
+  /// **绝不等待整首歌的播放生命周期**（见 `PlaybackLauncher` 的类注释）。
+  /// 否则「A 正在播放时点 B」会被 A 的未完成 play() 挡在链后，
+  /// 表现为「界面已经是 B、耳朵里还是 A」。
   Future<void> _load(
     int gen,
     String url,
@@ -925,6 +937,10 @@ class PlaybackRepository extends ChangeNotifier
       Log.i('STALE_PLAY_REQUEST_IGNORED gen=$gen 已过期（当前 gen=$_generation），不下发');
       return;
     }
+    // 供界面显示「正在切换音源…」：让「界面已切、声音还没跟上」这段
+    // 不可避免的窗口对用户**可见**，而不是让人怀疑「点了没生效」。
+    _switchingSource = true;
+    _safeNotify();
     try {
       await _handler.loadAndPlay(url: url, headers: headers, item: item);
     } catch (e, st) {
@@ -932,6 +948,7 @@ class PlaybackRepository extends ChangeNotifier
         Log.i('STALE_PLAY_REQUEST_IGNORED gen=$gen 失败已过期，忽略错误');
         return;
       }
+      _switchingSource = false;
       Log.e('PLAY_ERROR gen=$gen guid=${item.id}', e, st);
       Diagnostics.note('最近播放失败', 'guid=${item.id} · ${e.runtimeType}: $e');
       _loadFailed = true;
@@ -954,12 +971,20 @@ class PlaybackRepository extends ChangeNotifier
       Log.i('STALE_PLAY_REQUEST_IGNORED gen=$gen 加载完成但已过期（当前 gen=$_generation）');
       return;
     }
-    Log.i('PLAY_START gen=$gen guid=${item.id}');
+    _switchingSource = false;
+    Log.i('PLAY_START gen=$gen guid=${item.id}（换源完成，播放已触发）');
     _consecutiveFailures = 0;
     _loadFailed = false;
     _lastError = null;
     _safeNotify();
   }
+
+  /// 是否正在「换源」中（已选中新歌、音频尚未就绪）。
+  ///
+  /// UI 用它显示「正在切换音源…」，把「界面已切、声音未跟上」这段窗口
+  /// 明确告知用户；[PlaybackSnapshot.isSwitchingSource] 同步暴露。
+  bool get isSwitchingSource => _switchingSource;
+  bool _switchingSource = false;
 
   /// 加载失败后自动跳到下一首，带**次数上限**防死循环。
   Future<void> _handleLoadFailure() async {
@@ -1224,6 +1249,25 @@ class PlaybackRepository extends ChangeNotifier
 
   @override
   Future<void> onSkipToPrevious() => previous(via: 'media_previous');
+
+  /// **播放期间**的异常（网络中断 / 解码失败）→ 提示 + 标记可重试。
+  ///
+  /// 为什么需要单独一条通道：`play()` 的 Future 只在「播放结束/暂停/停止」时完成，
+  /// 它**不能**被 `await` 接住（谁 await 谁被整首歌挡住），
+  /// 因此它的失败必须是显式回调，否则就是静默丢弃 ——
+  /// 用户看到进度在走却没有声音，界面上毫无提示。
+  ///
+  /// ⚠️ 这里**不自动跳歌**：与「换源失败」不同，此时音源已经是新歌，
+  /// 中途失败更可能是网络抖动；用户按播放即可重试（[_loadFailed] 已置位）。
+  @override
+  void onPlaybackError(Object error, StackTrace? stackTrace) {
+    Log.e('PLAY_ERROR 播放期间异常（已上报界面）', error, stackTrace);
+    Diagnostics.note(
+        '最近播放失败', '播放期间异常 ${error.runtimeType}: $error');
+    _loadFailed = true;
+    _lastError = '播放中断（${error.runtimeType}），按播放可重试';
+    _safeNotify();
+  }
 
   /// 当前曲目自然播放结束 → 按播放模式推进**一次**。
   ///
