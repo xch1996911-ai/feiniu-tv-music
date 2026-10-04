@@ -1,5 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • Unnecessary braces in a string interpolation. Try removing the braces • test/player_layout_test.dart:243:54 • unnecessary_brace_in_string_interps
-
-1 issue found. (ran in 10.1s)
+No issues found! (ran in 10.3s)
