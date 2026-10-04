@@ -60,7 +60,7 @@ void main() {
 
   /// 故意用**长标题 + 长歌手 + 长专辑 + 长规格串**：
   /// 两行标题是最坏情况，短标题测不出问题。
-  Track longTrack() => Track(
+  Track longTrack() => const Track(
         guid: 'g1',
         title: '这是一个故意写得很长的歌曲标题用来强制折成两行',
         durationMs: 245000,

@@ -796,11 +796,10 @@ class _SeekRowState extends State<_SeekRow> {
       onArrowRight: () => _seekBy(1),
       onPressed: () => unawaited(p.togglePlay()),
       nextUp: widget.upNode,
-      nextDown: widget.downNode,
-      // 进度区是**最下一层**：↓ 指回自己 = 「原地不动」。
-      // 显式写成自己而不是留空，是为了避免框架的方向遍历把焦点
-      // 甩到某个不可预期的节点上（那正是「按 ↓ 焦点就不见了」的来源）。
-      nextDown: widget.playbackNode,
+      // ↓ 去最底部操作条的播放/暂停按钮；没有就指回自己（原地不动）。
+      // ⚠️ 指回自己而不是留空：留空时框架的方向遍历可能把焦点甩到
+      // 不可预期的节点上（那正是「按 ↓ 焦点就不见了」的来源）。
+      nextDown: widget.downNode ?? widget.playbackNode,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
         radius: 14,
@@ -928,7 +927,8 @@ class _RoundControl extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
-    required this.nextDown,
+    this.nextDown,
+    this.nextUp,
     this.iconColor,
     this.large = false,
     this.compact = false,
@@ -945,7 +945,12 @@ class _RoundControl extends StatelessWidget {
   final Color? iconColor;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  final FocusNode nextDown;
+  /// ↓ 的去处。**重排之后操作条已在最底部**，所以通常不需要它 ——
+  /// 保留可空是为了让「按钮位置变了但方向键没跟着改」这类问题不再出现。
+  final FocusNode? nextDown;
+
+  /// ↑ 的去处（进度区）。
+  final FocusNode? nextUp;
   final bool large;
 
   /// 略小的圆形（返回 / 收藏这类次要动作）。
@@ -964,6 +969,7 @@ class _RoundControl extends StatelessWidget {
         nextLeft: nextLeft,
         nextRight: nextRight,
         nextDown: nextDown,
+        nextUp: nextUp,
         builder: (BuildContext context, TvFocusStatus s) => SizedBox(
           width: box,
           height: box,
@@ -997,7 +1003,8 @@ class _PillControl extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
-    required this.nextDown,
+    this.nextDown,
+    this.nextUp,
   });
 
   final FocusNode node;
@@ -1008,7 +1015,12 @@ class _PillControl extends StatelessWidget {
   final VoidCallback onPressed;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  final FocusNode nextDown;
+  /// ↓ 的去处。**重排之后操作条已在最底部**，所以通常不需要它 ——
+  /// 保留可空是为了让「按钮位置变了但方向键没跟着改」这类问题不再出现。
+  final FocusNode? nextDown;
+
+  /// ↑ 的去处（进度区）。
+  final FocusNode? nextUp;
 
   @override
   Widget build(BuildContext context) {
@@ -1021,6 +1033,7 @@ class _PillControl extends StatelessWidget {
         nextLeft: nextLeft,
         nextRight: nextRight,
         nextDown: nextDown,
+        nextUp: nextUp,
         builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
           status: s,
           radius: 24,
