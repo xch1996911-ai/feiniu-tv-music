@@ -262,6 +262,20 @@ void main() {
       await tester.pump();
     }
 
+    /// 读取当前 `PopScope.canPop`。
+    ///
+    /// ⚠️ **不要写 `find.byType(PopScope<Object?>)`**：`PopScope<T>` 的 T 由
+    /// `onPopInvokedWithResult` 的第二个参数推断，实际实例是 `PopScope<Object>`
+    /// （不是 `Object?`）；而 `find.byType` 是 `runtimeType` **精确匹配**，
+    /// 泛型参数不一致就找不到 —— CI 上就是这么报 `Bad state: No element` 的。
+    /// 这里改用类型谓词（不带类型参数）匹配。
+    bool popCanPop(WidgetTester tester) {
+      final PopScope<dynamic> pop = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((Widget w) => w is PopScope),
+      );
+      return pop.canPop;
+    }
+
     testWidgets('等待系统键盘超时 → 自动打开遥控器键盘（并给出说明文案）',
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
@@ -287,9 +301,7 @@ void main() {
       await waitForFallback(tester);
 
       expect(find.byType(TvKeyboard), findsOneWidget);
-      final PopScope<Object?> pop =
-          tester.widget<PopScope<Object?>>(find.byType(PopScope<Object?>));
-      expect(pop.canPop, isFalse, reason: '键盘打开时返回键必须先关掉键盘');
+      expect(popCanPop(tester), isFalse, reason: '键盘打开时返回键必须先关掉键盘');
 
       await tearDownTree(tester);
     });
@@ -312,9 +324,7 @@ void main() {
       expect(focusedLabel(), 'login.host',
           reason: '关闭键盘后焦点必须回到正在编辑的字段，而不是掉到 FocusScope');
 
-      final PopScope<Object?> pop =
-          tester.widget<PopScope<Object?>>(find.byType(PopScope<Object?>));
-      expect(pop.canPop, isTrue, reason: '键盘已关，返回键回到正常的页面返回逻辑');
+      expect(popCanPop(tester), isTrue, reason: '键盘已关，返回键回到正常的页面返回逻辑');
 
       // 远超探测时长：不允许自己弹回来（否则用户会觉得「关不掉」）
       await tester.pump(LoginPage.imeProbeDelay + const Duration(seconds: 2));
