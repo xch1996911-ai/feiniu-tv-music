@@ -237,6 +237,13 @@ class _LyricViewState extends State<LyricView> {
                 itemExtent: _lineExtent,
                 physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.symmetric(vertical: pad),
+                // ⚠️ 必须显式给 cacheExtent：测试绑定下默认缓存视口为 0，
+                //    「视口外的活动行」根本不会被构建 —— CI 里
+                //    「seek 到 45s 后第五句高亮」的断言拿到的行数是 0
+    //        （真机默认 250 也只有约 4 行余量，快速 seek 跨多行时同样抖）。
+    //        歌词列表行数有限（通常 <100 行），多预构建几行换来的是
+    //        高亮跳行时不再出现「先空白再闪现」。
+                cacheExtent: 600,
                 itemCount: lines.length,
                 itemBuilder: (BuildContext context, int i) {
                   return _LyricLineRow(
