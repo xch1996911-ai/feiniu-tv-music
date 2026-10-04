@@ -1,5 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/lyric_view.dart:248:36 • prefer_const_constructors
-
-1 issue found. (ran in 9.4s)
+No issues found! (ran in 9.5s)
