@@ -1,22 +1,9 @@
 Analyzing feiniu-tv-music...                                    
 
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:519:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:530:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:533:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:546:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:549:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:568:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:571:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:592:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:596:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:611:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:614:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:628:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:631:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:644:11 • undefined_named_parameter
-  error • The named parameter 'nextDown' is required, but there's no corresponding argument. Try adding the required argument • lib/ui/pages/player_page.dart:648:9 • missing_required_argument
-  error • The named parameter 'nextUp' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'nextUp' • lib/ui/pages/player_page.dart:659:11 • undefined_named_parameter
-  error • The argument for the named parameter 'nextDown' was already specified. Try removing one of the named arguments, or correcting one of the names to reference a different named parameter • lib/ui/pages/player_page.dart:803:7 • duplicate_named_argument
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • test/player_layout_test.dart:63:24 • prefer_const_constructors
+warning • A value for optional parameter 'nextDown' isn't ever given. Try removing the unused parameter • lib/ui/pages/player_page.dart:930:10 • unused_element_parameter
+warning • A value for optional parameter 'nextDown' isn't ever given. Try removing the unused parameter • lib/ui/pages/player_page.dart:1006:10 • unused_element_parameter
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:67:16 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:68:18 • unnecessary_const
+   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:71:20 • unnecessary_const
 
-18 issues found. (ran in 8.0s)
+5 issues found. (ran in 10.2s)
