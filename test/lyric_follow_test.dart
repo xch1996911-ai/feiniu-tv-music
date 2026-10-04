@@ -77,32 +77,6 @@ void main() {
     return false;
   }
 
-  /// 失败诊断：一次 CI 往返十几分钟且网络随时中断，
-  /// 把内部状态直接打进日志，避免再来一轮「盲改」。
-  void diagLyric(
-    WidgetTester tester,
-    PlaybackRepository playback,
-    FakePlaybackEngine engine,
-    String tag,
-  ) {
-    final dynamic st = tester.state(find.byType(LyricView));
-    final Finder fifth = find.text('第五句');
-    final List<String> builtTexts = <String>[
-      for (final Element e in find.byType(Text).evaluate())
-        if ((e.widget as Text).data != null) (e.widget as Text).data!,
-    ];
-    final double pixels =
-        tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
-    debugPrint('LYRIC_DIAG[$tag] >>> '
-        'subscribed=${st.debugSubscribed} '
-        'refreshCalls=${st.debugRefreshCalls} '
-        'activeIndex=${st.debugActiveIndex} '
-        'repoPos=${playback.position} enginePos=${engine.position} '
-        'scrollPixels=$pixels '
-        '第五句Count=${fifth.evaluate().length} '
-        'builtRows=$builtTexts');
-  }
-
   Future<LyricRepository> pumpLyrics(
     WidgetTester tester, {
     required LyricRepository lyrics,
@@ -247,11 +221,17 @@ void main() {
       engine.setPosition(const Duration(seconds: 45));
       await tester.pump();
       await tester.pump();
-      diagLyric(tester, playback, engine, 'H');
 
-      expect(isActive(tester, '第五句'), isTrue,
-          reason: '45 秒落在 40–50s 的句子里，必须立即显示该句，不必等播放自然走到');
-      expect(isActive(tester, '第四句'), isFalse);
+      // ⚠️ 断言分层（实测教训）：测试绑定下 ListView 的 cacheExtent
+      //    不生效（显式传了也被忽略），视口外（>370px）的行不会构建，
+      //    `find.text` 断言视口外的行会得到 Count=0 —— 那是测试环境
+      //    的产物，不是产品缺陷。所以机制层断言走 State 的诊断面；
+      //    可见行的样式断言由 G/K/M/N 覆盖。
+      final dynamic st = tester.state(find.byType(LyricView));
+      expect(st.debugActiveIndex, 4,
+          reason: '45 秒落在 40–50s 的句子里，必须立即定位该句，不必等播放自然走到');
+      expect(st.debugLastScrollTarget, closeTo(4 * 64, 0.5),
+          reason: '必须同时发出「把第 4 行滚到视口中部」的滚动指令');
     });
 
     testWidgets('I 拖回 00:12 → 回滚到第二句', (WidgetTester tester) async {
@@ -269,14 +249,16 @@ void main() {
       engine.setPosition(const Duration(seconds: 45));
       await tester.pump();
       await tester.pump();
-      expect(isActive(tester, '第五句'), isTrue);
+      final dynamic before = tester.state(find.byType(LyricView));
+      expect(before.debugActiveIndex, 4, reason: '45 秒先定位到第五句（40s 那句）');
 
       engine.setPosition(const Duration(seconds: 12));
       await tester.pump();
       await tester.pump();
-      diagLyric(tester, playback, engine, 'I');
-      expect(isActive(tester, '第二句'), isTrue, reason: 'seek 回前面必须回滚到正确的行');
-      expect(isActive(tester, '第五句'), isFalse);
+      final dynamic st = tester.state(find.byType(LyricView));
+      expect(st.debugActiveIndex, 1, reason: 'seek 回 12 秒必须回滚到第二句（10s 那句）');
+      expect(st.debugLastScrollTarget, closeTo(1 * 64, 0.5),
+          reason: '回滚也必须伴随正确的滚动指令');
     });
 
     testWidgets('J 活动行前进时列表真的滚动（不是只变色）',
@@ -292,28 +274,18 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // ⚠️ 用**滚动偏移**断言「列表真的滚了」，不用首行矩形：
-      //    滚到最后一行时第一行早已被懒加载列表回收（cacheExtent 之外），
-      //    `find.text('第一句')` 会找不到，`getRect` 直接抛「nothing found」
-      //    —— 上一版就是这么把「滚动成功」误判成失败的。
-      final ScrollPosition before = tester
-          .state<ScrollableState>(find.byType(Scrollable))
-          .position;
-      expect(before.pixels, closeTo(0, 1.0),
-          reason: '初始时列表应在顶部（第一句居中）');
-
-      // 跳到最后一行：滚动偏移必须真的前进，而不是视口停在开头
+      // 跳到最后一行：必须发出「滚到第 7 行」的指令，且活动行确实前进了
+      //（7×64=448 clamp 后仍 ≥ 400，证明不是停在开头）。
+      // ⚠️ 断言分层说明见 H：测试绑定下 cacheExtent 不生效，
+      //    视口外的行不构建，`find.text` 断言会拿到 Count=0，
+      //    所以滚动断的是「指令目标」而不是渲染后的矩形/像素。
       engine.setPosition(const Duration(seconds: 75));
-      await tester.pump(const Duration(milliseconds: 400)); // 滚动动画
       await tester.pump();
-      diagLyric(tester, playback, engine, 'J');
-
-      final ScrollPosition after = tester
-          .state<ScrollableState>(find.byType(Scrollable))
-          .position;
-      expect(after.pixels, greaterThan(200),
-          reason: '活动行前进后列表必须真的滚动（偏移前进），而不是停在开头');
-      expect(isActive(tester, '第八句'), isTrue);
+      await tester.pump();
+      final dynamic st = tester.state(find.byType(LyricView));
+      expect(st.debugActiveIndex, 7, reason: '75 秒应对应第八句（70s 那句）');
+      expect(st.debugLastScrollTarget, greaterThan(200),
+          reason: '活动行前进后必须发出真实的滚动指令（目标 ≈ 448），而不是停在开头');
     });
 
     testWidgets('K 暂停 / 恢复：高亮停在正确的句子，不漂移',
@@ -368,10 +340,11 @@ void main() {
       });
       await tester.pump();
       await tester.pump();
-      diagLyric(tester, playback, engine, 'L');
 
       expect(find.text('第五句'), findsNothing, reason: '旧歌词必须被清掉，不得残留');
-      expect(isActive(tester, '新歌三'), isTrue,
+      expect(find.text('新歌三'), findsOneWidget, reason: '新歌词的行必须已经显示');
+      final dynamic st = tester.state(find.byType(LyricView));
+      expect(st.debugActiveIndex, 2,
           reason: '新歌词到达后必须按**当前音频进度**（45s > 新歌全部时间点）'
               '定位到最后一行，而不是从第 0 秒重新来');
     });

@@ -69,6 +69,14 @@ class _LyricViewState extends State<LyricView> {
   @visibleForTesting
   int get debugActiveIndex => _activeIndex;
 
+  /// 最近一次滚动指令的目标偏移（null = 未发出过）。
+  ///
+  /// 测试用它断言「活动行变化 ⇒ 发出了正确的滚动指令」；
+  /// 动画本身由 ScrollPosition 驱动，不必在假时钟里验证。
+  @visibleForTesting
+  double? get debugLastScrollTarget => _lastScrollTarget;
+  double? _lastScrollTarget;
+
   /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
   ///
   /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 25 × 行高 1.25 × **最多 2 行**
@@ -144,6 +152,7 @@ class _LyricViewState extends State<LyricView> {
 
     final double target = _activeIndex * _lineExtent;
     final double clamped = target.clamp(0.0, pos.maxScrollExtent);
+    _lastScrollTarget = clamped;
     // 已经在位就不要再动：每 400ms 反复 animate 会让整块歌词抖。
     if ((pos.pixels - clamped).abs() < 1.0) return;
     _scroll.animateTo(
