@@ -243,7 +243,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       final String? focused = FocusManager.instance.primaryFocus?.debugLabel;
       expect(focused, isNotNull);
-      expect(focused!.startsWith('track.'),
+      expect(focused!.startsWith('track.'), isTrue,
           reason: '输入框按 ↓ 必须进入搜索结果行，实际焦点：$focused');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
