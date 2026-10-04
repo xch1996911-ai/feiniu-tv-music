@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../core/branding.dart';
+import '../../core/diagnostics.dart';
 import '../../core/exceptions.dart';
 import '../../core/ids.dart';
 import '../../core/log.dart';
@@ -155,6 +158,18 @@ class FnosProvider implements MusicServerProvider {
       FnosEndpoints.paramTrackGuid: trackGuid,
     });
     if (res.isErr) return Result.err(res.error);
+    // ⚠️ 歌词载荷的真实形态从未被实机样本验证过（`LyricDoc` 注释），
+    //    「歌词显示不出来」这类问题必须先看到原始响应才能定位字段名。
+    //    截断存入诊断页（歌词内容非敏感）；每首一条，200 条环形上限内。
+    try {
+      final String dump = const JsonEncoder.withIndent(' ').convert(res.value);
+      Diagnostics.note(
+        '歌词原始响应',
+        dump.length > 500 ? '${dump.substring(0, 500)}…（已截断）' : dump,
+      );
+    } catch (_) {
+      // 序列化失败不影响歌词解析主流程。
+    }
     return Result.ok(LyricDoc.fromJson(res.value));
   }
 

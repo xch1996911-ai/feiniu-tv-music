@@ -151,7 +151,18 @@ class LyricDoc {
     final Duration sourceOffset =
         _secondsToDuration(entry['offset']) ?? Duration.zero;
 
-    final text = jsonStringOrNull(entry['text']);
+    // ⚠️ 歌词正文的字段名是**按推断的契约**写的（`LyricDoc` 类注释：
+    //    真实 NAS 歌词样本从未取到过）。这里对常见命名做兜底兼容 ——
+    //    症状链「V5 只有 ♪ → 现在什么都没有」与「字段名猜错 → 解析出
+    //    空文本行」完全吻合：V4 的 `isNotEmpty` 把空文本行当成有歌词
+    //    （界面上就是一个 ♪），现在的 `isUsable` 把它判为无效后，
+    //    在线兜底若也不可达就只剩「暂无歌词」。
+    //    真实字段名以诊断页的「歌词原始响应」为准，拿到样本后收敛。
+    final text = jsonStringOrNull(entry['text']) ??
+        jsonStringOrNull(entry['lyric']) ??
+        jsonStringOrNull(entry['lrc']) ??
+        jsonStringOrNull(entry['content']) ??
+        jsonStringOrNull(entry['lyrics']);
     if (text != null && _looksLikeLrc(text)) {
       final parsed = parseLrc(text);
       if (parsed.isNotEmpty) {
