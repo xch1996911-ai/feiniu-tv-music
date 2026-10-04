@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+// scrollCacheExtent 的类型在 rendering 库（material 不导出），show 受限导入避免全量污染
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
