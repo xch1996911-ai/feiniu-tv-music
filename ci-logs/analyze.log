@@ -1,9 +1,5 @@
 Analyzing feiniu-tv-music...                                    
 
 warning • A value for optional parameter 'nextDown' isn't ever given. Try removing the unused parameter • lib/ui/pages/player_page.dart:930:10 • unused_element_parameter
-warning • A value for optional parameter 'nextDown' isn't ever given. Try removing the unused parameter • lib/ui/pages/player_page.dart:1006:10 • unused_element_parameter
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:67:16 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:68:18 • unnecessary_const
-   info • Unnecessary 'const' keyword. Try removing the keyword • test/player_layout_test.dart:71:20 • unnecessary_const
 
-5 issues found. (ran in 10.2s)
+1 issue found. (ran in 6.2s)
