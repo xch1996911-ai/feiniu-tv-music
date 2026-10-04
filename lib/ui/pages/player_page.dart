@@ -521,30 +521,82 @@ class _PlayerPageState extends State<PlayerPage> {
   }
 
   /// 歌词区（含标题行；不可聚焦）。
+  ///
+  /// ## ⚠️ 标题块是**固定高度**的，必须按可用高度降级
+  ///
+  /// 这个 Column 的前两行（歌名-歌手、专辑）+ 间距是固定高度，
+  /// 最后一行才是 `Expanded(歌词)`。**大封面模式下歌词区只分到正文的 40%**
+  /// ——逻辑视口小 + 系统字体放大时，这个区会比固定高度还矮，
+  /// `Expanded` 拿到 0 也救不回来，整个 Column 直接溢出（release 下静默裁切）。
+  ///
+  /// 实测（853×480 + 字体 1.3）：正文 237.5 → 歌词区只剩 91，而标题块要 95
+  /// → `overflowed by 4.0 pixels`。
+  ///
+  /// 处理分两级：
+  /// 1. 装不下「两行标题块」时**先丢掉次要的专辑行**（专辑在封面区已经显示过）；
+  /// 2. 连一行标题都装不下时，让标题块整体等比缩小（`FittedBox`）而不是裁切。
   Widget _buildLyricPane(Track song) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          '${song.title} - ${song.artistNames}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: TvColors.text,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          song.album.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 17, color: TvColors.textFaint),
-        ),
-        const SizedBox(height: 12),
-        const Expanded(child: LyricView()),
-      ],
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints c) {
+        final double ts = MediaQuery.textScalerOf(context).scale(1.0);
+        // 与 Text 的真实行高一致（没写 height ⇒ M3 默认 1.43，且逐行向上取整）
+        final double titleLineH = (24 * ts * 1.43).ceilToDouble();
+        final double albumLineH = (17 * ts * 1.43).ceilToDouble();
+        const double gapTitleAlbum = 6;
+        const double gapAlbumLyric = 12;
+        final double availH = c.maxHeight.isFinite ? c.maxHeight : 400;
+        final double availW = c.maxWidth.isFinite ? c.maxWidth : 400;
+
+        final bool showAlbum =
+            availH >= titleLineH + gapTitleAlbum + albumLineH + gapAlbumLyric;
+
+        final Widget header = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              '${song.title} - ${song.artistNames}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: TvColors.text,
+              ),
+            ),
+            if (showAlbum) ...<Widget>[
+              const SizedBox(height: gapTitleAlbum),
+              Text(
+                song.album.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 17, color: TvColors.textFaint),
+              ),
+            ],
+          ],
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ConstrainedBox(
+              // 标题块最多用掉「区高 − 歌词区最小间距」；`SizedBox(width:)` 是必需的
+              //（FittedBox 给子树的宽度是无界的）。
+              constraints: BoxConstraints(
+                maxWidth: availW,
+                maxHeight: max(0.0, availH - gapAlbumLyric),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: SizedBox(width: availW, child: header),
+              ),
+            ),
+            const SizedBox(height: gapAlbumLyric),
+            const Expanded(child: LyricView()),
+          ],
+        );
+      },
     );
   }
 
