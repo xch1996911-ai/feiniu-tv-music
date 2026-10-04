@@ -120,13 +120,6 @@ void main() {
     }
   }
 
-  /// 从「播放/暂停」往左走 [steps] 步。
-  Future<void> left(WidgetTester tester, int steps) async {
-    for (int i = 0; i < steps; i++) {
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-    }
-  }
-
   /// 当前焦点必须落在「播放/暂停」上（每个用例的起跑位置）。
   void expectAtPlay() => expect(focusedLabel(), 'player.play');
 
