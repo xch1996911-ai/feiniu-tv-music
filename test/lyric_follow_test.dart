@@ -79,7 +79,7 @@ void main() {
 
   /// 失败诊断：一次 CI 往返十几分钟且网络随时中断，
   /// 把内部状态直接打进日志，避免再来一轮「盲改」。
-  void _diag(
+  void diagLyric(
     WidgetTester tester,
     PlaybackRepository playback,
     FakePlaybackEngine engine,
@@ -239,7 +239,7 @@ void main() {
       engine.setPosition(const Duration(seconds: 45));
       await tester.pump();
       await tester.pump();
-      _diag(tester, playback, engine, 'H');
+      diagLyric(tester, playback, engine, 'H');
 
       expect(isActive(tester, '第五句'), isTrue,
           reason: '45 秒落在 40–50s 的句子里，必须立即显示该句，不必等播放自然走到');
@@ -266,7 +266,7 @@ void main() {
       engine.setPosition(const Duration(seconds: 12));
       await tester.pump();
       await tester.pump();
-      _diag(tester, playback, engine, 'I');
+      diagLyric(tester, playback, engine, 'I');
       expect(isActive(tester, '第二句'), isTrue, reason: 'seek 回前面必须回滚到正确的行');
       expect(isActive(tester, '第五句'), isFalse);
     });
@@ -298,7 +298,7 @@ void main() {
       engine.setPosition(const Duration(seconds: 75));
       await tester.pump(const Duration(milliseconds: 400)); // 滚动动画
       await tester.pump();
-      _diag(tester, playback, engine, 'J');
+      diagLyric(tester, playback, engine, 'J');
 
       final ScrollPosition after = tester
           .state<ScrollableState>(find.byType(Scrollable))
@@ -360,7 +360,7 @@ void main() {
       });
       await tester.pump();
       await tester.pump();
-      _diag(tester, playback, engine, 'L');
+      diagLyric(tester, playback, engine, 'L');
 
       expect(find.text('第五句'), findsNothing, reason: '旧歌词必须被清掉，不得残留');
       expect(isActive(tester, '新歌三'), isTrue,
