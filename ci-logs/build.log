@@ -135,3 +135,62 @@ Changed 110 dependencies!
 19 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Upgrading analysis_options.yaml to exclude build and platform directories.
+
+==================== 变体 A ====================
+Running Gradle task 'assembleDebug'...                          
+Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
+License for package CMake 3.22.1 accepted.
+Preparing "Install CMake 3.22.1 v.3.22.1".
+"Install CMake 3.22.1 v.3.22.1" ready.
+Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+"Install CMake 3.22.1 v.3.22.1" complete.
+"Install CMake 3.22.1 v.3.22.1" finished.
+Running Gradle task 'assembleDebug'...                            244.1s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+dist/app-hisense-no-impeller-debug.apk = 125888748 bytes
+
+==================== 变体 B ====================
+Running Gradle task 'assembleDebug'...                              6.3s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+dist/app-hisense-impeller-default-debug.apk = 125888716 bytes
+
+==================== 变体 C ====================
+Running Gradle task 'assembleDebug'...                              4.5s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+dist/app-hisense-impeller-gles-debug.apk = 125888768 bytes
+
+==================== 变体 D ====================
+Running Gradle task 'assembleRelease'...                        
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 6364 bytes (99.6% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Caught exception: Already watching path: /home/runner/work/feiniu-tv-music/feiniu-tv-music/android
+Running Gradle task 'assembleRelease'...                          121.5s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (44.2MB)
+dist/app-hisense-no-impeller-release.apk = 44183275 bytes
+
+==================== 变体 E ====================
+Running Gradle task 'assembleDebug'...                             22.0s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+dist/app-hisense-engine-smoke.apk = 120438504 bytes
+
+==================== 变体 F ====================
+Running Gradle task 'assembleDebug'...                             18.4s
+✓ Built build/app/outputs/flutter-apk/app-debug.apk
+dist/app-hisense-engine-smoke-no-plugins.apk = 120438488 bytes
+
+==================== 变体 G ====================
+Running Gradle task 'assembleRelease'...                        
+Caught exception: Already watching path: /home/runner/work/feiniu-tv-music/feiniu-tv-music/android
+Running Gradle task 'assembleRelease'...                           43.2s
+✓ Built build/app/outputs/flutter-apk/app-release.apk (44.2MB)
+dist/app-hisense-release.apk = 44183235 bytes
+total 690380
+drwxr-xr-x  2 runner runner      4096 Oct  4 17:14 .
+drwxr-xr-x 13 runner runner      4096 Oct  4 17:07 ..
+-rw-r--r--  1 runner runner      5422 Oct  4 17:14 MANIFEST.txt
+-rw-r--r--  1 runner runner 120438488 Oct  4 17:14 app-hisense-engine-smoke-no-plugins.apk
+-rw-r--r--  1 runner runner 120438504 Oct  4 17:13 app-hisense-engine-smoke.apk
+-rw-r--r--  1 runner runner 125888716 Oct  4 17:11 app-hisense-impeller-default-debug.apk
+-rw-r--r--  1 runner runner 125888768 Oct  4 17:11 app-hisense-impeller-gles-debug.apk
+-rw-r--r--  1 runner runner 125888748 Oct  4 17:11 app-hisense-no-impeller-debug.apk
+-rw-r--r--  1 runner runner  44183275 Oct  4 17:13 app-hisense-no-impeller-release.apk
+-rw-r--r--  1 runner runner  44183235 Oct  4 17:14 app-hisense-release.apk
