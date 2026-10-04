@@ -927,7 +927,6 @@ class _RoundControl extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
-    this.nextDown,
     this.nextUp,
     this.iconColor,
     this.large = false,
@@ -945,10 +944,6 @@ class _RoundControl extends StatelessWidget {
   final Color? iconColor;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  /// ↓ 的去处。**重排之后操作条已在最底部**，所以通常不需要它 ——
-  /// 保留可空是为了让「按钮位置变了但方向键没跟着改」这类问题不再出现。
-  final FocusNode? nextDown;
-
   /// ↑ 的去处（进度区）。
   final FocusNode? nextUp;
   final bool large;
@@ -968,7 +963,6 @@ class _RoundControl extends StatelessWidget {
         canRequestFocus: onPressed != null,
         nextLeft: nextLeft,
         nextRight: nextRight,
-        nextDown: nextDown,
         nextUp: nextUp,
         builder: (BuildContext context, TvFocusStatus s) => SizedBox(
           width: box,
