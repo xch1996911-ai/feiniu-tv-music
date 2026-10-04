@@ -1,2 +1,5 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 9.4s)
+
+  error • 2 positional arguments expected by 'expect', but 1 found. Try adding the missing arguments • test/search_play_test.dart:246:43 • not_enough_positional_arguments
+
+1 issue found. (ran in 7.7s)
