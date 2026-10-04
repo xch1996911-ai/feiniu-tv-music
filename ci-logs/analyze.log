@@ -1,5 +1,5 @@
 Analyzing feiniu-tv-music...                                    
 
-  error • The argument type 'int' can't be assigned to the parameter type 'ScrollCacheExtent?'.  • lib/ui/widgets/lyric_view.dart:246:36 • argument_type_not_assignable
+  error • Undefined name 'ScrollCacheExtent'. Try correcting the name to one that is defined, or defining the name • lib/ui/widgets/lyric_view.dart:246:36 • undefined_identifier
 
-1 issue found. (ran in 9.5s)
+1 issue found. (ran in 8.9s)
