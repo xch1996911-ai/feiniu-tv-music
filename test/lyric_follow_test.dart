@@ -87,12 +87,20 @@ void main() {
   ) {
     final dynamic st = tester.state(find.byType(LyricView));
     final Finder fifth = find.text('第五句');
+    final List<String> builtTexts = <String>[
+      for (final Element e in find.byType(Text).evaluate())
+        if ((e.widget as Text).data != null) (e.widget as Text).data!,
+    ];
+    final double pixels =
+        tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels;
     debugPrint('LYRIC_DIAG[$tag] >>> '
         'subscribed=${st.debugSubscribed} '
         'refreshCalls=${st.debugRefreshCalls} '
         'activeIndex=${st.debugActiveIndex} '
         'repoPos=${playback.position} enginePos=${engine.position} '
-        '第五句Count=${fifth.evaluate().length}');
+        'scrollPixels=$pixels '
+        '第五句Count=${fifth.evaluate().length} '
+        'builtRows=$builtTexts');
   }
 
   Future<LyricRepository> pumpLyrics(
