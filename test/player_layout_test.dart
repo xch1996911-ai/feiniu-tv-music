@@ -8,6 +8,8 @@ import 'package:feiniu_tv_music/repositories/lyric_repository.dart';
 import 'package:feiniu_tv_music/repositories/music_repository.dart';
 import 'package:feiniu_tv_music/repositories/playback_repository.dart';
 import 'package:feiniu_tv_music/ui/pages/player_page.dart';
+import 'package:feiniu_tv_music/ui/widgets/cover_image.dart';
+import 'package:feiniu_tv_music/ui/widgets/tv_glass.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -240,9 +242,13 @@ void main() {
             final String lyricTitle =
                 '${longTrack().title} - ${longTrack().artistNames}';
             final Finder lyricFinder = find.text(lyricTitle);
-            debugPrint('LAYOUT_GEOMETRY >>> viewport=${vw}×$vh '
-                'seekTop=${seekRect?.top} barTop=${backRect?.top} '
-                'barBottom=${backRect?.bottom} chip=$chipRect '
+            final Finder coverFinder = find.byType(CoverImage);
+            debugPrint('LAYOUT_GEOMETRY >>> viewport=$vw×$vh '
+                'seek=${seekRect?.toString()} barTop=${backRect?.top} '
+                'barBottom=${backRect?.bottom} '
+                'bar=${find.byType(TvGlass).evaluate().isEmpty ? '—' : tester.getRect(find.byType(TvGlass).first)} '
+                'cover=${coverFinder.evaluate().isEmpty ? '—' : tester.getRect(coverFinder.first)} '
+                'chip=$chipRect '
                 'lyricTitle=${lyricFinder.evaluate().isEmpty ? '—' : tester.getRect(lyricFinder)}');
           }
           expect(layoutError, isNull,
