@@ -431,7 +431,11 @@ class LyricDoc {
       }
     }
 
-    // ④ 收尾：丢掉标记、合并可能相邻的空格
+    // ④ 收尾：丢掉标记、合并可能相邻的空格、去掉首尾空白
+    //
+    // ⚠️ 收尾必须再 trim 一次：③ 里把哨兵降级成空格时可能落在**开头**
+    //    （`<00:09.71>示例` 这种「行内标签在最前面」的形态），
+    //    而 ② 的 trim 发生在哨兵决策之前，管不到它。
     final List<int> finalChars = <int>[];
     for (final int r in chars) {
       if (r == _dropMark) continue;
@@ -439,6 +443,9 @@ class LyricDoc {
         continue;
       }
       finalChars.add(r);
+    }
+    while (finalChars.isNotEmpty && finalChars.first == 0x20) {
+      finalChars.removeAt(0);
     }
     while (finalChars.isNotEmpty && finalChars.last == 0x20) {
       finalChars.removeLast();

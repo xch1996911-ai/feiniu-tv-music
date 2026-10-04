@@ -277,23 +277,32 @@ class TvKeyboardState extends State<TvKeyboard> {
     // ⚠️ 键高必须**由可用高度反推**，不能写死：
     //    小逻辑视口（例如 1080p 面板 dpr=2.0 ⇒ 540 逻辑高）下键盘只分到 ~335px，
     //    6 行写死 44px 会直接 RenderFlex 溢出（release 下静默裁切 = 末行「完成」看不见）。
+    //
+    // ⚠️ 顶栏高度也要**写死**（而不是靠内容自然撑开）：只要有一项是自然高度，
+    //    「可用高度 - 非行内容」的估算就会随字体缩放漂移，估算偏小即溢出。
+    //    这里顶栏 = 单行文字高度（随 textScaler）+ 6px 余量，其余按精确值扣减。
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    final double headerHeight = scaler.scale(18) + 6;
+
     return TvGlass(
       radius: 14,
       tint: const Color(0xF2101115),
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints c) {
-          // 非行内容占位：上下 padding 22 + 顶栏 ~26 + 5 个行间距 30。
-          const double chrome = 78;
-          final double keyHeight = c.hasBoundedHeight
-              ? ((c.maxHeight - chrome) / _rows.length).clamp(30.0, 46.0)
-              : 44.0;
+          // 非行内容：上下 padding 22 + 顶栏 headerHeight + 顶栏下间距 8
+          //          + 5 个行间距 30 + **6px 富余**（行盒向上取整不占满预算）。
+          const double fixed = 22 + 8 + 30 + 6;
+          final double available = c.hasBoundedHeight ? c.maxHeight : 400;
+          final double keyHeight = ((available - headerHeight - fixed) /
+                  _rows.length)
+              .clamp(26.0, 46.0);
           return Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _buildHeader(),
+                SizedBox(height: headerHeight, child: _buildHeader()),
                 const SizedBox(height: 8),
                 for (int r = 0; r < _rows.length; r++) ...<Widget>[
                   _buildRow(r, keyHeight),

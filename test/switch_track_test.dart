@@ -159,12 +159,15 @@ void main() {
               const AudioSpec(format: 'flac', sampleRate: 44100, bitDepth: 16),
         );
 
-    FocusNode? nodeForLabel(WidgetTester tester, String label) {
-      for (final Focus f in tester.widgetList<Focus>(find.byType(Focus))) {
-        if (f.focusNode?.debugLabel == label) return f.focusNode;
-      }
-      return null;
-    }
+    /// 按**树序**返回列表行的焦点节点（第 0 个 = 列表第一行）。
+    ///
+    /// ⚠️ 行节点的 `debugLabel` 统一是 `track.row`（由 `TrackRow` 自己创建），
+    ///    它传进 `TvFocus(debugLabel: 'track.<guid>')` 时**不会**被改写 ——
+    ///    所以不能按 guid 找节点，只能按树序取（列表顺序 = 构建顺序）。
+    List<FocusNode> rowNodes(WidgetTester tester) => <FocusNode>[
+          for (final Focus f in tester.widgetList<Focus>(find.byType(Focus)))
+            if (f.focusNode?.debugLabel == 'track.row') f.focusNode!,
+        ];
 
     Future<void> pumpRecentAdded(
       WidgetTester tester, {
@@ -265,11 +268,11 @@ void main() {
       );
 
       // 遥控器：焦点移到第二行（mid），按 OK。
-      FocusNode? row = nodeForLabel(tester, 'track.mid');
-      expect(row, isNotNull, reason: '每一行都必须是可聚焦节点');
-      row!.requestFocus();
+      final List<FocusNode> rows = rowNodes(tester);
+      expect(rows.length, 2, reason: '两首歌必须都是可聚焦的列表行');
+      rows[1].requestFocus();
       await tester.pump();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'track.mid');
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'track.row');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
@@ -300,8 +303,9 @@ void main() {
       );
 
       // 先播「newest」（第一行）
-      FocusNode? first = nodeForLabel(tester, 'track.newest');
-      first!.requestFocus();
+      List<FocusNode> rows = rowNodes(tester);
+      expect(rows.length, 2);
+      rows[0].requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
@@ -309,8 +313,8 @@ void main() {
       expect(engine.playingId, 'newest');
 
       // 再点「mid」（第二行）
-      FocusNode? second = nodeForLabel(tester, 'track.mid');
-      second!.requestFocus();
+      rows = rowNodes(tester);
+      rows[1].requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();

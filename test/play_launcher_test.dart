@@ -131,13 +131,21 @@ void main() {
 
   group('源码守卫（防止事故被改回去）', () {
     test('播放引擎里不得出现「等待播放生命周期」的写法', () {
-      final String src =
-          File('lib/playback/playback_engine.dart').readAsStringSync();
-      expect(RegExp(r'await\s+_player\.play\(\)').hasMatch(src), isFalse,
+      // ⚠️ 先把注释行剔掉再检查：本文件的文档注释里**故意**引用了
+      //    「不要写 await _player.play()」这句话，不剔注释会把说明文字
+      //    当成违规代码（第一轮 CI 就是这么误报的）。
+      final String code = File('lib/playback/playback_engine.dart')
+          .readAsLinesSync()
+          .where((String l) {
+        final String t = l.trimLeft();
+        return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+      }).join('\n');
+
+      expect(RegExp(r'await\s+_player\.play\(\)').hasMatch(code), isFalse,
           reason: 'just_audio 的 play() 直到播完/暂停/停止才完成，'
               'await 它会让串行加载链被整首歌占住（「界面是 B、声音是 A」的根因）。'
               '必须经 PlaybackLauncher 触发。');
-      expect(src.contains('PlaybackLauncher'), isTrue,
+      expect(code.contains('PlaybackLauncher'), isTrue,
           reason: 'play() 必须走「触发 + 独立错误通道」的启动器');
     });
   });

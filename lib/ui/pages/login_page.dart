@@ -139,12 +139,15 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
   Timer? _imeProbe;
 
-  /// 已经为该字段**自动**打开过一次键盘。
+  /// 「刚刚被用户关掉键盘」的字段 —— 该字段**不再自动弹回**，直到焦点换到别的字段。
   ///
-  /// ⚠️ 没有这个闸门会立刻出现一个更难看的 bug：用户按「完成」收起键盘后，
-  /// 焦点回到字段 → 字段焦点监听再次触发 → 1.2 秒后键盘又自己弹出来，
-  /// 用户会觉得「关不掉」。字段失焦时清空，因此换个字段仍会重新探测。
-  _Field? _autoOpenedFor;
+  /// ⚠️ 没有这个闸门会出现一个比「输不进字」更难看的 bug：
+  /// 用户按「完成」收起键盘后，焦点回到字段 → 焦点监听再次触发 →
+  /// 1.2 秒后键盘又自己弹出来，用户会觉得「这键盘关不掉」。
+  ///
+  /// ⚠️ 不能用「字段失焦就清空」的实现方式：键盘打开时表单被 `ExcludeFocus` 排除，
+  /// 焦点**本来就会丢一次**（关闭时又重新获得），因此失焦并不是「用户离开这个字段」的信号。
+  _Field? _suppressAutoOpenFor;
 
   /// 本机输入法摘要（**非敏感**，仅真机排障时显示）。
   String? _imeInfo;
@@ -202,8 +205,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   /// 焦点转移的统一处理：滚动到可见 + 显式唤起系统键盘 + 起「探测」计时器。
   void _onFocusChanged(_Field f) {
     if (!_focusOf(f).hasFocus) {
-      // 失焦：允许下次进来重新探测（否则换成别的字段后就不再兜底了）。
-      if (_autoOpenedFor == f) _autoOpenedFor = null;
       _imeProbe?.cancel();
       return;
     }
@@ -212,8 +213,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     _scrollFieldIntoView(f);
     unawaited(_askSystemKeyboard(f));
     _imeProbe?.cancel();
-    // 该字段已经自动开过一次（用户手动关闭过）→ 不再自动弹回来。
-    if (_autoOpenedFor == f) return;
+    // 刚被用户手动关掉键盘的那个字段：不再自动弹回来。
+    // 焦点换到**别的**字段时解除抑制（那个字段仍会自动兜底）。
+    if (_suppressAutoOpenFor == f) return;
+    _suppressAutoOpenFor = null;
     _imeProbe = Timer(_imeProbeDelay, () {
       if (!mounted) return;
       if (_keyboardOpen) return;
@@ -249,7 +252,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   /// 打开应用内遥控器键盘（[auto] 表示是「系统键盘没出来」的兜底）。
   void _openKeyboard(_Field f, {bool auto = false}) {
     _imeProbe?.cancel();
-    if (auto) _autoOpenedFor = f;
     // 系统键盘若也在，先收掉，避免两层键盘叠起来。
     unawaited(TextInputBridge.hideSoftKeyboard());
     setState(() {
@@ -269,6 +271,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   void _closeKeyboard() {
     final _Field? f = _editing;
     if (!_keyboardOpen) return;
+    // 记下「这个字段刚被用户关掉键盘」→ 不再自动弹回（见 [_suppressAutoOpenFor]）。
+    _suppressAutoOpenFor = f;
+    _imeProbe?.cancel();
     setState(() {
       _keyboardOpen = false;
       _keyboardAuto = false;
