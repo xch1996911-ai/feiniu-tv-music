@@ -246,10 +246,19 @@ void main() {
       expect(focused!.startsWith('track.'), isTrue,
           reason: '输入框按 ↓ 必须进入搜索结果行，实际焦点：$focused');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
 
+      // ⚠️ 两种 zone 都要放行一次，缺一不可：
+      //   · `pump()`：排空**假时钟 zone** 的微任务（键事件处理挂在假 zone 上）；
+      //   · `runAsync`：排空**真实 zone** 的微任务 —— `_loadChain` 的初值是在
+      //     构造期（setUp，root zone）创建的，`.then` 回调排在 root zone 队列，
+      //     `pump()` 永远清不到它（这就是「setQueue 后引擎收不到加载请求」的坑）。
+      //   反过来，只 `await pendingLoads` 放进 runAsync 也会卡死：链上还有
+      //   假 zone 的任务要排空 —— CI 上第一次就是这么 45 秒超时的。
+      for (int i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
       await tester.runAsync(() async {
-        await playback.pendingLoads;
+        await Future<void>.delayed(const Duration(milliseconds: 30));
       });
       await tester.pump();
 
@@ -261,6 +270,8 @@ void main() {
       expect(engine.playing, isTrue, reason: '必须自动开始播放');
       expect(opened, 1, reason: '只打开一次播放页（点击只触发一次播放操作）');
 
+      // 收尾：把 TvFocus 的按下态复位定时器等假时钟定时器走完，再拆树。
+      await tester.pump(const Duration(seconds: 1));
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
