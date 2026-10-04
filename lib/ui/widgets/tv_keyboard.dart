@@ -289,9 +289,19 @@ class TvKeyboardState extends State<TvKeyboard> {
       tint: const Color(0xF2101115),
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints c) {
-          // 非行内容：上下 padding 22 + 顶栏 headerHeight + 顶栏下间距 8
-          //          + 5 个行间距 30 + **6px 富余**（行盒向上取整不占满预算）。
-          const double fixed = 22 + 8 + 30 + 6;
+          // 非行内容（相对 LayoutBuilder 的可用高度）：
+          //   我的 Padding 上下 22
+          //   + 顶栏下间距 8
+          //   + 5 个行间距 30
+          //   + **6 行 × 描边 3px × 2 = 36**
+          //   + 6px 富余（行盒向上取整）
+          //
+          // ⚠️ 那 36px 是必须算的：`TvFocusRing` 用 `AnimatedContainer` 画
+          //    `Border.all(width: 3)`，而 `BoxDecoration.padding`（= 描边宽度）
+          //    会被 Container **加**到显式 padding 上 ⇒ 每颗键实际高度 =
+          //    键高 + 6。漏算它的后果就是 CI 里连续两轮 RenderFlex 溢出
+          //    （第一轮缺 22px、第二轮缺 28px），且只在布局断言里看得见。
+          const double fixed = 22 + 8 + 30 + 36 + 6;
           final double available = c.hasBoundedHeight ? c.maxHeight : 400;
           final double keyHeight = ((available - headerHeight - fixed) /
                   _rows.length)
