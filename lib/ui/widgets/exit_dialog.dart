@@ -58,15 +58,18 @@ class TvExitDialog extends StatelessWidget {
       insetPadding: const EdgeInsets.symmetric(horizontal: 120, vertical: 80),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
-        child: TvGlass(
+        // ⚠️ 整棵子树全部可 const ⇒ 直接从 TvGlass 这层开始 const。
+        //    外层 const 之后，内层的 `const` 会变成冗余（unnecessary_const
+        //    也是 info、也判失败），所以里层一律不再写 const。
+        child: const TvGlass(
           radius: 20,
           tint: TvColors.glassHi,
-          padding: const EdgeInsets.fromLTRB(30, 26, 30, 24),
+          padding: EdgeInsets.fromLTRB(30, 26, 30, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Row(
+              Row(
                 children: <Widget>[
                   Icon(Icons.exit_to_app, size: 26, color: TvColors.accent),
                   SizedBox(width: 12),
@@ -82,13 +85,13 @@ class TvExitDialog extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 '当前歌曲与队列会按你选择的方式处理',
                 style: TextStyle(fontSize: 16, color: TvColors.textDim),
               ),
-              const SizedBox(height: 20),
-              const _ExitOptions(),
+              SizedBox(height: 20),
+              _ExitOptions(),
             ],
           ),
         ),
