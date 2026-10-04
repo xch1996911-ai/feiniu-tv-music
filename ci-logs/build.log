@@ -145,52 +145,52 @@ Preparing "Install CMake 3.22.1 v.3.22.1".
 Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
 "Install CMake 3.22.1 v.3.22.1" complete.
 "Install CMake 3.22.1 v.3.22.1" finished.
-Running Gradle task 'assembleDebug'...                            231.5s
+Running Gradle task 'assembleDebug'...                            206.4s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
-dist/app-hisense-no-impeller-debug.apk = 125889976 bytes
+dist/app-hisense-no-impeller-debug.apk = 125891140 bytes
 
 ==================== 变体 B ====================
-Running Gradle task 'assembleDebug'...                              6.3s
+Running Gradle task 'assembleDebug'...                              5.4s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
-dist/app-hisense-impeller-default-debug.apk = 125889944 bytes
+dist/app-hisense-impeller-default-debug.apk = 125891108 bytes
 
 ==================== 变体 C ====================
-Running Gradle task 'assembleDebug'...                              4.2s
+Running Gradle task 'assembleDebug'...                              3.5s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
-dist/app-hisense-impeller-gles-debug.apk = 125889996 bytes
+dist/app-hisense-impeller-gles-debug.apk = 125891156 bytes
 
 ==================== 变体 D ====================
 Running Gradle task 'assembleRelease'...                        
 Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 6472 bytes (99.6% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
 Caught exception: Already watching path: /home/runner/work/feiniu-tv-music/feiniu-tv-music/android
-Running Gradle task 'assembleRelease'...                          120.7s
+Running Gradle task 'assembleRelease'...                           93.2s
 ✓ Built build/app/outputs/flutter-apk/app-release.apk (44.2MB)
 dist/app-hisense-no-impeller-release.apk = 44150551 bytes
 
 ==================== 变体 E ====================
-Running Gradle task 'assembleDebug'...                             21.2s
+Running Gradle task 'assembleDebug'...                             18.8s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-engine-smoke.apk = 120438504 bytes
 
 ==================== 变体 F ====================
-Running Gradle task 'assembleDebug'...                             18.0s
+Running Gradle task 'assembleDebug'...                             15.9s
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 dist/app-hisense-engine-smoke-no-plugins.apk = 120438488 bytes
 
 ==================== 变体 G ====================
 Running Gradle task 'assembleRelease'...                        
 Caught exception: Already watching path: /home/runner/work/feiniu-tv-music/feiniu-tv-music/android
-Running Gradle task 'assembleRelease'...                           42.9s
+Running Gradle task 'assembleRelease'...                           33.7s
 ✓ Built build/app/outputs/flutter-apk/app-release.apk (44.2MB)
 dist/app-hisense-release.apk = 44150511 bytes
-total 690316
-drwxr-xr-x  2 runner runner      4096 Oct  4 11:10 .
-drwxr-xr-x 13 runner runner      4096 Oct  4 11:02 ..
--rw-r--r--  1 runner runner      5422 Oct  4 11:10 MANIFEST.txt
--rw-r--r--  1 runner runner 120438488 Oct  4 11:09 app-hisense-engine-smoke-no-plugins.apk
--rw-r--r--  1 runner runner 120438504 Oct  4 11:08 app-hisense-engine-smoke.apk
--rw-r--r--  1 runner runner 125889944 Oct  4 11:06 app-hisense-impeller-default-debug.apk
--rw-r--r--  1 runner runner 125889996 Oct  4 11:06 app-hisense-impeller-gles-debug.apk
--rw-r--r--  1 runner runner 125889976 Oct  4 11:06 app-hisense-no-impeller-debug.apk
--rw-r--r--  1 runner runner  44150551 Oct  4 11:08 app-hisense-no-impeller-release.apk
--rw-r--r--  1 runner runner  44150511 Oct  4 11:09 app-hisense-release.apk
+total 690328
+drwxr-xr-x  2 runner runner      4096 Oct  4 12:09 .
+drwxr-xr-x 13 runner runner      4096 Oct  4 12:03 ..
+-rw-r--r--  1 runner runner      5422 Oct  4 12:09 MANIFEST.txt
+-rw-r--r--  1 runner runner 120438488 Oct  4 12:09 app-hisense-engine-smoke-no-plugins.apk
+-rw-r--r--  1 runner runner 120438504 Oct  4 12:08 app-hisense-engine-smoke.apk
+-rw-r--r--  1 runner runner 125891108 Oct  4 12:06 app-hisense-impeller-default-debug.apk
+-rw-r--r--  1 runner runner 125891156 Oct  4 12:07 app-hisense-impeller-gles-debug.apk
+-rw-r--r--  1 runner runner 125891140 Oct  4 12:06 app-hisense-no-impeller-debug.apk
+-rw-r--r--  1 runner runner  44150551 Oct  4 12:08 app-hisense-no-impeller-release.apk
+-rw-r--r--  1 runner runner  44150511 Oct  4 12:09 app-hisense-release.apk
