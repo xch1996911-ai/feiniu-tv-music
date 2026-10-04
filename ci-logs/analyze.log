@@ -1,13 +1,2 @@
 Analyzing feiniu-tv-music...                                    
-
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/exit_dialog.dart:61:16 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/exit_dialog.dart:65:18 • prefer_const_constructors
-   info • Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal • lib/ui/widgets/exit_dialog.dart:68:23 • prefer_const_literals_to_create_immutables
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/exit_dialog.dart:69:15 • prefer_const_constructors
-   info • Use 'const' literals as arguments to constructors of '@immutable' classes. Try adding 'const' before the literal • lib/ui/widgets/exit_dialog.dart:70:27 • prefer_const_literals_to_create_immutables
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/exit_dialog.dart:74:19 • prefer_const_constructors
-   info • Use 'const' with the constructor to improve performance. Try adding the 'const' keyword to the constructor invocation • lib/ui/widgets/exit_dialog.dart:75:28 • prefer_const_constructors
-warning • The field doesn't override an inherited getter or setter. Try updating this class to match the superclass, or removing the override annotation • test/support/fake_playback_engine.dart:129:7 • override_on_non_overriding_member
-   info • The member 'stop' overrides an inherited member but isn't annotated with '@override'. Try adding the '@override' annotation • test/support/fake_playback_engine.dart:137:16 • annotate_overrides
-
-9 issues found. (ran in 8.8s)
+No issues found! (ran in 6.2s)
