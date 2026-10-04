@@ -1,2 +1,5 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 9.4s)
+
+   info • 'cacheExtent' is deprecated and shouldn't be used. Use scrollCacheExtent instead. This feature was deprecated after v3.41.0-0.0.pre. Try replacing the use of the deprecated member with the replacement • lib/ui/widgets/lyric_view.dart:246:17 • deprecated_member_use
+
+1 issue found. (ran in 6.8s)
