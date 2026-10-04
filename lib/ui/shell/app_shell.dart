@@ -640,6 +640,15 @@ class _AppShellState extends State<AppShell> {
 
       case ShellStage.artists:
         return OverviewPage(
+          // ⚠️ 必须带 key：三个分类共用 OverviewPage 这一个 Widget 类型、
+          //    又在同一个槽位（Expanded(child: _buildStage())）里切换 ——
+          //    不带 key 时 Flutter 会**复用同一个 State**，而概览页内部按
+          //    `identical(曲库实例)` 缓存分组结果，曲库实例三页共享同一份 ⇒
+          //    从「风格」切到「歌手」时直接命中缓存，把风格分组原样显示在
+          //    歌手页上（实机现象：先看风格再看歌手，页面内容不换；
+          //    重新进音乐库才恢复 —— 因为那会换成 SongListPage，State 被销毁）。
+          //    带 key 后每个分类有**自己的 State**，互不串。
+          key: const ValueKey<OverviewKind>(OverviewKind.artist),
           kind: OverviewKind.artist,
           title: '歌手',
           // ⚠️ V5：空态文案只留一句短的。
@@ -654,6 +663,7 @@ class _AppShellState extends State<AppShell> {
 
       case ShellStage.albums:
         return OverviewPage(
+          key: const ValueKey<OverviewKind>(OverviewKind.album),
           kind: OverviewKind.album,
           title: '专辑',
           emptyHint: '暂无专辑',
@@ -665,6 +675,7 @@ class _AppShellState extends State<AppShell> {
 
       case ShellStage.genres:
         return OverviewPage(
+          key: const ValueKey<OverviewKind>(OverviewKind.genre),
           kind: OverviewKind.genre,
           title: '风格',
           // 风格页现在有自动归纳兜底，只有「曲库为空」才会走到这个文案。
@@ -683,6 +694,7 @@ class _AppShellState extends State<AppShell> {
 
       case ShellStage.recent:
         return TrackListPage(
+          key: const ValueKey<TrackListSource>(TrackListSource.recent),
           source: TrackListSource.recent,
           title: '最近播放',
           emptyIcon: Icons.history,
@@ -695,6 +707,7 @@ class _AppShellState extends State<AppShell> {
 
       case ShellStage.recentAdded:
         return TrackListPage(
+          key: const ValueKey<TrackListSource>(TrackListSource.recentlyAdded),
           source: TrackListSource.recentlyAdded,
           title: '最近添加',
           emptyIcon: Icons.fiber_new,

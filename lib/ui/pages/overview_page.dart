@@ -194,6 +194,26 @@ class _OverviewPageState extends State<OverviewPage> {
   @override
   void didUpdateWidget(covariant OverviewPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.kind != oldWidget.kind) {
+      // ⚠️ 换了分类必须**整体重置**。
+      //
+      // 正常情况下外壳会给每个分类不同的 `ValueKey`（见 `app_shell.dart`），
+      // 切分类时会换一个全新的 State，这里根本不会被调用。但 OverviewPage
+      // 是公开组件，任何调用方都可能像外壳曾经那样「同槽位换 kind」——
+      // 那时 `_compute()` 的缓存键是 `identical(曲库实例)`，而曲库实例
+      // 对三个分类是**同一份** ⇒ 旧分类的分组结果会被原样显示在新分类上。
+      //
+      // 这里重置的是「派生结果」，不触碰曲库本体、播放队列、收藏与偏好 ——
+      // 那些都不归本组件管。
+      _source = null;
+      _inferenceSource = null;
+      _overviews = const <LibraryOverview>[];
+      _lastFocused = -1;
+      _pendingFocus = -1;
+      if (_scroll.hasClients) {
+        _scroll.jumpTo(0);
+      }
+    }
     if (oldWidget.detail == null && widget.detail != null) {
       // 进入详情：记下当前位置，返回时用；并把焦点交给详情页的「返回」。
       _savedOffset = _scroll.hasClients ? _scroll.offset : 0;
