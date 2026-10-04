@@ -176,15 +176,37 @@ class LyricDoc {
       }
     }
 
-    // 非 LRC 文本（纯文本歌词）：**按换行拆成多行**，`time` 全部为 null
-    // —— 它没有逐句时间轴，显示与浏览都正常，只是不参与高亮/滚动
-    //（UI 会显示「纯文本歌词 · 不支持逐句同步」）。
+    // 非 LRC 文本：分两种情况（与 fnOS 真实契约一致）——
     //
-    // ⚠️ 旧实现把整段文本塞成**一行**：
-    //    · 多段歌词只显示第一行（或挤成一行）
-    //    · `time` 取的是「这个歌词源的开始时间」，一旦为 null，
-    //      `activeLineIndex()` 永远返回 -1 ⇒ 高亮与滚动都不动
-    //      （实机「歌曲有歌词但不跟随」的根因）。
+    // ① **源带 `time`**（该歌词源是一个整体块，从 time 秒开始生效）：
+    //    保持**单行**并携带契约字段（time/duration/offset，单位秒）。
+    //    这是 `fnos_lyric_test` 钉住的契约形态。
+    //
+    // ② **源没有 `time`**（NAS 常见的占位/纯文本源）：**按换行拆成多行**，
+    //    `time` 全部为 null —— 没有逐句时间轴，显示与浏览都正常，
+    //    只是不参与高亮/滚动（UI 显示「纯文本歌词 · 不支持逐句同步」）。
+    //
+    // ⚠️ 最初的实现把两种情况都塞成**一行**且 `time` 直接取源字段：
+    //    无时间源时 `time == null` ⇒ `activeLineIndex()` 恒 -1
+    //    ⇒ 高亮与滚动都不动（实机「歌曲有歌词但不跟随」的根因）；
+    //    多段歌词还被挤成一行。
+    final Duration? entryTime = _secondsToDuration(entry['time']);
+    if (entryTime != null) {
+      return LyricDoc(
+        lines: <LyricLine>[
+          LyricLine(
+            text: text ?? '',
+            time: entryTime,
+            duration: _secondsToDuration(entry['duration']),
+            offset: sourceOffset == Duration.zero
+                ? _secondsToDuration(entry['offset'])
+                : sourceOffset,
+          ),
+        ],
+        sourceCount: entries.length,
+        preferredIndex: index,
+      );
+    }
     final List<LyricLine> plainLines = (text ?? '')
         .split(RegExp(r'\r\n|\r|\n'))
         .map((String l) => l.trim())

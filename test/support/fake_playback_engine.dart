@@ -29,7 +29,14 @@ class FakePlaybackEngine implements PlaybackEngine {
   int skipPreviousCalls = 0;
 
   final StreamController<void> _stateChanges = StreamController<void>.broadcast();
-  final StreamController<Duration> _positions = StreamController<Duration>.broadcast();
+  /// ⚠️ 必须是 **sync** 广播流：控制器在 `setUp`（root Zone）里创建，
+  ///    异步广播会把监听回调排进 **root Zone 的微任务队列** ——
+  ///    `testWidgets` 的假时钟永远不推进它，于是「setPosition 之后
+  ///    pump 两帧」收不到任何进度事件（实测 H/I/J/L 四条全因此挂）。
+  ///    `sync: true` 让 `_emit()` 的派发与调用方同 zone 同步完成，
+  ///    与真机「seek 时 just_audio 立即回调」的时序语义一致。
+  final StreamController<Duration> _positions =
+      StreamController<Duration>.broadcast(sync: true);
 
   PlaybackCommandListener? _listener;
 

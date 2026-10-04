@@ -152,7 +152,12 @@ void main() {
       await AppExit.moveToBackground();
       await AppExit.exitApp();
 
-      expect(calls, <String>['moveTaskToBack', 'exitApp'],
+      // ⚠️ 通道上还会夹杂别的调用（`BootLog.mark` 走同一通道发 'log'），
+      //    所以不能断言「完整序列相等」，只断言**这两个动作按序出现**。
+      final List<String> relevant = calls
+          .where((String c) => c == 'moveTaskToBack' || c == 'exitApp')
+          .toList();
+      expect(relevant, <String>['moveTaskToBack', 'exitApp'],
           reason: '两个动作必须走约定的通道方法名（与 MainActivity.kt 对齐）');
     });
   });

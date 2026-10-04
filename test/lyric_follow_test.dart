@@ -123,16 +123,24 @@ void main() {
             '[ar:某人]\n[ti:某歌]\n', // 元数据 → 丢弃
       );
       expect(doc.lines.length, 7, reason: '元数据行不产出歌词行');
+      // ⚠️ 期望值必须按**排序后**的顺序写：parseLrc 输出按时间排序
+      //    （10 → 12.34 → 13.345 → 14 → 15 → 15 → 20），
+      //    上一版把「输入顺序」当成了「结果顺序」，20s 的重复句被
+      //    想当然地放在了 lines[1]。
       expect(doc.lines[0].time, const Duration(seconds: 10));
-      expect(doc.lines[1].time, const Duration(seconds: 20));
-      expect(doc.lines[1].text, '重复句');
-      expect(doc.lines[2].time, const Duration(seconds: 12, milliseconds: 340));
-      expect(doc.lines[3].time, const Duration(seconds: 13, milliseconds: 345));
-      expect(doc.lines[4].time, const Duration(seconds: 14));
+      expect(doc.lines[0].text, '重复句');
+      expect(doc.lines[1].time, const Duration(seconds: 12, milliseconds: 340));
+      expect(doc.lines[1].text, '厘秒');
+      expect(doc.lines[2].time, const Duration(seconds: 13, milliseconds: 345));
+      expect(doc.lines[2].text, '毫秒');
+      expect(doc.lines[3].time, const Duration(seconds: 14));
+      expect(doc.lines[3].text, '无小数');
+      expect(doc.lines[4].time, const Duration(seconds: 15));
+      expect(doc.lines[4].text, '同刻其一', reason: '同刻两行保持输入顺序');
       expect(doc.lines[5].time, const Duration(seconds: 15));
-      expect(doc.lines[6].time, const Duration(seconds: 15));
-      expect(doc.lines[5].text, '同刻其一', reason: '同刻两行保持输入顺序');
-      expect(doc.lines[6].text, '同刻其二');
+      expect(doc.lines[5].text, '同刻其二');
+      expect(doc.lines[6].time, const Duration(seconds: 20));
+      expect(doc.lines[6].text, '重复句');
     });
 
     test('C `[offset:+500]` 整体偏移 500ms', () {
@@ -256,18 +264,26 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      final Rect firstBefore = tester.getRect(find.text('第一句'));
-      expect(firstBefore.top, greaterThan(0),
-          reason: '初始时第一句应在视口内（居中附近）');
+      // ⚠️ 用**滚动偏移**断言「列表真的滚了」，不用首行矩形：
+      //    滚到最后一行时第一行早已被懒加载列表回收（cacheExtent 之外），
+      //    `find.text('第一句')` 会找不到，`getRect` 直接抛「nothing found」
+      //    —— 上一版就是这么把「滚动成功」误判成失败的。
+      final ScrollPosition before = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position;
+      expect(before.pixels, closeTo(0, 1.0),
+          reason: '初始时列表应在顶部（第一句居中）');
 
-      // 跳到最后一行：第一句必须被滚上去，说明滚动真的发生了
+      // 跳到最后一行：滚动偏移必须真的前进，而不是视口停在开头
       engine.setPosition(const Duration(seconds: 75));
       await tester.pump(const Duration(milliseconds: 400)); // 滚动动画
       await tester.pump();
 
-      final Rect firstAfter = tester.getRect(find.text('第一句'));
-      expect(firstAfter.top, lessThan(firstBefore.top),
-          reason: '活动行前进后列表必须滚动，而不是视口停在开头');
+      final ScrollPosition after = tester
+          .state<ScrollableState>(find.byType(Scrollable))
+          .position;
+      expect(after.pixels, greaterThan(200),
+          reason: '活动行前进后列表必须真的滚动（偏移前进），而不是停在开头');
       expect(isActive(tester, '第八句'), isTrue);
     });
 
