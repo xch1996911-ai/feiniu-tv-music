@@ -1,2 +1,13 @@
 Analyzing feiniu-tv-music...                                    
-No issues found! (ran in 10.1s)
+
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:70:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:71:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:72:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:73:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:74:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:75:9 • referenced_before_declaration
+  error • Local variable '_t' can't be referenced before it is declared. Try moving the declaration to before the first use, or renaming the local variable so that it doesn't hide a name from an enclosing scope • test/overview_navigation_test.dart:76:9 • referenced_before_declaration
+   info • The local variable '_t' starts with an underscore. Try renaming the variable to not start with an underscore • test/overview_navigation_test.dart:79:9 • no_leading_underscores_for_local_identifiers
+  error • The function 'catalogue' isn't defined. Try importing the library that defines 'catalogue', correcting the name to the name of an existing function, or defining a function named 'catalogue' • test/overview_navigation_test.dart:466:21 • undefined_function
+
+9 issues found. (ran in 10.2s)
