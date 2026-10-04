@@ -239,6 +239,32 @@ class _PlayerPageState extends State<PlayerPage> {
     unawaited(context.read<LyricRepository>().load(song, force: true));
   }
 
+  /// 布局切换后的焦点兜底：只有**焦点真的丢了**才抢回，绝不与显式还焦点打架。
+  ///
+  /// ⚠️ 为什么要「延后一帧 + 复核」：
+  /// 关菜单（[_closeMenu]）与切布局是**同一次按键**里发生的：
+  /// 前者在按键回调里注册「把焦点还给更多键」，后者在随后那一帧的 build 里
+  /// 注册本兜底。若立即判定，`primaryFocus` 还是**旧值**（已被卸载的菜单项 →
+  /// 框架上交的 FocusScope），于是会把刚还回去的焦点又抢到播放/暂停键上 ——
+  /// CI 上正是这样挂的 4 个用例。`requestFocus` 要等下一帧的 postFrame 才
+  /// 真正生效，所以这里再等一帧；复核到「已有人还了焦点」就立刻放手。
+  void _restoreFocusIfLost() {
+    if (!mounted || _queueOpen || _menuOpen) return;
+    if (_isStableFocus(FocusManager.instance.primaryFocus)) return;
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (!mounted || _queueOpen || _menuOpen) return;
+      final FocusNode? pf = FocusManager.instance.primaryFocus;
+      if (_isStableFocus(pf)) return; // 显式还焦点的请求已生效：不干预
+      Log.i('PLAYER_LAYOUT 焦点兜底：${pf?.debugLabel ?? 'null'} → player.play');
+      _playNode.requestFocus();
+    });
+  }
+
+  static bool _isStableFocus(FocusNode? node) {
+    final String? label = node?.debugLabel;
+    return label != null && _stableFocusLabels.contains(label);
+  }
+
   @override
   Widget build(BuildContext context) {
     // ⚠️ 只订阅「当前曲目」「布局模式」「是否已收藏」。
@@ -262,20 +288,13 @@ class _PlayerPageState extends State<PlayerPage> {
     //
     // 顶部三键与进度区/控制行在两种布局下都常驻（`_stableFocusLabels`），
     // 所以正常情况下切换样式焦点会原地保留（这是需求要的）。
-    // 但一旦焦点落在「新样式里已不存在的节点」上（例如历史版本把收藏/更多
-    // 放在信息行），焦点会被框架上交给 FocusScope —— 此时 primaryFocus 的
-    // debugLabel 不在白名单里，表现为「方向键全失灵、顶部按键够不到」。
-    // 这里在布局完成后检测一次并显式把焦点放回播放/暂停键。
+    // 但一旦焦点落在「新样式里已不存在的节点」上，焦点会被框架上交给
+    // FocusScope —— 此时 primaryFocus 的 debugLabel 不在白名单里，
+    // 表现为「方向键全失灵、顶部按键够不到」。这里在布局完成后检测并恢复。
     if (_laidOut != layout) {
       _laidOut = layout;
       WidgetsBinding.instance.addPostFrameCallback((Duration _) {
-        if (!mounted || _queueOpen || _menuOpen) return;
-        final FocusNode? pf = FocusManager.instance.primaryFocus;
-        final String? label = pf?.debugLabel;
-        if (pf == null || label == null || !_stableFocusLabels.contains(label)) {
-          Log.i('PLAYER_LAYOUT 焦点兜底：${label ?? 'null'} → player.play');
-          _playNode.requestFocus();
-        }
+        _restoreFocusIfLost();
       });
     }
 
