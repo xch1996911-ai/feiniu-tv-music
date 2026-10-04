@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -49,6 +50,24 @@ class _LyricViewState extends State<LyricView> {
   /// 已渲染的歌词文档代号，用于识别「换歌」并重置视口。
   int _seenEpoch = -1;
 
+  // ── 诊断面（仅测试/CI 日志使用，经 dynamic 访问私有 State）────────
+  // 「歌词不跟随」这类问题在真机上只有表象、没有内部状态可看，
+  // 本地又没有 Dart 工具链 —— 把关键内部量暴露出来，让 CI 日志
+  // 一次性回答「订阅了吗 / 回调了几次 / 算到了第几行 / 进度是多少」。
+
+  /// 进度流订阅是否存在。
+  @visibleForTesting
+  bool get debugSubscribed => _positionSub != null;
+
+  /// `_refresh` 被调用的次数（区分「回调没来」与「来了但算错」）。
+  @visibleForTesting
+  int get debugRefreshCalls => _refreshCalls;
+  int _refreshCalls = 0;
+
+  /// 当前活动行下标。
+  @visibleForTesting
+  int get debugActiveIndex => _activeIndex;
+
   /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
   ///
   /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 25 × 行高 1.25 × **最多 2 行**
@@ -92,6 +111,7 @@ class _LyricViewState extends State<LyricView> {
   }
 
   void _refresh() {
+    _refreshCalls++;
     if (!mounted) return;
     final lyrics = context.read<LyricRepository>();
     final playback = context.read<PlaybackRepository>();
