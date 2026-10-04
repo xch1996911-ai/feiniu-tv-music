@@ -26,11 +26,11 @@ import '../widgets/tv_glass.dart';
 /// ## 版式（对齐用户参考图：封面与背景融合的左右分区）
 /// ```
 /// ┌──────────────────────────────────────────────────────────────┐
-/// │ [⌄返回]                              （整屏：模糊封面 + 暗渐变）│
+/// │ [⌄返回]                        （整屏：模糊封面 + 暗渐变） [♡ ⋮]│
 /// │ ┌──────────────────────────┐ │                               │
 /// │ │        大 封 面           │ │      右侧同步歌词区            │
 /// │ │  （右/下边缘渐隐融进背景） │ │   （当前句亮白加粗、自动居中）  │
-/// │ │ 歌名(加粗)        ♡  ⋮    │ │                               │
+/// │ │ 歌名(加粗)                │ │                               │
 /// │ │ 歌手                      │ │                               │
 /// │ │ ──────细进度条──────      │ │                               │
 /// │ │  0:07   FLAC·…    04:50  │ │                               │
@@ -38,6 +38,7 @@ import '../widgets/tv_glass.dart';
 /// │ └──────────────────────────┘ │                               │
 /// └──────────────────────────────────────────────────────────────┘
 /// ```
+/// - **顶部行常驻**：返回/收起（左上）、收藏 + 更多（右上），两种布局一致。
 /// - **背景**：整屏铺当前封面的低分辨率模糊图 + 暗色渐变压暗，保证白字可读；
 ///   切歌时 600ms 交叉淡化，不闪白。没有封面时回落到站内渐变。
 /// - **主封面**：`BoxFit` 保持比例，右/下两条渐隐遮罩融进背景，无卡片无厚边框。
@@ -46,13 +47,16 @@ import '../widgets/tv_glass.dart';
 /// - 「大封面」旧布局保留为 [PlayerLayout.cover]，入口收进「更多」菜单。
 ///
 /// ## 焦点（绝不能退化的部分）
-/// 全部显式链，且与屏幕位置一致：
+/// 全部显式链，且与屏幕位置一致；**顶部三键在两种布局下都常驻**：
 /// ```
-///   横向：back ↔ fav ↔ more          （back/more 在两端，不环回）
-///         mode ↔ prev ↔ play ↔ next ↔ queue（mode↔queue 两端环回）
-///   纵向：back/fav/more ↓→ seek；seek ↓→ mode；五个控制键 ↑→ seek、↓→ 自身
+///   顶部：back ↔ fav ↔ more        （左端/右端原地不动，不环回）
+///   底部：mode ↔ prev ↔ play ↔ next ↔ queue（两端环回）
+///   纵向：顶部三键 ↓→ seek；seek ↓→ mode；seek ↑→ fav（两种布局一致）
+///        五个控制键 ↑→ seek、↓→ 自身
 ///   seek：←/→ = ∓5s 快退/快进，OK = 播放/暂停
 /// ```
+/// 因此「顶部 → 进度区 → 控制行 → 回到顶部」始终是闭环：
+/// 任何样式切换后都不会出现「顶部按键够不到」或焦点死路。
 /// 进入播放页焦点直接落在「播放/暂停」。
 ///
 /// ## 为什么控制区不会因进度刷新而丢焦点
@@ -95,6 +99,27 @@ class _PlayerPageState extends State<PlayerPage> {
 
   /// 视口诊断只记一次（每次进程生命周期），避免反复覆盖有意义的事件。
   static bool _viewportNoted = false;
+
+  /// 上一帧渲染用的布局 —— 用于检测「切换样式」并做焦点兜底恢复。
+  PlayerLayout? _laidOut;
+
+  /// 两种布局下都必然存在的焦点节点（切换样式后合法保留焦点的白名单）。
+  ///
+  /// ⚠️ 顶部三个键（back / fav / more）**在任何布局下都常驻** —— 这正是
+  ///    「切换样式后顶部按键按不到」的修复点：老实现把收藏/更多放在
+  ///    「信息行」里，而大封面布局没有信息行，节点整棵被卸载，焦点只能掉到
+  ///    FocusScope（表现为方向键全部失灵）。
+  static const Set<String> _stableFocusLabels = <String>{
+    'player.back',
+    'player.fav',
+    'player.more',
+    'player.seek',
+    'player.mode',
+    'player.prev',
+    'player.play',
+    'player.next',
+    'player.queue',
+  };
 
   @override
   void initState() {
@@ -233,6 +258,27 @@ class _PlayerPageState extends State<PlayerPage> {
     final MusicRepository music = context.read<MusicRepository>();
     final bool overlayOpen = _queueOpen || _menuOpen;
 
+    // ⚠️ 切换播放页样式后的**焦点兜底恢复**。
+    //
+    // 顶部三键与进度区/控制行在两种布局下都常驻（`_stableFocusLabels`），
+    // 所以正常情况下切换样式焦点会原地保留（这是需求要的）。
+    // 但一旦焦点落在「新样式里已不存在的节点」上（例如历史版本把收藏/更多
+    // 放在信息行），焦点会被框架上交给 FocusScope —— 此时 primaryFocus 的
+    // debugLabel 不在白名单里，表现为「方向键全失灵、顶部按键够不到」。
+    // 这里在布局完成后检测一次并显式把焦点放回播放/暂停键。
+    if (_laidOut != layout) {
+      _laidOut = layout;
+      WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+        if (!mounted || _queueOpen || _menuOpen) return;
+        final FocusNode? pf = FocusManager.instance.primaryFocus;
+        final String? label = pf?.debugLabel;
+        if (pf == null || label == null || !_stableFocusLabels.contains(label)) {
+          Log.i('PLAYER_LAYOUT 焦点兜底：${label ?? 'null'} → player.play');
+          _playNode.requestFocus();
+        }
+      });
+    }
+
     return Material(
       color: TvColors.stageTo,
       child: Stack(
@@ -250,51 +296,26 @@ class _PlayerPageState extends State<PlayerPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    // 顶部：左上角收起/返回；大封面布局时右侧补「更多」入口
-                    //（该布局没有信息行，菜单必须可达才能切回融合布局）。
+                    // 顶部行：**两种布局完全一致**的常驻键
+                    // [返回/收起] ←→ [收藏] ←→ [更多]，每个 ↓ 进步度区。
                     SizedBox(
                       height: 44,
-                      child: Row(
-                        children: <Widget>[
-                          _RoundControl(
-                            node: _backNode,
-                            debugLabel: 'player.back',
-                            icon: Icons.keyboard_arrow_down,
-                            iconSize: 28,
-                            size: 44,
-                            tooltip: '收起播放页',
-                            onPressed: widget.onBack,
-                            nextLeft: _backNode, // 左端：原地不动
-                            nextRight: layout == PlayerLayout.stage
-                                ? _favNode
-                                : _moreNode,
-                            nextUp: _backNode,
-                            nextDown: _seekNode,
-                          ),
-                          const Spacer(),
-                          if (layout == PlayerLayout.cover)
-                            _RoundControl(
-                              node: _moreNode,
-                              debugLabel: 'player.more',
-                              icon: Icons.more_vert,
-                              iconSize: 26,
-                              size: 44,
-                              iconColor: TvColors.textDim,
-                              tooltip: '更多（布局 / 歌词操作）',
-                              onPressed: _openMenu,
-                              nextLeft: _backNode,
-                              nextRight: _moreNode, // 右端：原地不动
-                              nextUp: _moreNode,
-                              nextDown: _seekNode,
-                            ),
-                        ],
+                      child: _TopControls(
+                        song: song,
+                        fav: fav,
+                        backNode: _backNode,
+                        favNode: _favNode,
+                        moreNode: _moreNode,
+                        seekNode: _seekNode,
+                        onBack: widget.onBack,
+                        onMore: _openMenu,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Expanded(
                       child: layout == PlayerLayout.stage
-                          ? _buildStageBody(song, fav)
-                          : _buildCoverBody(song, fav),
+                          ? _buildStageBody(song)
+                          : _buildCoverBody(song),
                     ),
                   ],
                 ),
@@ -317,7 +338,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   /// V6 融合布局（默认）：左区 = 封面渐隐融合 + 信息 + 进度 + 五键控制；
   /// 右区 = 独立整高的同步歌词。
-  Widget _buildStageBody(Track? song, bool fav) {
+  Widget _buildStageBody(Track? song) {
     if (song == null) {
       return const Center(
         child: Text('尚未选择歌曲',
@@ -334,23 +355,10 @@ class _PlayerPageState extends State<PlayerPage> {
             children: <Widget>[
               Expanded(child: _FusedCover(song: song)),
               const SizedBox(height: 12),
-              _InfoRow(
-                song: song,
-                fav: fav,
-                favNode: _favNode,
-                moreNode: _moreNode,
-                backNode: _backNode,
-                seekNode: _seekNode,
-                onToggleFav: () {
-                  Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${song.title}');
-                  unawaited(
-                    context
-                        .read<LocalLibraryRepository>()
-                        .toggleFavorite(song.guid),
-                  );
-                },
-                onMore: _openMenu,
-              ),
+              // 信息行只放「歌名 + 歌手」；收藏/更多已上移到常驻顶部行，
+              // 避免同一功能在两处各挂一个焦点节点（也消除「切换样式后
+              // 图标消失、按不到」的隐患）。
+              _InfoRow(song: song),
               const SizedBox(height: 8),
               _SeekRow(
                 playbackNode: _seekNode,
@@ -383,7 +391,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   /// 旧「大封面」布局（[PlayerLayout.cover]，入口在更多菜单）：
   /// 封面放大为视觉主体、歌词在封面下方；进度与控制区保持一致。
-  Widget _buildCoverBody(Track? song, bool fav) {
+  Widget _buildCoverBody(Track? song) {
     if (song == null) {
       return const Center(
         child: Text('尚未选择歌曲',
@@ -395,15 +403,16 @@ class _PlayerPageState extends State<PlayerPage> {
       children: <Widget>[
         Expanded(
           flex: 6,
-          child: _buildCoverPane(song, fav, center: true, horizontal: true),
+          child: _buildCoverPane(song, center: true, horizontal: true),
         ),
         const SizedBox(height: 10),
         const Expanded(flex: 4, child: LyricView()),
         const SizedBox(height: 10),
         _SeekRow(
           playbackNode: _seekNode,
-          // 大封面布局没有信息行：↑ 指回自身（原地不动），↓ 仍去控制区。
-          upNode: _seekNode,
+          // ⚠️ 大封面布局也必须有一条边通到顶部行 —— 老实现这里指向自身，
+          //    导致「主体按键永远够不到顶部返回/更多」（用户实测反馈的故障）。
+          upNode: _favNode,
           downNode: _modeNode,
         ),
         const SizedBox(height: 10),
@@ -427,8 +436,7 @@ class _PlayerPageState extends State<PlayerPage> {
   /// ⚠️ 本方法**只做布局**，任何 provider 订阅都由调用方（真正的 `build()`）
   /// 传进来 —— 它被 `LayoutBuilder` 的 builder 调用，那里不允许 `context.select`。
   Widget _buildCoverPane(
-    Track song,
-    bool fav, {
+    Track song, {
     required bool center,
     bool horizontal = false,
   }) {
@@ -436,14 +444,13 @@ class _PlayerPageState extends State<PlayerPage> {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints box) {
-        return _buildCoverPaneInner(song, fav, box, center, horizontal, music);
+        return _buildCoverPaneInner(song, box, center, horizontal, music);
       },
     );
   }
 
   Widget _buildCoverPaneInner(
     Track song,
-    bool fav,
     BoxConstraints box,
     bool center,
     bool horizontal,
@@ -537,12 +544,9 @@ class _PlayerPageState extends State<PlayerPage> {
         const SizedBox(height: gapSmall),
         Row(
           children: <Widget>[
-            Icon(
-              fav ? Icons.favorite : Icons.favorite_border,
-              size: 20,
-              color: fav ? TvColors.brand : TvColors.textFaint,
-            ),
-            const SizedBox(width: 8),
+            // ⚠️ 这里**不放心形图标**：老实现在这里画了一颗仅装饰用的心，
+            //    看着像按钮但不可聚焦 —— 用户会反复按方向键试图选中它。
+            //    收藏键现在唯一存在于顶部常驻行（可聚焦、可用 OK 触发）。
             Expanded(
               child: Text(
                 song.artistNames.isEmpty
@@ -757,94 +761,141 @@ class _FusedCover extends StatelessWidget {
 // 左下：歌曲信息 / 进度 / 控制键
 // ═══════════════════════════════════════════════════════════════════
 
-/// 歌曲信息行：左 = 歌名（可两行）+ 歌手；右 = 收藏 + 更多。
-class _InfoRow extends StatelessWidget {
-  final Track song;
+/// 常驻顶部行（**两种布局完全一致**）：返回/收起 ←→ 收藏 ←→ 更多。
+///
+/// ## 为什么这三个键必须常驻顶部
+/// 「切换播放页样式后遥控器选不中顶部按键」的真实根因有两条：
+/// 1. 老实现把「收藏 / 更多」放进**信息行**，而大封面布局没有信息行 ——
+///    切换样式时这两个 `FocusNode` 所在的整棵子树被卸载，焦点被框架上交到
+///    FocusScope，表现就是方向键全部失灵；
+/// 2. 老的大封面布局里，进度区的 `↑` 指向**自身**，即主体按键没有任何一条
+///    边能走到顶部行 —— 顶部两个键只能靠彼此的左右键互达，一旦离开就回不去。
+///
+/// 现在三个键都挂在顶部（不随布局变化），链条为
+/// `back ↔ fav ↔ more`，各自 `↓ → 进度区`，进度区 `↑ → fav`，
+/// 因此「顶部 → 主体 → 顶部」始终闭环，任何布局、任何样式切换后都可达。
+///
+/// ⚠️ 收藏键在没有当前曲目时 `onPressed == null` → 不可聚焦（`canRequestFocus false`），
+///    此时「返回」的右邻直接指向「更多」，不留悬空链节。
+class _TopControls extends StatelessWidget {
+  final Track? song;
   final bool fav;
+  final FocusNode backNode;
   final FocusNode favNode;
   final FocusNode moreNode;
-  final FocusNode backNode;
   final FocusNode seekNode;
-  final VoidCallback onToggleFav;
+  final VoidCallback onBack;
   final VoidCallback onMore;
 
-  const _InfoRow({
+  const _TopControls({
     required this.song,
     required this.fav,
+    required this.backNode,
     required this.favNode,
     required this.moreNode,
-    required this.backNode,
     required this.seekNode,
-    required this.onToggleFav,
+    required this.onBack,
     required this.onMore,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Track? track = song;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                song.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 26,
-                  height: 1.2, // 26×1.2≈32/行，固定预算（见文件头说明）
-                  fontWeight: FontWeight.w700,
-                  color: TvColors.text,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                song.artistNames.isEmpty
-                    ? song.album.name
-                    : song.artistNames,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  height: 1.2,
-                  color: TvColors.textDim,
-                ),
-              ),
-            ],
-          ),
+        _RoundControl(
+          node: backNode,
+          debugLabel: 'player.back',
+          icon: Icons.keyboard_arrow_down,
+          iconSize: 28,
+          size: 44,
+          tooltip: '收起播放页',
+          onPressed: onBack,
+          nextLeft: backNode, // 左端：原地不动
+          nextRight: track == null ? moreNode : favNode,
+          nextUp: backNode,
+          nextDown: seekNode,
         ),
-        const SizedBox(width: 10),
+        const Spacer(),
         _RoundControl(
           node: favNode,
           debugLabel: 'player.fav',
           icon: fav ? Icons.favorite : Icons.favorite_border,
           iconSize: 24,
-          size: 48,
+          size: 44,
           iconColor: fav ? TvColors.brand : TvColors.textDim,
           tooltip: fav ? '取消收藏' : '收藏',
-          onPressed: onToggleFav,
+          onPressed: track == null
+              ? null
+              : () {
+                  Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${track.title}');
+                  unawaited(
+                    context
+                        .read<LocalLibraryRepository>()
+                        .toggleFavorite(track.guid),
+                  );
+                },
           nextLeft: backNode,
           nextRight: moreNode,
-          nextUp: favNode, // 上方没有可聚焦项：原地不动
+          nextUp: favNode, // 上方无可聚焦项：原地不动
           nextDown: seekNode,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         _RoundControl(
           node: moreNode,
           debugLabel: 'player.more',
           icon: Icons.more_vert,
           iconSize: 24,
-          size: 48,
+          size: 44,
           iconColor: TvColors.textDim,
           tooltip: '更多（布局 / 歌词操作）',
           onPressed: onMore,
-          nextLeft: favNode,
+          nextLeft: track == null ? backNode : favNode,
           nextRight: moreNode, // 右端：原地不动
           nextUp: moreNode,
           nextDown: seekNode,
+        ),
+      ],
+    );
+  }
+}
+
+/// 歌曲信息行：歌名（可两行）+ 歌手。
+///
+/// 收藏 / 更多不在这里（见 [_TopControls]）：它们在顶部常驻，
+/// 本行因此没有任何可聚焦控件，方向键不会停在这里（上方非焦点区）。
+class _InfoRow extends StatelessWidget {
+  final Track song;
+
+  const _InfoRow({required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Text(
+          song.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 26,
+            height: 1.2, // 26×1.2≈32/行，固定预算（见文件头说明）
+            fontWeight: FontWeight.w700,
+            color: TvColors.text,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          song.artistNames.isEmpty ? song.album.name : song.artistNames,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 16,
+            height: 1.2,
+            color: TvColors.textDim,
+          ),
         ),
       ],
     );
@@ -1033,7 +1084,7 @@ class _SeekRow extends StatefulWidget {
   /// 本行的焦点节点（由 PlayerPage 创建，用于串联焦点链）。
   final FocusNode playbackNode;
 
-  /// ↑ 的去处（信息行收藏键；大封面布局传自身 = 原地不动）。
+  /// ↑ 的去处（顶部常驻行的收藏键；两种布局一致）。
   final FocusNode upNode;
 
   /// ↓ 的去处（控制区模式键）。

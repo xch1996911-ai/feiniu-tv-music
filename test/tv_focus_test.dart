@@ -44,6 +44,9 @@ void main() {
   late LocalLibraryRepository local;
   late FakeSecureStore store;
 
+  /// 「返回/收起」被 OK/Enter 触发的次数（验证顶部按钮不止能聚焦，还能操作）。
+  int backCalls = 0;
+
   setUp(() {
     music = FakeMusicRepository();
     engine = FakePlaybackEngine();
@@ -53,6 +56,7 @@ void main() {
     //    flutter_secure_storage 的平台通道上（测试环境没有插件）。
     store = FakeSecureStore();
     local = LocalLibraryRepository(store: store);
+    backCalls = 0;
   });
 
   tearDown(() async {
@@ -83,7 +87,7 @@ void main() {
         child: MaterialApp(
           theme: buildTvTheme(),
           home: Scaffold(
-            body: PlayerPage(onBack: () {}),
+            body: PlayerPage(onBack: () => backCalls++),
           ),
         ),
       ),
@@ -122,6 +126,16 @@ void main() {
 
   /// 当前焦点必须落在「播放/暂停」上（每个用例的起跑位置）。
   void expectAtPlay() => expect(focusedLabel(), 'player.play');
+
+  /// 走到「更多」按钮：播放/暂停 →↑ seek →↑ fav →→ more。
+  Future<void> gotoMore(WidgetTester tester) async {
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(focusedLabel(), 'player.seek');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(focusedLabel(), 'player.fav');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    expect(focusedLabel(), 'player.more');
+  }
 
   group('播放页焦点链（V6 融合版式）', () {
     testWidgets('打开播放页后焦点直接落在「播放/暂停」上', (WidgetTester tester) async {
@@ -283,6 +297,188 @@ void main() {
     });
   });
 
+  group('顶部三个键（返回 / 收藏 / 更多）—— 本次故障的回归', () {
+    /// 顶部三键是否都在焦点树里（用 debugLabel 找已挂载的 Focus 节点）。
+    ///
+    /// ⚠️ 与 `focusedLabel()` 的区别：这里断言的是「节点存在且可请求焦点」，
+    /// 而不是「此刻焦点在哪」。用户报的正是「节点不在焦点树里 → 方向键够不到」。
+    void expectTopRowMounted() {
+      for (final String label in <String>[
+        'player.back',
+        'player.fav',
+        'player.more',
+      ]) {
+        final bool found = find
+            .byType(Focus)
+            .evaluate()
+            .map((Element e) => (e.widget as Focus).focusNode)
+            .whereType<FocusNode>()
+            .any((FocusNode n) => n.debugLabel == label && n.canRequestFocus);
+        expect(found, isTrue,
+            reason: '$label 必须挂载在焦点树中且可请求焦点'
+                '（挂不上就会出现「方向键选不中 / 按了没反应」）');
+      }
+    }
+
+    /// 从「播放/暂停」出发走到顶部三键，再原路回控制区（不依赖任何布局假设）。
+    Future<void> walkTopRow(WidgetTester tester) async {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.seek', reason: '控制行 ↑ 应进步度区');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.fav', reason: '进度区 ↑ 应到顶部收藏键');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back', reason: '顶部行 ← 应到返回键');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.more', reason: '顶部行 → 应到更多键');
+
+      // 两端不环回：到底就原地不动（绝不能把焦点甩丢）。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.more');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back');
+
+      // 顶部 ↓ 必须能回主体：不留死路。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.seek');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.mode');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expectAtPlay();
+    }
+
+    testWidgets('融合布局：顶部三键可遍历、可操作、可回主体',
+        (WidgetTester tester) async {
+      await ready(tester);
+      expectTopRowMounted();
+      await walkTopRow(tester);
+
+      // 返回键 OK 必须真的触发「收起播放页」。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(backCalls, 1, reason: 'OK 必须触发返回/收起');
+      expect(focusedLabel(), 'player.back', reason: '触发后焦点不跳走');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('切到大封面布局后：顶部三键仍挂载、仍可遍历、焦点不丢',
+        (WidgetTester tester) async {
+      // ⚠️ 这就是用户实测的故障场景：切换样式后遥控器够不到顶部按键。
+      await ready(tester);
+
+      // 通过「更多」菜单切到大封面布局（菜单关闭后焦点回到更多键）。
+      await gotoMore(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+      expect(local.playerLayout, PlayerLayout.cover);
+      expect(focusedLabel(), 'player.more',
+          reason: '菜单关闭后焦点必须回到「更多」键（而不是掉到 FocusScope）');
+
+      expectTopRowMounted();
+
+      // 顶部行内部左右可走。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.more');
+
+      // 从顶部下到主体，再一路回到顶部（大封面布局的 ↑ 直通修复点）。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.seek');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.mode');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.seek');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.fav',
+          reason: '大封面布局下进度区 ↑ 必须能到顶部（老实现指向自身，进不去顶部）');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('连续来回切换样式 3 轮：每轮顶部三键都可遍历，焦点始终落在有效控件上',
+        (WidgetTester tester) async {
+      await ready(tester);
+
+      for (int round = 0; round < 3; round++) {
+        // 打开菜单 → 切换布局 → 菜单关闭
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp); // seek
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp); // fav
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight); // more
+        expect(focusedLabel(), 'player.more');
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.pump();
+        expect(focusedLabel(), 'more.layout');
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.pump();
+
+        expect(focusedLabel(), 'player.more',
+            reason: '第 ${round + 1} 轮切换后焦点必须回到更多键（不能在已卸载节点/scope 上）');
+        expectTopRowMounted();
+
+        // 每轮都完整走一遍顶部 → 主体 → 控制行
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        expect(focusedLabel(), 'player.fav');
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        expect(focusedLabel(), 'player.back');
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        expect(focusedLabel(), 'player.seek');
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        expect(focusedLabel(), 'player.mode');
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), 'player.fav',
+            reason: '第 ${round + 1} 轮：主体 → 顶部仍必须可达');
+      }
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('长按连发方向键：顶部 ↔ 主体之间不丢焦点',
+        (WidgetTester tester) async {
+      await ready(tester);
+
+      // 模拟长按：连续快速发 20 次 ↑、再 20 次 ↓，每一拍都必须在有效节点上。
+      for (int i = 0; i < 20; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        final String? label = focusedLabel();
+        expect(label, isNotNull, reason: '第 ${i + 1} 次 ↑ 后焦点不能为空');
+        expect(label!.startsWith('player.'), isTrue,
+            reason: '第 ${i + 1} 次 ↑ 后焦点必须停在播放页控件上，实际：$label');
+      }
+      for (int i = 0; i < 20; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        final String? label = focusedLabel();
+        expect(label, isNotNull, reason: '第 ${i + 1} 次 ↓ 后焦点不能为空');
+        expect(label!.startsWith('player.'), isTrue,
+            reason: '第 ${i + 1} 次 ↓ 后焦点必须停在播放页控件上，实际：$label');
+      }
+
+      await tearDownTree(tester);
+    });
+  });
+
   group('核心播放控制按钮可激活', () {
     testWidgets('OK 激活播放/暂停，且焦点留在原按钮上',
         (WidgetTester tester) async {
@@ -357,16 +553,6 @@ void main() {
   });
 
   group('「更多」菜单（布局切换 / 歌词操作）', () {
-    /// 走到「更多」按钮：播放/暂停 →↑ seek →↑ fav →→ more。
-    Future<void> gotoMore(WidgetTester tester) async {
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'player.seek');
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'player.fav');
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), 'player.more');
-    }
-
     testWidgets('OK 打开菜单：出现布局/歌词项，焦点落在第一项',
         (WidgetTester tester) async {
       await ready(tester);

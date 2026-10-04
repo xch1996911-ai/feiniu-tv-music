@@ -247,7 +247,28 @@ void main() {
           expect(queueN.bottom, lessThanOrEqualTo(vh + 0.5),
               reason: '队列按钮底部被切（视口高 $vh）: $queueN');
 
-          // ⑥ 融合布局专属：标题在进度区上方、封面与歌词区同时存在。
+          // ⑥ 顶部三键（返回 / 收藏 / 更多）在**两种布局下都必须挂载**，
+          //    顺序为 左→右 `返回 → 收藏 → 更多`，且都在进度区上方。
+          //    这是用户实测故障（切换样式后遥控器够不到顶部按键）的回归点。
+          final Rect? favN = _rectOf(tester, 'player.fav');
+          final Rect? moreN = _rectOf(tester, 'player.more');
+          expect(favN, isNotNull,
+              reason: '顶部收藏键必须挂载在焦点树里（${layout.name} 布局）');
+          expect(moreN, isNotNull,
+              reason: '顶部更多键必须挂载在焦点树里（${layout.name} 布局）');
+          expect(moreN!.left, greaterThanOrEqualTo(favN!.right),
+              reason: '顶部行顺序必须是 返回 → 收藏 → 更多：'
+                  'fav=$favN more=$moreN');
+          expect(moreN.right, lessThanOrEqualTo(vw + 0.5),
+              reason: '更多键右端被切（视口宽 $vw）: $moreN');
+          for (final Rect r in <Rect>[backN, favN, moreN]) {
+            expect(r.top, greaterThanOrEqualTo(-0.5),
+                reason: '顶部键顶部被安全区/裁剪切掉: $r');
+            expect(r.top, lessThan(seekN.top),
+                reason: '顶部三键必须位于进度区上方: $r');
+          }
+
+          // ⑦ 融合布局专属：标题在进度区上方、封面与歌词区同时存在。
           if (layout == PlayerLayout.stage) {
             final Rect titleRect = tester.getRect(find.text(longTrack().title));
             expect(titleRect.top, lessThan(seekN.top),
