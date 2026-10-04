@@ -218,7 +218,15 @@ void main() {
 
           // ② 溢出：debug 下 RenderFlex 溢出会抛异常，
           //    release 下则是**静默裁切**（实机表现就是「内容被遮住」）。
-          expect(tester.takeException(), isNull,
+          final Object? layoutError = tester.takeException();
+          if (layoutError != null) {
+            // ⚠️ `takeException()` 把异常吞掉了，flutter_test 就不会打印
+            //    RenderFlex 的完整转储（含 constraints 与 creator 链），
+            //    日志里只剩一句「overflowed by N pixels」——定位不到是谁。
+            //    这里显式打进日志，CI 上就能直接看到溢出的是哪个控件。
+            debugPrint('LAYOUT_OVERFLOW_DETAIL >>> $layoutError');
+          }
+          expect(layoutError, isNull,
               reason: '出现布局溢出（release 下会静默裁掉内容）');
 
           // ③ 规格胶囊（实机被切掉的就是它）必须完整落在视口内。

@@ -387,11 +387,19 @@ class _PlayerPageState extends State<PlayerPage> {
     // ⚠️ 这个 `textW` **必须同时用作下面 `ConstrainedBox` 的上限**：
     //    否则一边按 textW 扣封面宽度、另一边却仍允许文字排到 420，
     //    窄视口上就会水平溢出。
-    final double textW = horizontal ? min(420.0, availW * 0.45) : 0.0;
+    // ⚠️ 横向排布时整个 Row 的高度 = max(封面, 文字块)，而**文字块没有**被
+    //    约束进可用高度 —— 一旦文字块自己就比可用高度还高（系统字体放大、
+    //    逻辑视口偏小），封面栏必然溢出。实测：960×540 + 字体 1.3 溢 18px、
+    //    853×480 + 字体 1.3 溢 50px（大封面模式，也就是用户选了「大封面」+
+    //    把电视字体调大）。这时**退回纵向排布**：纵向排布会先把封面让出去
+    //    （封面按剩余空间缩小），空间紧张时是优雅降级；横向排布只会把文字
+    //    顶出屏幕（release 下静默裁切）。
+    final bool useRow = horizontal && textBlock <= availH - slack;
+    final double textW = useRow ? min(420.0, availW * 0.45) : 0.0;
     final double coverByWidth =
-        horizontal ? (availW - 28 - textW - slack) : (availW - slack);
+        useRow ? (availW - 28 - textW - slack) : (availW - slack);
     final double coverByHeight =
-        horizontal ? (availH - slack) : (availH - gapBig - textBlock - slack);
+        useRow ? (availH - slack) : (availH - gapBig - textBlock - slack);
 
     // ⚠️ 设计下限**不能覆盖实际可用空间**。
     //    老代码写成 `.clamp(110.0, 360.0)`：逻辑视口偏小的电视
@@ -467,7 +475,7 @@ class _PlayerPageState extends State<PlayerPage> {
       ],
     );
 
-    if (horizontal) {
+    if (useRow) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -943,7 +951,9 @@ class _SeekRowState extends State<_SeekRow> {
       focusNode: widget.playbackNode,
       debugLabel: 'player.seek',
       // ⚠️ 左右键在这块是**进度操作**，不是焦点移动 —— 这正是需求里
-      //    「明确设计的进度操作情形」。它不会造成死区：↑ 始终能回控制区。
+      //    「明确设计的进度操作情形」。它不会造成死区：↓ 始终能回操作条
+      //    （操作条在进度区**下方**，↑ 则指回自身「原地不动」，
+      //    因为上方只有不可聚焦的正文）。
       onArrowLeft: () => _seekBy(-1),
       onArrowRight: () => _seekBy(1),
       onPressed: () => unawaited(p.togglePlay()),
