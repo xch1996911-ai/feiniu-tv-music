@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' show FlutterView, ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../core/diagnostics.dart';
 import '../../core/log.dart';
 import '../../domain/player_layout.dart';
 import '../../domain/track.dart';
@@ -19,41 +21,44 @@ import '../widgets/queue_sheet.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
 
-/// 正在播放页（全屏覆盖层）。
+/// 正在播放页（全屏覆盖层）—— **V6 融合版式**。
 ///
-/// ## V4 版式改动（需求「四、播放页布局改动」）
-/// 1. **返回 / 播放顺序 / 模式切换 / 队列全部下沉到底部操作栏** ——
-///    旧版把它们放在顶部两端，电视上要跨半个屏幕找；
-/// 2. **封面放大为视觉主体**；
-/// 3. 新增两种展示模式（[PlayerLayout]）：标准布局 / 大封面 + 歌词在下，
-///    选择结果持久化，重新打开播放器仍生效；
-/// 4. 新增**队列面板**（与首页迷你播放器打开的是同一份队列）。
-///
-/// ## 焦点（这是绝不能退化的部分）
-/// 底部操作栏是一条**显式线性链，且与屏幕上的左右顺序完全一致**：
+/// ## 版式（对齐用户参考图：封面与背景融合的左右分区）
 /// ```
-/// [返回] ↔ [布局] ↔ [模式] ↔ [收藏] ↔ [上一首] ↔ [播放/暂停] ↔ [下一首] ↔ [队列]
-///    ↑                                                                      │
-///    └──────────────────（队列按 → 环回「返回」）────────────────────────────┘
+/// ┌──────────────────────────────────────────────────────────────┐
+/// │ [⌄返回]                              （整屏：模糊封面 + 暗渐变）│
+/// │ ┌──────────────────────────┐ │                               │
+/// │ │        大 封 面           │ │      右侧同步歌词区            │
+/// │ │  （右/下边缘渐隐融进背景） │ │   （当前句亮白加粗、自动居中）  │
+/// │ │ 歌名(加粗)        ♡  ⋮    │ │                               │
+/// │ │ 歌手                      │ │                               │
+/// │ │ ──────细进度条──────      │ │                               │
+/// │ │  0:07   FLAC·…    04:50  │ │                               │
+/// │ │  ⃞   ⏮   ▶   ⏭   ☰      │ │                               │
+/// │ └──────────────────────────┘ │                               │
+/// └──────────────────────────────────────────────────────────────┘
 /// ```
-/// 逻辑顺序必须等于视觉顺序：若链条是「返回 → 模式 → 布局」而屏幕上是
-/// 「返回 布局 模式」，用户按 → 时焦点会「跳过」中间那个控件，观感就是
-/// 焦点乱跑（V4 修正过这个不一致）。
+/// - **背景**：整屏铺当前封面的低分辨率模糊图 + 暗色渐变压暗，保证白字可读；
+///   切歌时 600ms 交叉淡化，不闪白。没有封面时回落到站内渐变。
+/// - **主封面**：`BoxFit` 保持比例，右/下两条渐隐遮罩融进背景，无卡片无厚边框。
+/// - **信息/进度/控制**全部在左区底部，右侧歌词区保持独立整高。
+/// - 旧「大毛玻璃按钮盒」取消；底部五键为纯图标，聚焦时才出现细光环。
+/// - 「大封面」旧布局保留为 [PlayerLayout.cover]，入口收进「更多」菜单。
 ///
-/// 进度区在操作栏**下方**，并保持 V3 已验证的行为：
-/// - 底部任一控件按 ↓ → 进进度区；
-/// - 进度区按 ↑ → **回播放/暂停**；
-/// - 进度区按 ↓ → 原地不动（最下一层，绝不把焦点甩丢）；
-/// - 进度区 ← / → = 快退 / 快进 5 秒，OK = 播放暂停。
-///
-/// 「进度区放在操作栏下方」而不是参考图的上方，是**刻意**的：
-/// 若进度条在控制键上方，按 ↓ 焦点会向上跑，遥控器体验是坏的
-/// （V3 已经踩过这个坑，这里不重复）。
+/// ## 焦点（绝不能退化的部分）
+/// 全部显式链，且与屏幕位置一致：
+/// ```
+///   横向：back ↔ fav ↔ more          （back/more 在两端，不环回）
+///         mode ↔ prev ↔ play ↔ next ↔ queue（mode↔queue 两端环回）
+///   纵向：back/fav/more ↓→ seek；seek ↓→ mode；五个控制键 ↑→ seek、↓→ 自身
+///   seek：←/→ = ∓5s 快退/快进，OK = 播放/暂停
+/// ```
+/// 进入播放页焦点直接落在「播放/暂停」。
 ///
 /// ## 为什么控制区不会因进度刷新而丢焦点
-/// 本页 `build` **不订阅** position：进度只在 [_SeekRow] 内部自刷新，
-/// 播放/暂停只订阅 `isPlaying`，模式只订阅 `mode`，布局只订阅 `playerLayout`。
-/// 进度跳动时控制按钮根本不重建，`FocusNode` 自然不会被换掉。
+/// 本页 `build` 不订阅 position：进度只在 [_SeekRow] 内部自刷新；
+/// 播放/暂停、模式、可否上一首的订阅收在 [_TransportControls] 内部，
+/// 进度跳动时其余控件不重建，`FocusNode` 自然不会被换掉。
 class PlayerPage extends StatefulWidget {
   /// 返回（回到进入播放页之前的位置）。音乐**继续播放**。
   final VoidCallback onBack;
@@ -67,9 +72,9 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   // ── 焦点节点（全部在本 State 创建并释放）────────────────────
   final FocusNode _backNode = FocusNode(debugLabel: 'player.back');
-  final FocusNode _modeNode = FocusNode(debugLabel: 'player.mode');
-  final FocusNode _layoutNode = FocusNode(debugLabel: 'player.layout');
   final FocusNode _favNode = FocusNode(debugLabel: 'player.fav');
+  final FocusNode _moreNode = FocusNode(debugLabel: 'player.more');
+  final FocusNode _modeNode = FocusNode(debugLabel: 'player.mode');
   final FocusNode _prevNode = FocusNode(debugLabel: 'player.prev');
   final FocusNode _playNode = FocusNode(debugLabel: 'player.play');
   final FocusNode _nextNode = FocusNode(debugLabel: 'player.next');
@@ -79,11 +84,17 @@ class _PlayerPageState extends State<PlayerPage> {
   /// 队列面板是否打开。
   bool _queueOpen = false;
 
+  /// 「更多」菜单是否打开。
+  bool _menuOpen = false;
+
   /// 已请求歌词的曲目 guid，用于检测换歌。
   String? _lyricForGuid;
 
   /// 播放仓储引用（构造时抓一次，避免 dispose 阶段再 `context.read`）。
   late final PlaybackRepository _playback;
+
+  /// 视口诊断只记一次（每次进程生命周期），避免反复覆盖有意义的事件。
+  static bool _viewportNoted = false;
 
   @override
   void initState() {
@@ -97,6 +108,7 @@ class _PlayerPageState extends State<PlayerPage> {
       if (!mounted) return;
       _playNode.requestFocus();
       _syncLyric();
+      _noteViewport(context);
     });
   }
 
@@ -105,9 +117,9 @@ class _PlayerPageState extends State<PlayerPage> {
     _playback.removeListener(_syncLyric);
     for (final FocusNode n in <FocusNode>[
       _backNode,
-      _modeNode,
-      _layoutNode,
       _favNode,
+      _moreNode,
+      _modeNode,
       _prevNode,
       _playNode,
       _nextNode,
@@ -117,6 +129,24 @@ class _PlayerPageState extends State<PlayerPage> {
       n.dispose();
     }
     super.dispose();
+  }
+
+  /// 把实际视口信息写进诊断页（需求 §五：先记录 physicalSize / dpr /
+  /// 逻辑视口 / textScale / 安全区；主界面不展示这些技术信息）。
+  void _noteViewport(BuildContext context) {
+    if (_viewportNoted) return;
+    _viewportNoted = true;
+    final MediaQueryData mq = MediaQuery.of(context);
+    final FlutterView view = View.of(context);
+    Diagnostics.note(
+      '播放页视口',
+      '物理 ${view.physicalSize.width.toInt()}×${view.physicalSize.height.toInt()}'
+      ' · dpr ${view.devicePixelRatio}'
+      ' · 逻辑 ${mq.size.width.toInt()}×${mq.size.height.toInt()}'
+      ' · 字体缩放 ${mq.textScaler.scale(1.0)}'
+      ' · 安全区 l${mq.padding.left}/t${mq.padding.top}'
+          '/r${mq.padding.right}/b${mq.padding.bottom}',
+    );
   }
 
   /// 换歌时加载新歌词（自动下一首后歌词要跟着换）。
@@ -156,174 +186,228 @@ class _PlayerPageState extends State<PlayerPage> {
     });
   }
 
-  void _cycleLayout() {
+  void _openMenu() {
+    Log.i('UI 打开播放页更多菜单');
+    setState(() => _menuOpen = true);
+  }
+
+  void _closeMenu() {
+    if (!_menuOpen) return;
+    setState(() => _menuOpen = false);
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (!mounted) return;
+      _moreNode.requestFocus();
+    });
+  }
+
+  void _toggleLayout() {
     final LocalLibraryRepository local = context.read<LocalLibraryRepository>();
     final PlayerLayout nextLayout = local.playerLayout.next;
     Log.i('UI 播放页布局 ${local.playerLayout.storageKey} → ${nextLayout.storageKey}');
     unawaited(local.setPlayerLayout(nextLayout));
   }
 
+  void _reloadLyrics() {
+    final Track? song = _playback.current;
+    if (song == null) return;
+    Log.i('LYRIC_RETRY 播放页手动重载歌词');
+    unawaited(context.read<LyricRepository>().load(song, force: true));
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ⚠️ 只订阅「当前曲目」与「布局模式」。
-    //    进度用不着在这里监听 —— 一旦在这里 watch，
-    //    进度每跳动一次整页就会重建，控件焦点与歌词视口都会跟着抖。
+    // ⚠️ 只订阅「当前曲目」「布局模式」「是否已收藏」。
+    //    进度/播放态的订阅下沉到 [_SeekRow] / [_TransportControls]，
+    //    避免进度每秒跳动整页重建。
     final Track? song = context.select<PlaybackRepository, Track?>(
       (PlaybackRepository p) => p.current,
     );
     final PlayerLayout layout = context.select<LocalLibraryRepository,
         PlayerLayout>((LocalLibraryRepository l) => l.playerLayout);
-    // ⚠️ 「当前曲是否已收藏」也必须在这里读，**不能**下沉到 [_buildCoverPane]：
-    //    那两个布局方法是从 `LayoutBuilder` 的 builder 里调用的，而 builder
-    //    跑在 **layout 阶段**（`debugDoingBuild == false`），provider 的
-    //    `context.select` 会直接断言失败：
-    //    `Failed assertion: 'widget is LayoutBuilder || debugDoingBuild'`。
-    //    （`context.read` 没有这个限制，所以只有 select 会炸。）
+    // ⚠️ 「当前曲是否已收藏」必须在这里读，**不能**下沉到 [_FusedCover]：
+    //    那里从 `LayoutBuilder` 的 builder 里调用，而 builder 跑在
+    //    **layout 阶段**，provider 的 `context.select` 会直接断言失败。
     final bool fav = context.select<LocalLibraryRepository, bool>(
       (LocalLibraryRepository l) => song != null && l.isFavorite(song.guid),
     );
+    final MusicRepository music = context.read<MusicRepository>();
+    final bool overlayOpen = _queueOpen || _menuOpen;
 
     return Material(
       color: TvColors.stageTo,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[TvColors.stageFrom, TvColors.stageTo],
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: <Widget>[
-              // ⚠️ 队列面板打开时把底下的播放页排除出焦点树，
-              //    否则方向键会跑到被遮住的按钮上（焦点"消失"）。
-              ExcludeFocus(
-                excluding: _queueOpen,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(36, 16, 36, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Expanded(child: _buildBody(song, layout, fav)),
-                      // ⚠️ 纵向顺序必须是：正文 → 进度/队列状态区 → **最底部**操作条。
-                      //    原来把操作条放在进度条**上面**，与需求相反，
-                      //    也让「进度条在最下方」这个通用预期落空。
-                      const SizedBox(height: 8),
-                      _SeekRow(
-                        playbackNode: _seekNode,
-                        // 方向键：↓ 回操作条（操作条就在它下面）；↑ 指回自身 ——
-                        // 进度区上方只有**不可聚焦**的正文（封面/歌词），
-                        // 指回自己是确定的「原地不动」，留空则会被框架的空间搜索甩走。
-                        downNode: _playNode,
-                        upNode: _seekNode,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          // 整屏融合背景（模糊封面 + 压暗渐变），铺满不受 SafeArea 约束。
+          _FusionBackground(song: song, music: music),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(36, 14, 36, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  // 顶部左上角：收起/返回小图标（遥控器返回键仍走页面层级）。
+                  SizedBox(
+                    height: 44,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _RoundControl(
+                        node: _backNode,
+                        debugLabel: 'player.back',
+                        icon: Icons.keyboard_arrow_down,
+                        iconSize: 28,
+                        size: 44,
+                        tooltip: '收起播放页',
+                        onPressed: widget.onBack,
+                        nextLeft: _backNode, // 左端：原地不动
+                        nextRight: layout == PlayerLayout.stage
+                            ? _favNode
+                            : _seekNode,
+                        nextUp: _backNode,
+                        nextDown: _seekNode,
                       ),
-                      const SizedBox(height: 6),
-                      const _StatusLine(),
-                      const SizedBox(height: 10),
-                      // 底部操作栏是一整块玻璃条（与全站毛玻璃视觉一致）
-                      TvGlass(
-                        radius: 20,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        child: _buildBottomBar(song, layout, fav),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    // ⚠️ 队列/菜单打开时把底下的播放页排除出焦点树，
+                    //    否则方向键会跑到被遮住的按钮上（焦点"消失"）。
+                    child: ExcludeFocus(
+                      excluding: overlayOpen,
+                      child: layout == PlayerLayout.stage
+                          ? _buildStageBody(song, fav)
+                          : _buildCoverBody(song, fav),
+                    ),
+                  ),
+                ],
               ),
-              if (_queueOpen) QueueSheet(onClose: _closeQueue),
-            ],
+            ),
           ),
-        ),
+          if (_queueOpen) QueueSheet(onClose: _closeQueue),
+          if (_menuOpen)
+            _MoreSheet(
+              onClose: _closeMenu,
+              onToggleLayout: _toggleLayout,
+              onReloadLyrics: _reloadLyrics,
+            ),
+        ],
       ),
     );
   }
 
   // ── 主体：两种展示模式 ────────────────────────────────────
 
-  Widget _buildBody(Track? song, PlayerLayout layout, bool fav) {
+  /// V6 融合布局（默认）：左区 = 封面渐隐融合 + 信息 + 进度 + 五键控制；
+  /// 右区 = 独立整高的同步歌词。
+  Widget _buildStageBody(Track? song, bool fav) {
     if (song == null) {
       return const Center(
         child: Text('尚未选择歌曲',
             style: TextStyle(fontSize: 26, color: TvColors.textFaint)),
       );
     }
-    return switch (layout) {
-      PlayerLayout.stage => _buildStageLayout(song, fav),
-      PlayerLayout.cover => _buildCoverLayout(song, fav),
-    };
-  }
-
-  /// 图四标准布局：左封面 + 信息，右歌词。
-  Widget _buildStageLayout(Track song, bool fav) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        // 封面尺寸**不在这里算**：交给 `_buildCoverPane` 用它自己的约束反推
-        //（见那里的说明 —— 用外层高度算会导致大封面模式溢出裁切）。
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-              flex: 5,
-              child: _buildCoverPane(song, fav, center: false),
-            ),
-            const SizedBox(width: 30),
-            Expanded(flex: 4, child: _buildLyricPane(song)),
-          ],
-        );
-      },
-    );
-  }
-
-  /// 大封面模式：封面放大成视觉主体，歌词移到**封面下方**。
-  Widget _buildCoverLayout(Track song, bool fav) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        // 同上：封面尺寸由 `_buildCoverPane` 用**子区域**约束反推。
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-              flex: 6,
-              child: _buildCoverPane(
-                song,
-                fav,
-                center: true,
-                horizontal: true,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Expanded(
+          flex: 47, // 左区约 47%（其余 53% 给歌词），按逻辑视口比例分配
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(child: _FusedCover(song: song)),
+              const SizedBox(height: 12),
+              _InfoRow(
+                song: song,
+                fav: fav,
+                favNode: _favNode,
+                moreNode: _moreNode,
+                backNode: _backNode,
+                seekNode: _seekNode,
+                onToggleFav: () {
+                  Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${song.title}');
+                  unawaited(
+                    context
+                        .read<LocalLibraryRepository>()
+                        .toggleFavorite(song.guid),
+                  );
+                },
+                onMore: _openMenu,
               ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(flex: 4, child: _buildLyricPane(song)),
-          ],
-        );
-      },
+              const SizedBox(height: 8),
+              _SeekRow(
+                playbackNode: _seekNode,
+                // ↑ 回信息行的收藏键（正上方）；↓ 去控制区最左（模式键）。
+                upNode: _favNode,
+                downNode: _modeNode,
+              ),
+              const SizedBox(height: 10),
+              // 播放错误（解码失败等）：只在真的出错时占一行，平时零高度。
+              const _ErrorLine(),
+              const SizedBox(height: 6),
+              _TransportControls(
+                modeNode: _modeNode,
+                prevNode: _prevNode,
+                playNode: _playNode,
+                nextNode: _nextNode,
+                queueNode: _queueNode,
+                seekNode: _seekNode,
+                onQueue: _openQueue,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 24),
+        // 右区：独立整高的歌词视口（内部已做居中滚动与状态呈现）。
+        const Expanded(flex: 53, child: LyricView()),
+      ],
     );
   }
 
-  /// 封面 + 曲目信息。
-  ///
-  /// [center] = true 时整体水平居中（大封面模式）；
-  /// [horizontal] = true 时曲目信息放在封面**右侧**而不是下方，
-  /// 避免大封面模式下文字把歌词区挤得太窄。
+  /// 旧「大封面」布局（[PlayerLayout.cover]，入口在更多菜单）：
+  /// 封面放大为视觉主体、歌词在封面下方；进度与控制区保持一致。
+  Widget _buildCoverBody(Track? song, bool fav) {
+    if (song == null) {
+      return const Center(
+        child: Text('尚未选择歌曲',
+            style: TextStyle(fontSize: 26, color: TvColors.textFaint)),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Expanded(
+          flex: 6,
+          child: _buildCoverPane(song, fav, center: true, horizontal: true),
+        ),
+        const SizedBox(height: 10),
+        const Expanded(flex: 4, child: LyricView()),
+        const SizedBox(height: 10),
+        _SeekRow(
+          playbackNode: _seekNode,
+          // 大封面布局没有信息行：↑ 指回自身（原地不动），↓ 仍去控制区。
+          upNode: _seekNode,
+          downNode: _modeNode,
+        ),
+        const SizedBox(height: 10),
+        const _ErrorLine(),
+        const SizedBox(height: 6),
+        _TransportControls(
+          modeNode: _modeNode,
+          prevNode: _prevNode,
+          playNode: _playNode,
+          nextNode: _nextNode,
+          queueNode: _queueNode,
+          seekNode: _seekNode,
+          onQueue: _openQueue,
+        ),
+      ],
+    );
+  }
+
+  /// 旧布局的「封面 + 曲目信息」面板（V4 验证过的尺寸预算，原样保留）。
   ///
   /// ⚠️ 本方法**只做布局**，任何 provider 订阅都由调用方（真正的 `build()`）
   /// 传进来 —— 它被 `LayoutBuilder` 的 builder 调用，那里不允许 `context.select`。
-  /// 封面 + 曲目信息。
-  ///
-  /// [center] = true 时整体水平居中（大封面模式）；
-  /// [horizontal] = true 时曲目信息放在封面**右侧**而不是下方。
-  ///
-  /// ## ⚠️ 为什么封面尺寸必须在这里算，而不是由调用方传进来
-  ///
-  /// 原来 `_buildStageLayout` / `_buildCoverLayout` 用**外层整页高度**算好
-  /// `coverSize` 再传进来。但 `_buildCoverLayout` 里封面所在的 `Expanded`
-  /// 只占正文的 **60%** —— 于是「按整页 0.62 算出的封面」比它实际能用的高度还高，
-  /// 在 release 构建下 `RenderFlex` 溢出**被静默裁切**（不打日志、不画条纹），
-  /// 表现就是规格胶囊被切掉、看起来像被底部栏遮住。
-  ///
-  /// 现在改为：**用本子区域的约束**反推封面边长，并把文字块的固有高度先扣掉。
-  /// 空间实在不够时把标题从 2 行降到 1 行（而不是溢出）。
   Widget _buildCoverPane(
     Track song,
     bool fav, {
@@ -355,8 +439,6 @@ class _PlayerPageState extends State<PlayerPage> {
     //   ③ 规格胶囊 `_Chip` = 上下 padding 12 + ⌈16 × 1.43⌉ = 35
     //      （按 32 算会少 3px）；
     //   ④ **系统字体缩放**（Android 的「字体大小 / 显示大小」）会整体放大文字。
-    //      老代码完全没算这一项 —— 字体放大到 1.3 就必然把封面栏顶破，
-    //      而溢出在 release 下是**静默裁切**，界面上只表现为「规格被切」。
     //   Flutter 对**每一行**行盒向上取整，所以这里统一 `ceilToDouble()`。
     final double ts = MediaQuery.textScalerOf(context).scale(1.0);
 
@@ -384,16 +466,7 @@ class _PlayerPageState extends State<PlayerPage> {
         chipH;
 
     // 横向排布时文字在右边：封面可用宽度还要扣掉间距与文字宽度预算。
-    // ⚠️ 这个 `textW` **必须同时用作下面 `ConstrainedBox` 的上限**：
-    //    否则一边按 textW 扣封面宽度、另一边却仍允许文字排到 420，
-    //    窄视口上就会水平溢出。
-    // ⚠️ 横向排布时整个 Row 的高度 = max(封面, 文字块)，而**文字块没有**被
-    //    约束进可用高度 —— 一旦文字块自己就比可用高度还高（系统字体放大、
-    //    逻辑视口偏小），封面栏必然溢出。实测：960×540 + 字体 1.3 溢 18px、
-    //    853×480 + 字体 1.3 溢 50px（大封面模式，也就是用户选了「大封面」+
-    //    把电视字体调大）。这时**退回纵向排布**：纵向排布会先把封面让出去
-    //    （封面按剩余空间缩小），空间紧张时是优雅降级；横向排布只会把文字
-    //    顶出屏幕（release 下静默裁切）。
+    // ⚠️ 这个 `textW` **必须同时用作下面 `ConstrainedBox` 的上限**。
     final bool useRow = horizontal && textBlock <= availH - slack;
     final double textW = useRow ? min(420.0, availW * 0.45) : 0.0;
     final double coverByWidth =
@@ -401,12 +474,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final double coverByHeight =
         useRow ? (availH - slack) : (availH - gapBig - textBlock - slack);
 
-    // ⚠️ 设计下限**不能覆盖实际可用空间**。
-    //    老代码写成 `.clamp(110.0, 360.0)`：逻辑视口偏小的电视
-    //    （720p 面板 + density 1.5 → 853×480，扣掉进度区与操作条后正文只剩
-    //    约 238）算出的可用封面高度只有 92，却被下限抬到 110 ——
-    //    整个封面栏比可用高度高 18px，release 下静默裁切。
-    //    规则：**装得下设计下限才用它，装不下就用实际装得下的值。**
+    // ⚠️ 设计下限**不能覆盖实际可用空间**（V4 教训，见 git 历史）。
     const double designMin = 110;
     final double upper = horizontal ? 460.0 : 360.0;
     final double fit = min(max(0.0, coverByWidth), max(0.0, coverByHeight));
@@ -476,14 +544,8 @@ class _PlayerPageState extends State<PlayerPage> {
     );
 
     /// 给文字块套一层「必要时整体等比缩小」的兜底。
-    ///
-    /// ⚠️ 为什么必须有：上面的预算表是**按字号推算**的，而文字真实高度还受
-    ///    系统字体缩放、字体回退（fallback font）、逐行向上取整影响 ——
-    ///    推算偏小就会把封面栏顶破，而 release 下溢出是**静默裁切**
-    ///    （电视上就是「歌手行/规格胶囊不见了」）。有了这层兜底，
-    ///    文字块最多是变小，**永远不会被裁掉**。
-    ///    `SizedBox(width: …)` 是必需的：`FittedBox` 交给子树的宽度是**无界**的，
-    ///    而歌手行里有一个 `Expanded`，无界宽度会直接抛异常。
+    /// `SizedBox(width: …)` 是必需的：`FittedBox` 交给子树的宽度是**无界**的，
+    /// 而歌手行里有一个 `Expanded`，无界宽度会直接抛异常。
     Widget shrinkable(double width, double maxHeight) => ConstrainedBox(
           constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
           child: FittedBox(
@@ -500,9 +562,6 @@ class _PlayerPageState extends State<PlayerPage> {
         children: <Widget>[
           cover,
           const SizedBox(width: 28),
-          // ⚠️ 必须用上面算出的 `textW`，不能写死 420 ——
-          //    封面可用宽度是按 textW 扣的，文字却允许排到 420，
-          //    窄视口上两边对不上就会水平溢出。
           shrinkable(textW, availH - slack),
         ],
       );
@@ -519,417 +578,436 @@ class _PlayerPageState extends State<PlayerPage> {
       ],
     );
   }
-
-  /// 歌词区（含标题行；不可聚焦）。
-  ///
-  /// ## ⚠️ 标题块是**固定高度**的，必须按可用高度降级
-  ///
-  /// 这个 Column 的前两行（歌名-歌手、专辑）+ 间距是固定高度，
-  /// 最后一行才是 `Expanded(歌词)`。**大封面模式下歌词区只分到正文的 40%**
-  /// ——逻辑视口小 + 系统字体放大时，这个区会比固定高度还矮，
-  /// `Expanded` 拿到 0 也救不回来，整个 Column 直接溢出（release 下静默裁切）。
-  ///
-  /// 实测（853×480 + 字体 1.3）：正文 237.5 → 歌词区只剩 91，而标题块要 95
-  /// → `overflowed by 4.0 pixels`。
-  ///
-  /// 处理分两级：
-  /// 1. 装不下「两行标题块」时**先丢掉次要的专辑行**（专辑在封面区已经显示过）；
-  /// 2. 连一行标题都装不下时，让标题块整体等比缩小（`FittedBox`）而不是裁切。
-  Widget _buildLyricPane(Track song) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        final double ts = MediaQuery.textScalerOf(context).scale(1.0);
-        // 与 Text 的真实行高一致（没写 height ⇒ M3 默认 1.43，且逐行向上取整）
-        final double titleLineH = (24 * ts * 1.43).ceilToDouble();
-        final double albumLineH = (17 * ts * 1.43).ceilToDouble();
-        const double gapTitleAlbum = 6;
-        const double gapAlbumLyric = 12;
-        final double availH = c.maxHeight.isFinite ? c.maxHeight : 400;
-        final double availW = c.maxWidth.isFinite ? c.maxWidth : 400;
-
-        final bool showAlbum =
-            availH >= titleLineH + gapTitleAlbum + albumLineH + gapAlbumLyric;
-
-        final Widget header = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              '${song.title} - ${song.artistNames}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: TvColors.text,
-              ),
-            ),
-            if (showAlbum) ...<Widget>[
-              const SizedBox(height: gapTitleAlbum),
-              Text(
-                song.album.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 17, color: TvColors.textFaint),
-              ),
-            ],
-          ],
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            ConstrainedBox(
-              // 标题块最多用掉「区高 − 歌词区最小间距」；`SizedBox(width:)` 是必需的
-              //（FittedBox 给子树的宽度是无界的）。
-              constraints: BoxConstraints(
-                maxWidth: availW,
-                maxHeight: max(0.0, availH - gapAlbumLyric),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: SizedBox(width: availW, child: header),
-              ),
-            ),
-            const SizedBox(height: gapAlbumLyric),
-            const Expanded(child: LyricView()),
-          ],
-        );
-      },
-    );
-  }
-
-  // ── 底部操作栏（返回 / 模式 / 布局 / 收藏 / 上一首 / 播放 / 下一首 / 队列）──
-
-  /// 底部操作条：返回 / 布局 / 模式 / 收藏 / 上一首 / 播放 / 下一首 / 队列。
-  ///
-  /// ## 为什么要在这里做「装不装得下」的判断
-  ///
-  /// 一行的固有宽度是**固定值之和**（六个圆钮 + 三个胶囊）。在逻辑视口偏小的
-  /// 电视上（720p 面板 + density 1.5 → 853×480，扣掉页面内边距后只剩 749）
-  /// 或者系统字体放大时，这一行会顶出容器边界；而 `RenderFlex` 溢出在
-  /// **release 构建下是静默裁切** —— 电视上只看到「最右边那个按钮被切一半」，
-  /// 没有任何报错。所以这里显式判断：装得下用标准排布，装不下整体等比缩小。
-  Widget _buildBottomBar(Track? song, PlayerLayout layout, bool fav) {
-    final bool playing = context.select<PlaybackRepository, bool>(
-      (PlaybackRepository p) => p.isPlaying,
-    );
-    final PlayMode mode = context.select<PlaybackRepository, PlayMode>(
-      (PlaybackRepository p) => p.mode,
-    );
-    // V5：是否有「上一首」由**播放历史**决定（不是队列下标）。
-    // 没有历史时按钮置灰 —— 需求要求「显示为不可用」，
-    // 而不是让用户按了半天没反应还以为遥控器坏了。
-    final bool canPrevious = context.select<PlaybackRepository, bool>(
-      (PlaybackRepository p) => p.hasPrevious,
-    );
-    final PlaybackRepository p = context.read<PlaybackRepository>();
-    final double ts = MediaQuery.textScalerOf(context).scale(1.0);
-
-    List<Widget> children({required bool flexible}) => _bottomBarChildren(
-          song: song,
-          layout: layout,
-          fav: fav,
-          playing: playing,
-          mode: mode,
-          canPrevious: canPrevious,
-          p: p,
-          flexible: flexible,
-        );
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        final double need = _bottomBarIntrinsicWidth(
-          ts,
-          layout.shortLabel,
-          mode.shortLabel,
-        );
-        if (!c.maxWidth.isFinite || c.maxWidth >= need) {
-          return Row(children: children(flexible: true));
-        }
-        return FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.center,
-          child: Row(children: children(flexible: false)),
-        );
-      },
-    );
-  }
-
-  /// 底部操作条的一行控件。
-  ///
-  /// [flexible] = true：两端用 `Spacer` 撑开（宽屏的标准排布，一个像素都不改）；
-  /// false：两端换成固定间距 —— `FittedBox` 交给子树的宽度是**无界**的，
-  /// 里面放 `Spacer`/`Expanded` 会直接抛
-  /// 「RenderFlex children have non-zero flex but incoming width constraints
-  /// are unbounded」。
-  List<Widget> _bottomBarChildren({
-    required Track? song,
-    required PlayerLayout layout,
-    required bool fav,
-    required bool playing,
-    required PlayMode mode,
-    required bool canPrevious,
-    required PlaybackRepository p,
-    required bool flexible,
-  }) {
-    return <Widget>[
-      // ── 左组：导航类（视觉顺序 = 焦点链顺序：返回 → 布局 → 模式 → 收藏）──
-      _RoundControl(
-        node: _backNode,
-        debugLabel: 'player.back',
-        icon: Icons.keyboard_arrow_down,
-        tooltip: '返回',
-        compact: true,
-        onPressed: widget.onBack,
-        nextLeft: _queueNode, // 环：左端接右端，左右永远有去有回
-        nextRight: _layoutNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _backNode,
-        nextUp: _seekNode,
-
-      ),
-      const SizedBox(width: 12),
-      _PillControl(
-        node: _layoutNode,
-        debugLabel: 'player.layout',
-        icon: layout == PlayerLayout.stage
-            ? Icons.view_agenda
-            : Icons.wallpaper,
-        label: layout.shortLabel,
-        tooltip: '切换播放页布局（标准 / 大封面）',
-        onPressed: _cycleLayout,
-        nextLeft: _backNode,
-        nextRight: _modeNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _layoutNode,
-        nextUp: _seekNode,
-
-      ),
-      const SizedBox(width: 10),
-      _PillControl(
-        node: _modeNode,
-        debugLabel: 'player.mode',
-        icon: _modeIcon(mode),
-        label: mode.shortLabel,
-        tooltip: '播放模式（${mode.label}）',
-        onPressed: () {
-          // ⚠️ 用 `mode.next` 而不是 `PlayMode.values[index+1]`：
-          // 循环顺序（顺序 → 列表循环 → 随机 → 单曲 → 顺序）是
-          // 在 `playback_control.dart` 里定义并注释的**唯一一处**，
-          // UI 不应该再自己推一遍（否则改顺序时两边会不一致）。
-          final PlayMode nextMode = mode.next;
-          Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → ${nextMode.storageKey}');
-          unawaited(p.setMode(nextMode));
-        },
-        nextLeft: _layoutNode,
-        nextRight: _favNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _modeNode,
-        nextUp: _seekNode,
-
-      ),
-      const SizedBox(width: 10),
-      _RoundControl(
-        node: _favNode,
-        debugLabel: 'player.fav',
-        icon: fav ? Icons.favorite : Icons.favorite_border,
-        iconColor: fav ? TvColors.brand : TvColors.text,
-        tooltip: fav ? '取消收藏' : '收藏',
-        compact: true,
-        onPressed: song == null
-            ? null
-            : () {
-                Log.i('UI 播放页 ${fav ? '取消收藏' : '收藏'} ${song.title}');
-                unawaited(
-                  context
-                      .read<LocalLibraryRepository>()
-                      .toggleFavorite(song.guid),
-                );
-              },
-        nextLeft: _modeNode,
-        nextRight: _prevNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _favNode,
-        nextUp: _seekNode,
-
-      ),
-      flexible ? const Spacer() : const SizedBox(width: 24),
-      // ── 中组：播放控制（电视上最常用的三个，放正中间）──
-      _RoundControl(
-        node: _prevNode,
-        debugLabel: 'player.prev',
-        icon: Icons.skip_previous,
-        // V5：没有上一首记录（或队列只有一首且当前模式不回绕）时置灰。
-        tooltip: canPrevious ? '上一首' : '没有上一首',
-        iconColor: canPrevious ? null : TvColors.textFaint,
-        onPressed: () {
-          Log.i('SKIP_PREVIOUS (player)');
-          unawaited(p.previous());
-        },
-        nextLeft: _favNode,
-        nextRight: _playNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _prevNode,
-        nextUp: _seekNode,
-
-      ),
-      const SizedBox(width: 30),
-      _RoundControl(
-        node: _playNode,
-        debugLabel: 'player.play',
-        icon: playing ? Icons.pause : Icons.play_arrow,
-        tooltip: playing ? '暂停' : '播放',
-        large: true,
-        onPressed: () {
-          Log.i('PLAY_TOGGLE (player) → ${playing ? '暂停' : '播放'}');
-          unawaited(p.togglePlay());
-        },
-        nextLeft: _prevNode,
-        nextRight: _nextNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _playNode,
-        nextUp: _seekNode,
-
-      ),
-      const SizedBox(width: 30),
-      _RoundControl(
-        node: _nextNode,
-        debugLabel: 'player.next',
-        icon: Icons.skip_next,
-        tooltip: '下一首',
-        onPressed: () {
-          Log.i('SKIP_NEXT (player)');
-          unawaited(p.next());
-        },
-        nextLeft: _playNode,
-        nextRight: _queueNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _nextNode,
-        nextUp: _seekNode,
-
-      ),
-      flexible ? const Spacer() : const SizedBox(width: 24),
-      // ── 右组：队列 ────────────────────────────────────
-      _PillControl(
-        node: _queueNode,
-        debugLabel: 'player.queue',
-        icon: Icons.queue_music,
-        label: '队列',
-        tooltip: '打开当前播放队列',
-        onPressed: _openQueue,
-        nextLeft: _nextNode,
-        nextRight: _backNode,
-        // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
-        //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
-        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
-        nextDown: _queueNode,
-        nextUp: _seekNode,
-
-      ),
-    ];
-  }
 }
 
-/// 估算 `_PillControl` 在给定字体缩放下的总宽度。
+// ═══════════════════════════════════════════════════════════════════
+// 融合背景与融合封面
+// ═══════════════════════════════════════════════════════════════════
+
+/// 整屏融合背景：**低分辨率模糊封面** + 暗色渐变压暗。
 ///
-/// 用 `TextPainter` **实测**文字宽度，而不是写死一个阈值常量：
-/// 写死的阈值在系统字体放大（Android「字体大小」）时会被悄悄顶破，
-/// 而溢出在 release 下是静默裁切，没有任何提示。
+/// ## 颜色为什么「随封面自然变化」
+/// 背景直接用封面自身的颜色（64px 缩略图放大 + 高斯模糊），
+/// 不做取色算法 —— 模糊封面本身就是「封面的主色分布」，
+/// 换歌时颜色自然跟着换，还没有任何取色误差。
 ///
-/// 常量口径（对齐 `_PillControl` / `TvFocusRing` 的实际实现）：
-/// - `16 + 16` 左右内边距；
-/// - `+ 6`：`TvFocusRing` 的 `Border.all(width: 3)` —— `Container` 会把
-///   边框尺寸算进 padding（**焦点环会占位**，不占位的只有外发光）；
-/// - `22` 图标 + `8` 图文间距。
-double _pillWidthFor(String label, double ts) {
-  final TextPainter tp = TextPainter(
-    text: TextSpan(
-      text: label,
-      style: TextStyle(fontSize: 17 * ts, color: TvColors.text),
-    ),
-    textDirection: TextDirection.ltr,
-    maxLines: 1,
-  )..layout();
-  return 16 + 16 + 6 + 22 + 8 + tp.width;
-}
+/// ## 性能
+/// - `cacheWidth: 64`：解码的是 64px 小图，放大后天然糊化，
+///   再叠一层适度高斯模糊抹平马赛克感；
+/// - `ImageFiltered` 只在图片替换时重绘一次，播放进度每秒的刷新
+///   **完全不经过这里**（本页 build 不订阅 position）；
+/// - 暗色渐变保证白色文字在亮色封面上依然可读（验收条件）。
+///
+/// ## 切歌不闪白
+/// [AnimatedSwitcher] 600ms 交叉淡化：旧图淡出的同时新图淡入，
+/// 底层还有站内渐变兜底，任何时刻都有内容、没有白屏。
+class _FusionBackground extends StatelessWidget {
+  final Track? song;
+  final MusicRepository music;
 
-/// 底部操作条一行的**固有宽度之和**（不含两端 `Spacer` 的余量）。
-double _bottomBarIntrinsicWidth(
-  double ts,
-  String layoutLabel,
-  String modeLabel,
-) {
-  // 左组：返回 54 + 间距 12 + 布局胶囊 + 10 + 模式胶囊 + 10 + 收藏 54
-  final double left = 54 +
-      12 +
-      _pillWidthFor(layoutLabel, ts) +
-      10 +
-      _pillWidthFor(modeLabel, ts) +
-      10 +
-      54;
-  // 中组：上一首 66 + 30 + 播放 82 + 30 + 下一首 66
-  const double center = 66 + 30 + 82 + 30 + 66;
-  // 右组：队列胶囊
-  final double right = _pillWidthFor('队列', ts);
-  return left + center + right;
-}
-
-/// 队列来源 / 当前序号 / 播放错误。既有信息，不能因为改版而丢掉。
-class _StatusLine extends StatelessWidget {
-  const _StatusLine();
+  const _FusionBackground({required this.song, required this.music});
 
   @override
   Widget build(BuildContext context) {
-    final String label = context.select<PlaybackRepository, String>(
-      (PlaybackRepository p) => '队列：${p.state.sourceLabel} · '
-          '${p.currentIndex + 1}/${p.queue.length}',
-    );
-    final String? error = context.select<PlaybackRepository, String?>(
-      (PlaybackRepository p) => p.state.error,
-    );
+    final String? coverId = song?.effectiveCoverId;
+    final bool hasCover = coverId != null && coverId.isNotEmpty;
 
-    return Column(
-      children: <Widget>[
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, color: Color(0xFFFF8A8F)),
+    final Widget layer;
+    if (hasCover) {
+      final String url = music.buildCoverUrl(coverId);
+      final Map<String, String> headers = music.authHeaders;
+      layer = SizedBox.expand(
+        key: ValueKey<String>(coverId),
+        child: ClipRect(
+          // 放大 1.15 倍：模糊在边缘会「漏」出透明，放大后再由 ClipRect
+          // 裁掉边缘，避免四周出现暗框。
+          child: Transform.scale(
+            scale: 1.15,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Image.network(
+                url,
+                headers: headers.isEmpty ? null : headers,
+                cacheWidth: 64,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                gaplessPlayback: true,
+                // 加载失败/无网 → 露出底层渐变，绝不能抛错拖垮播放页。
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                loadingBuilder: (_, Widget child, ImageChunkEvent? ___) =>
+                    child,
+              ),
             ),
           ),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 15, color: TvColors.textFaint),
+        ),
+      );
+    } else {
+      layer = const SizedBox.expand(key: ValueKey<String>('no-cover'));
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        // 兜底渐变（也是无封面时的最终背景）。
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[TvColors.stageFrom, TvColors.stageTo],
+            ),
+          ),
+        ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          child: layer,
+        ),
+        // 压暗层：上浅下深，保证歌名/控制区白字对比度。
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0x4D000000),
+                Color(0x66000000),
+                Color(0xA6000000),
+              ],
+              stops: <double>[0.0, 0.45, 1.0],
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
+/// 左区主封面：右/下边缘**渐隐融合**进背景（无边界效果）。
+///
+/// - 尺寸 = `min(可用宽, 可用高)`：小视口自动让位给信息/控制区，
+///   大视口按比例占满左区（4K 下自然变大），不做固定边长。
+/// - 两层 `ShaderMask(dstIn)` 分别做水平与垂直渐隐；
+///   主封面本身保持清晰（模糊只用在背景上）。
+/// - 封面缺失时 `CoverImage` 的占位符同尺寸渲染，不会拉伸或留黑块。
+class _FusedCover extends StatelessWidget {
+  final Track song;
+
+  const _FusedCover({required this.song});
+
+  @override
+  Widget build(BuildContext context) {
+    final MusicRepository music = context.read<MusicRepository>();
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints c) {
+        final double w = c.maxWidth.isFinite ? c.maxWidth : 300;
+        final double h = c.maxHeight.isFinite ? c.maxHeight : 300;
+        final double size = max(0.0, min(w, h) - 2);
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (Rect r) => const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: <Color>[Colors.white, Colors.white, Color(0x00FFFFFF)],
+              stops: <double>[0.0, 0.78, 1.0],
+            ).createShader(r),
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (Rect r) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Colors.white, Colors.white, Color(0x00FFFFFF)],
+                stops: <double>[0.0, 0.80, 1.0],
+              ).createShader(r),
+              child: CoverImage(
+                music: music,
+                coverId: song.effectiveCoverId,
+                size: size,
+                radius: 0,
+                iconScale: 0.28,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 左下：歌曲信息 / 进度 / 控制键
+// ═══════════════════════════════════════════════════════════════════
+
+/// 歌曲信息行：左 = 歌名（可两行）+ 歌手；右 = 收藏 + 更多。
+class _InfoRow extends StatelessWidget {
+  final Track song;
+  final bool fav;
+  final FocusNode favNode;
+  final FocusNode moreNode;
+  final FocusNode backNode;
+  final FocusNode seekNode;
+  final VoidCallback onToggleFav;
+  final VoidCallback onMore;
+
+  const _InfoRow({
+    required this.song,
+    required this.fav,
+    required this.favNode,
+    required this.moreNode,
+    required this.backNode,
+    required this.seekNode,
+    required this.onToggleFav,
+    required this.onMore,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                song.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 26,
+                  height: 1.2, // 26×1.2≈32/行，固定预算（见文件头说明）
+                  fontWeight: FontWeight.w700,
+                  color: TvColors.text,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                song.artistNames.isEmpty
+                    ? song.album.name
+                    : song.artistNames,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.2,
+                  color: TvColors.textDim,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        _RoundControl(
+          node: favNode,
+          debugLabel: 'player.fav',
+          icon: fav ? Icons.favorite : Icons.favorite_border,
+          iconSize: 24,
+          size: 48,
+          iconColor: fav ? TvColors.brand : TvColors.textDim,
+          tooltip: fav ? '取消收藏' : '收藏',
+          onPressed: onToggleFav,
+          nextLeft: backNode,
+          nextRight: moreNode,
+          nextUp: favNode, // 上方没有可聚焦项：原地不动
+          nextDown: seekNode,
+        ),
+        const SizedBox(width: 8),
+        _RoundControl(
+          node: moreNode,
+          debugLabel: 'player.more',
+          icon: Icons.more_vert,
+          iconSize: 24,
+          size: 48,
+          iconColor: TvColors.textDim,
+          tooltip: '更多（布局 / 歌词操作）',
+          onPressed: onMore,
+          nextLeft: favNode,
+          nextRight: moreNode, // 右端：原地不动
+          nextUp: moreNode,
+          nextDown: seekNode,
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 更多菜单（布局切换 / 歌词重试 / 队列信息）
+// ═══════════════════════════════════════════════════════════════════
+
+/// 「更多」菜单面板：替代旧底栏里的常驻「布局」胶囊。
+///
+/// - 数据全部来自真实仓储（队列信息 / 布局偏好 / 歌词重试），
+///   不做任何装饰性按钮；
+/// - 打开时焦点显式落在第一项（`autofocus` 在 ExcludeFocus 底下的
+///   弹层里不可靠 —— 见 QueueSheet 同样的注释）；
+/// - 关闭后由 [PlayerPage._closeMenu] 把焦点还给「更多」按钮。
+class _MoreSheet extends StatefulWidget {
+  final VoidCallback onClose;
+
+  /// 由 [PlayerPage] 注入的真实动作（布局切换 / 歌词重载）。
+  final VoidCallback onToggleLayout;
+  final VoidCallback onReloadLyrics;
+
+  const _MoreSheet({
+    required this.onClose,
+    required this.onToggleLayout,
+    required this.onReloadLyrics,
+  });
+
+  @override
+  State<_MoreSheet> createState() => _MoreSheetState();
+}
+
+class _MoreSheetState extends State<_MoreSheet> {
+  final FocusNode _layoutNode = FocusNode(debugLabel: 'more.layout');
+  final FocusNode _retryNode = FocusNode(debugLabel: 'more.retry');
+  final FocusNode _closeNode = FocusNode(debugLabel: 'more.close');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (mounted) _layoutNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _layoutNode.dispose();
+    _retryNode.dispose();
+    _closeNode.dispose();
+    super.dispose();
+  }
+
+  Widget _item(
+    FocusNode node, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    FocusNode? nextUp,
+    FocusNode? nextDown,
+  }) {
+    return SizedBox(
+      width: 340,
+      child: TvFocus(
+        focusNode: node,
+        debugLabel: node.debugLabel,
+        onPressed: onTap,
+        nextUp: nextUp ?? node,
+        nextDown: nextDown ?? node,
+        builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
+          status: s,
+          radius: 14,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          focusColor: const Color(0x2EFFFFFF),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, size: 24, color: TvColors.text),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    height: 1.2,
+                    color: TvColors.text,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalLibraryRepository local = context.read<LocalLibraryRepository>();
+    final PlayerLayout layout = local.playerLayout;
+    final String queueInfo = context.select<PlaybackRepository, String>(
+      (PlaybackRepository p) =>
+          '队列：${p.state.sourceLabel} · ${p.currentIndex + 1}/${p.queue.length}',
+    );
+
+    return Center(
+      child: TvGlass(
+        radius: 20,
+        blur: false, // 面积大：不做实时模糊（V4 毛玻璃性能约定）
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              width: 340,
+              child: Text(
+                queueInfo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.2,
+                  color: TvColors.textFaint,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _item(
+              _layoutNode,
+              icon: Icons.wallpaper,
+              label: '切换布局（当前：${layout.shortLabel}）',
+              onTap: () {
+                widget.onToggleLayout();
+                widget.onClose();
+              },
+              nextUp: _layoutNode,
+              nextDown: _retryNode,
+            ),
+            const SizedBox(height: 8),
+            _item(
+              _retryNode,
+              icon: Icons.refresh,
+              label: '重新加载歌词',
+              onTap: () {
+                widget.onReloadLyrics();
+                widget.onClose();
+              },
+              nextUp: _layoutNode,
+              nextDown: _closeNode,
+            ),
+            const SizedBox(height: 8),
+            _item(
+              _closeNode,
+              icon: Icons.close,
+              label: '关闭菜单',
+              onTap: widget.onClose,
+              nextUp: _retryNode,
+              nextDown: _closeNode,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 进度区（细线 + 小滑块）与传输控制（五个纯图标键）
+// ═══════════════════════════════════════════════════════════════════
+
 /// 进度 + 快退/快进（**组合控件**，整行一个焦点节点）。
 ///
-/// ⚠️ 这是 V3 修好的关键路径，V4 只换外面版式、**不动这里的语义**：
+/// ⚠️ 这是 V3 修好的关键路径，V6 只换外面版式、**不动语义**：
 /// `←` / `→` 直接快退/快进 5 秒，`OK` 等价播放/暂停，
-/// `↑` 回播放/暂停，`↓` 原地不动。
+/// `↑` 回信息行（收藏键），`↓` 去控制区（模式键）。
 ///
 /// 若把进度条拆成独立节点并允许它消费左右键，就必然出现
 /// 「进了进度条只能按 BACK 出来的死区」—— V3 踩过，这里不复现。
@@ -937,16 +1015,16 @@ class _SeekRow extends StatefulWidget {
   /// 本行的焦点节点（由 PlayerPage 创建，用于串联焦点链）。
   final FocusNode playbackNode;
 
-  /// ↑ 的去处（顶部返回按钮）。
-  final FocusNode? upNode;
+  /// ↑ 的去处（信息行收藏键；大封面布局传自身 = 原地不动）。
+  final FocusNode upNode;
 
-  /// ↓ 的去处（最底部操作条上的播放/暂停按钮）。
-  final FocusNode? downNode;
+  /// ↓ 的去处（控制区模式键）。
+  final FocusNode downNode;
 
   const _SeekRow({
     required this.playbackNode,
-    this.upNode,
-    this.downNode,
+    required this.upNode,
+    required this.downNode,
   });
 
   @override
@@ -963,14 +1041,10 @@ class _SeekRowState extends State<_SeekRow> {
   /// 拖动中的本地值（拖动过程中不被外部 position 覆盖）。
   double? _dragValue;
 
-  /// 最近一次 ← / → 的方向（-1 后退 / 1 前进 / 0 无），用于闪一下对应按钮。
-  int _flash = 0;
-  Timer? _flashTimer;
-
   @override
   void initState() {
     super.initState();
-    // 只让这一小块每 400ms 重建 —— 底部操作栏与歌词区因此完全不受影响。
+    // 只让这一小块每 400ms 重建 —— 控制键与歌词区完全不受影响。
     _ticker = Timer.periodic(
       const Duration(milliseconds: 400),
       (Timer _) {
@@ -983,7 +1057,6 @@ class _SeekRowState extends State<_SeekRow> {
   @override
   void dispose() {
     _ticker?.cancel();
-    _flashTimer?.cancel();
     super.dispose();
   }
 
@@ -991,11 +1064,6 @@ class _SeekRowState extends State<_SeekRow> {
     final p = context.read<PlaybackRepository>();
     Log.i('SEEK ${direction < 0 ? '快退' : '快进'} 5 秒');
     unawaited(p.seekRelative(_step * direction));
-    setState(() => _flash = direction);
-    _flashTimer?.cancel();
-    _flashTimer = Timer(const Duration(milliseconds: 260), () {
-      if (mounted) setState(() => _flash = 0);
-    });
   }
 
   static String _fmt(Duration d) {
@@ -1013,82 +1081,101 @@ class _SeekRowState extends State<_SeekRow> {
         dur.inMilliseconds > 0 ? dur.inMilliseconds.toDouble() : 1.0;
     final double shown =
         (_dragValue ?? pos.inMilliseconds.toDouble()).clamp(0.0, maxMs);
+    // 音频规格：真实元数据小字（display 已按缺失字段自动省略）。
+    final String spec =
+        context.select<PlaybackRepository, Track?>(
+              (PlaybackRepository p) => p.current,
+            )
+            ?.audioSpec
+            .display ??
+        '';
 
     return TvFocus(
       focusNode: widget.playbackNode,
       debugLabel: 'player.seek',
       // ⚠️ 左右键在这块是**进度操作**，不是焦点移动 —— 这正是需求里
-      //    「明确设计的进度操作情形」。它不会造成死区：↓ 始终能回操作条
-      //    （操作条在进度区**下方**，↑ 则指回自身「原地不动」，
-      //    因为上方只有不可聚焦的正文）。
+      //    「明确设计的进度操作情形」。
       onArrowLeft: () => _seekBy(-1),
       onArrowRight: () => _seekBy(1),
       onPressed: () => unawaited(p.togglePlay()),
       nextUp: widget.upNode,
-      // ↓ 去最底部操作条的播放/暂停按钮；没有就指回自己（原地不动）。
-      // ⚠️ 指回自己而不是留空：留空时框架的方向遍历可能把焦点甩到
-      // 不可预期的节点上（那正是「按 ↓ 焦点就不见了」的来源）。
-      nextDown: widget.downNode ?? widget.playbackNode,
+      nextDown: widget.downNode,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
         radius: 14,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        focusColor: const Color(0x33FFFFFF),
-        ringColor: TvColors.focusRing,
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        focusColor: const Color(0x2EFFFFFF),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            _SeekChip(
-              icon: Icons.fast_rewind,
-              label: '5秒',
-              highlighted: _flash < 0,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              _fmt(Duration(milliseconds: shown.round())),
-              style: const TextStyle(fontSize: 18, color: TvColors.textDim),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: ExcludeFocus(
-                // 进度条自身**绝不获焦**：否则 Material 的 Slider 会吃掉
-                // 方向键，把焦点锁在进度条上（这正是「进了进度区就出不来」
-                // 的根因）。
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 7,
-                    activeTrackColor: TvColors.focusRing,
-                    inactiveTrackColor: const Color(0x40FFFFFF),
-                    thumbColor: Colors.white,
-                    overlayShape: SliderComponentShape.noOverlay,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 9),
-                  ),
-                  child: Slider(
-                    value: shown,
-                    max: maxMs,
-                    onChanged: (double v) => setState(() => _dragValue = v),
-                    // 只在拖动结束时 seek：拖动过程不产生播放请求。
-                    onChangeEnd: (double v) {
-                      Log.i('SEEK slider ${v.round()}ms');
-                      unawaited(p.seek(Duration(milliseconds: v.round())));
-                      setState(() => _dragValue = null);
-                    },
+            Row(
+              children: <Widget>[
+                Text(
+                  _fmt(Duration(milliseconds: shown.round())),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.2,
+                    color: TvColors.textDim,
                   ),
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ExcludeFocus(
+                    // 进度条自身**绝不获焦**：否则 Material 的 Slider 会吃掉
+                    // 方向键，把焦点锁在进度条上（「进了进度区就出不来」的根因）。
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3, // 细线（视觉），焦点热区仍是整行
+                        activeTrackColor: Colors.white.withValues(alpha: 0.9),
+                        inactiveTrackColor: const Color(0x40FFFFFF),
+                        thumbColor: Colors.white,
+                        overlayShape: SliderComponentShape.noOverlay,
+                        thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 6),
+                      ),
+                      child: Slider(
+                        value: shown,
+                        max: maxMs,
+                        onChanged: (double v) => setState(() => _dragValue = v),
+                        // 只在拖动结束时 seek：拖动过程不产生播放请求。
+                        onChangeEnd: (double v) {
+                          Log.i('SEEK slider ${v.round()}ms');
+                          unawaited(
+                            p.seek(Duration(milliseconds: v.round())),
+                          );
+                          setState(() => _dragValue = null);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _fmt(dur),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.2,
+                    color: TvColors.textDim,
+                  ),
+                ),
+              ],
+            ),
+            if (spec.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 3),
+              Text(
+                spec,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.2,
+                  color: TvColors.textFaint,
+                  letterSpacing: 0.4,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _fmt(dur),
-              style: const TextStyle(fontSize: 18, color: TvColors.textDim),
-            ),
-            const SizedBox(width: 12),
-            _SeekChip(
-              icon: Icons.fast_forward,
-              label: '5秒',
-              trailing: true,
-              highlighted: _flash > 0,
-            ),
+            ],
           ],
         ),
       ),
@@ -1096,53 +1183,151 @@ class _SeekRowState extends State<_SeekRow> {
   }
 }
 
-/// 快退 / 快进 5 秒的视觉提示（被 ← / → 触发时点亮）。
+/// 底部传输控制：模式 / 上一首 / 播放暂停 / 下一首 / 队列（纯图标）。
 ///
-/// 刻意做成**不可聚焦**的提示块：真正的操作热区是整个 [_SeekRow]。
-/// 这样「看得见的按钮」和「按得动的位置」是同一块区域，不会出现
-/// 「看着有个按钮但焦点进不去」的困惑。
-class _SeekChip extends StatelessWidget {
-  const _SeekChip({
-    required this.icon,
-    required this.label,
-    required this.highlighted,
-    this.trailing = false,
+/// ⚠️ 播放态订阅收在这里：play/pause 切换只重建这一小块，
+/// 封面、歌词、信息行的焦点节点都不受影响。
+class _TransportControls extends StatelessWidget {
+  final FocusNode modeNode;
+  final FocusNode prevNode;
+  final FocusNode playNode;
+  final FocusNode nextNode;
+  final FocusNode queueNode;
+  final FocusNode seekNode;
+  final VoidCallback onQueue;
+
+  const _TransportControls({
+    required this.modeNode,
+    required this.prevNode,
+    required this.playNode,
+    required this.nextNode,
+    required this.queueNode,
+    required this.seekNode,
+    required this.onQueue,
   });
-
-  final IconData icon;
-  final String label;
-  final bool highlighted;
-
-  /// true 表示图标在文字右侧（快进）。
-  final bool trailing;
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-        highlighted ? TvColors.focusRing : TvColors.textFaint;
-    final Widget iconWidget = Icon(icon, size: 24, color: color);
-    final Widget textWidget = Text(
-      label,
-      style: TextStyle(fontSize: 16, color: color),
+    final PlaybackRepository p = context.read<PlaybackRepository>();
+    final bool playing = context.select<PlaybackRepository, bool>(
+      (PlaybackRepository p) => p.isPlaying,
     );
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: highlighted ? const Color(0x33FFFFFF) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: trailing
-            ? <Widget>[textWidget, const SizedBox(width: 6), iconWidget]
-            : <Widget>[iconWidget, const SizedBox(width: 6), textWidget],
-      ),
+    final PlayMode mode = context.select<PlaybackRepository, PlayMode>(
+      (PlaybackRepository p) => p.mode,
+    );
+    // V5：是否有「上一首」由**播放历史**决定（不是队列下标）。
+    final bool canPrevious = context.select<PlaybackRepository, bool>(
+      (PlaybackRepository p) => p.hasPrevious,
+    );
+
+    final Widget row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        _RoundControl(
+          node: modeNode,
+          debugLabel: 'player.mode',
+          icon: _modeIcon(mode),
+          iconSize: 26,
+          size: 52,
+          iconColor: TvColors.textDim,
+          tooltip: '播放模式：${mode.label}',
+          onPressed: () {
+            // ⚠️ 用 `mode.next`：循环顺序是 `playback_control.dart` 里
+            // 定义并注释的唯一一处，UI 不自己推一遍。
+            final PlayMode nextMode = mode.next;
+            Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → '
+                '${nextMode.storageKey}');
+            unawaited(p.setMode(nextMode));
+          },
+          nextLeft: queueNode, // 左端环回队列（与屏幕顺序一致的两端环）
+          nextRight: prevNode,
+          nextUp: seekNode,
+          nextDown: modeNode, // 最底部：原地不动
+        ),
+        const SizedBox(width: 18),
+        _RoundControl(
+          node: prevNode,
+          debugLabel: 'player.prev',
+          icon: Icons.skip_previous,
+          iconSize: 30,
+          size: 60,
+          tooltip: canPrevious ? '上一首' : '没有上一首',
+          iconColor: canPrevious ? TvColors.text : TvColors.textFaint,
+          onPressed: () {
+            Log.i('SKIP_PREVIOUS (player)');
+            unawaited(p.previous());
+          },
+          nextLeft: modeNode,
+          nextRight: playNode,
+          nextUp: seekNode,
+          nextDown: prevNode,
+        ),
+        const SizedBox(width: 22),
+        _RoundControl(
+          node: playNode,
+          debugLabel: 'player.play',
+          icon: playing ? Icons.pause : Icons.play_arrow,
+          iconSize: 38,
+          size: 76,
+          tooltip: playing ? '暂停' : '播放',
+          onPressed: () {
+            Log.i('PLAY_TOGGLE (player) → ${playing ? '暂停' : '播放'}');
+            unawaited(p.togglePlay());
+          },
+          nextLeft: prevNode,
+          nextRight: nextNode,
+          nextUp: seekNode,
+          nextDown: playNode,
+        ),
+        const SizedBox(width: 22),
+        _RoundControl(
+          node: nextNode,
+          debugLabel: 'player.next',
+          icon: Icons.skip_next,
+          iconSize: 30,
+          size: 60,
+          tooltip: '下一首',
+          onPressed: () {
+            Log.i('SKIP_NEXT (player)');
+            unawaited(p.next());
+          },
+          nextLeft: playNode,
+          nextRight: queueNode,
+          nextUp: seekNode,
+          nextDown: nextNode,
+        ),
+        const SizedBox(width: 18),
+        _RoundControl(
+          node: queueNode,
+          debugLabel: 'player.queue',
+          icon: Icons.format_list_bulleted,
+          iconSize: 26,
+          size: 52,
+          iconColor: TvColors.textDim,
+          tooltip: '打开当前播放队列',
+          onPressed: onQueue,
+          nextLeft: nextNode,
+          nextRight: modeNode, // 右端环回模式
+          nextUp: seekNode,
+          nextDown: queueNode,
+        ),
+      ],
+    );
+
+    // 宽度不够（极小逻辑视口）时整体等比缩小，绝不静默裁切。
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.center,
+      child: row,
     );
   }
 }
 
-/// 圆形播放控制键。
+// ═══════════════════════════════════════════════════════════════════
+// 基础控件
+// ═══════════════════════════════════════════════════════════════════
+
+/// 圆形/方形图标控制键（**纯图标、无底板**，聚焦时才出现细光环）。
 ///
 /// ⚠️ **不要用 `ElevatedButton` / `IconButton`**：它们内部各自持有 FocusNode，
 /// 与本组件的焦点节点互相打架，会出现「高亮在这个按钮上但 OK 按不动」
@@ -1154,13 +1339,13 @@ class _RoundControl extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    required this.nextLeft,
-    required this.nextRight,
+    this.nextLeft,
+    this.nextRight,
     this.nextUp,
     this.nextDown,
     this.iconColor,
-    this.large = false,
-    this.compact = false,
+    this.size = 60,
+    this.iconSize = 30,
   });
 
   final FocusNode node;
@@ -1174,24 +1359,15 @@ class _RoundControl extends StatelessWidget {
   final Color? iconColor;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  /// ↑ 的去处（进度区）。操作条在进度区**下方**，所以「上」才是去进度条。
   final FocusNode? nextUp;
-
-  /// ↓ 的去处。操作条已是最底部 —— 传**自身节点**表示「到底了，原地不动」。
-  ///
-  /// ⚠️ 不要留空：`TvFocus` 在拿到 `null` 时会返回 `ignored`，
-  ///    于是框架退化成**空间搜索**，焦点可能被甩到同一行的别的按钮上
-  ///    （实测过：从「返回」按 ↓ 会莫名跳到「布局」）。显式指回自己才是确定的。
   final FocusNode? nextDown;
 
-  final bool large;
-
-  /// 略小的圆形（返回 / 收藏这类次要动作）。
-  final bool compact;
+  /// 控件边长（方形热区；光圈落点由 [TvFocusRing] 画在自身范围内）。
+  final double size;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    final double box = large ? 82 : (compact ? 54 : 66);
     return Tooltip(
       message: tooltip,
       child: TvFocus(
@@ -1203,21 +1379,17 @@ class _RoundControl extends StatelessWidget {
         nextRight: nextRight,
         nextUp: nextUp,
         nextDown: nextDown,
-        builder: (BuildContext context, TvFocusStatus s) => SizedBox(
-          width: box,
-          height: box,
-          child: TvFocusRing(
-            status: s,
-            radius: box / 2,
-            padding: EdgeInsets.zero,
-            width: box,
-            height: box,
-            baseColor: const Color(0x33FFFFFF),
-            child: Icon(
-              icon,
-              size: large ? 40 : (compact ? 26 : 30),
-              color: iconColor ?? TvColors.text,
-            ),
+        builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
+          status: s,
+          radius: size / 2,
+          padding: EdgeInsets.zero,
+          width: size,
+          height: size,
+          focusColor: const Color(0x2EFFFFFF),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: iconColor ?? TvColors.text,
           ),
         ),
       ),
@@ -1225,70 +1397,35 @@ class _RoundControl extends StatelessWidget {
   }
 }
 
-/// 胶囊控件（带文字），用于播放顺序 / 布局 / 队列这类需要自解释的按钮。
-class _PillControl extends StatelessWidget {
-  const _PillControl({
-    required this.node,
-    required this.debugLabel,
-    required this.icon,
-    required this.label,
-    required this.tooltip,
-    required this.onPressed,
-    required this.nextLeft,
-    required this.nextRight,
-    this.nextUp,
-    this.nextDown,
-  });
-
-  final FocusNode node;
-  final String debugLabel;
-  final IconData icon;
-  final String label;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final FocusNode? nextLeft;
-  final FocusNode? nextRight;
-  /// ↑ 的去处（进度区）。
-  final FocusNode? nextUp;
-
-  /// ↓ 的去处；操作条已是最底部 ⇒ 传自身节点表示「原地不动」（见 _RoundControl）。
-  final FocusNode? nextDown;
+/// 播放错误提示（解码失败 / 加载失败等）。
+///
+/// 只在**真的出错**时占一行；无错时 `SizedBox.shrink`，版面零扰动。
+/// 信息行/队列序号等常规状态放进了「更多」菜单，错误却必须留在页面上 ——
+/// 用户需要立刻知道「为什么没声音」。
+class _ErrorLine extends StatelessWidget {
+  const _ErrorLine();
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: TvFocus(
-        focusNode: node,
-        debugLabel: debugLabel,
-        onPressed: onPressed,
-        nextLeft: nextLeft,
-        nextRight: nextRight,
-        nextUp: nextUp,
-        nextDown: nextDown,
-        builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
-          status: s,
-          radius: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          baseColor: const Color(0x33FFFFFF),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(icon, size: 22, color: TvColors.text),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 17, color: TvColors.text),
-              ),
-            ],
-          ),
-        ),
+    final String? error = context.select<PlaybackRepository, String?>(
+      (PlaybackRepository p) => p.state.error,
+    );
+    if (error == null || error.isEmpty) return const SizedBox.shrink();
+    return Text(
+      error,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontSize: 14,
+        height: 1.2,
+        color: Color(0xFFFF8A8F),
       ),
     );
   }
 }
 
-/// 规格 / 属性小胶囊。
+/// 规格 / 属性小胶囊（仅旧「大封面」布局还在用）。
 class _Chip extends StatelessWidget {
   const _Chip({required this.text});
 

@@ -43,12 +43,18 @@ class AudioSpec {
     this.durationMs,
   });
 
-  /// 人类可读的规格串，如 `FLAC · 16bit / 44kHz`。
+  /// 人类可读的规格串，如 `FLAC · 16bit / 44kHz · 1050kbps`。
+  ///
+  /// 码率（bitrate，bps）只有在真实元数据 > 0 时才追加，
+  /// 缺失就省略 —— 绝不伪造（需求 §三）。
   String get display {
     final tail = <String>[];
     if (bitDepth != null && bitDepth! > 0) tail.add('${bitDepth}bit');
     if (sampleRate != null && sampleRate! > 0) {
       tail.add('${(sampleRate! / 1000).toStringAsFixed(0)}kHz');
+    }
+    if (bitrate != null && bitrate! > 0) {
+      tail.add('${(bitrate! / 1000).round()}kbps');
     }
     final head = format != null && format!.isNotEmpty
         ? format!.toUpperCase()

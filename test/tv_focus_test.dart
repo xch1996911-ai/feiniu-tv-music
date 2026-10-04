@@ -17,29 +17,23 @@ import 'support/fake_music_repository.dart';
 import 'support/fake_playback_engine.dart';
 import 'support/fake_secure_store.dart';
 
-/// 播放页**遥控器焦点链**的回归测试（对应 V4 验收「四、播放页布局改动」）。
+/// 播放页**遥控器焦点链**的回归测试（V6 融合版式）。
 ///
-/// ## 为什么必须写成 widget 测试
-/// 「上一首 / 播放暂停 / 下一首 选不中」「进了进度区出不来」「打开队列后焦点丢了」
-/// 这类故障全部发生在**焦点树**这一层，纯 Dart 单测（只测 `PlaybackRepository`）
-/// 永远抓不到。这里真实构建 [PlayerPage]，用 `sendKeyEvent` 模拟遥控器
-/// 方向键与 OK 键，再断言 `FocusManager.instance.primaryFocus.debugLabel` ——
-/// 也就是「焦点此刻到底停在哪一个控件上」。
-///
-/// ## V4 的焦点拓扑（与屏幕上的左右顺序**完全一致**）
+/// ## V6 的焦点拓扑（与屏幕位置**完全一致**，全部显式链接）
 /// ```
-/// [返回] ↔ [布局] ↔ [模式] ↔ [收藏] ↔ [上一首] ↔ [播放/暂停] ↔ [下一首] ↔ [队列]
-///    ↖──────────────────────（队列按 → 环回「返回」）────────────────────┘
+///   横向A：back ↔ fav ↔ more                 （页面左列，两端不环回）
+///   横向B：mode ↔ prev ↔ play ↔ next ↔ queue（底部控制行，两端环回）
+///   纵向：back/fav/more ↓→ seek；seek ↓→ mode；控制键 ↑→ seek、↓→ 自身
+///   seek：←/→ = 快退/快进 5 秒，OK = 播放/暂停，↑→ fav（大封面布局=原地）
 /// ```
-/// 从「播放/暂停」出发，**按 → 依次**是：
-/// `下一首 → 队列 → 返回 → 布局 → 模式 → 收藏 → 上一首 → 播放`（8 步一循环）。
-/// 每个控件 `↓` → 进度区；进度区 `↑` → 播放/暂停、`↓` → 原地不动。
+/// 进入播放页焦点直接落在「播放/暂停」。
+/// 从「播放/暂停」出发 **按 → 依次**：
+/// `下一首 → 队列 → 模式 → 上一首 → 播放`（5 步一循环）。
+/// 「返回 / 收藏 / 更多」通过 `seek ↑ → fav` 进入。
 ///
 /// ⚠️ 两条踩过的坑：
 /// 1. **不要在 testWidgets 里 await `Future.delayed` / `pumpEventQueue()`**：
-///    测试体跑在 FakeAsync 假时钟里，假时钟只由 `pump()` 推进，
-///    await 定时器会**死等到 10 分钟超时**（不是快速失败），
-///    足以让整条 CI 在产出任何 APK 之前被判死。
+///    测试体跑在 FakeAsync 假时钟里，await 定时器会**死等到 10 分钟超时**。
 /// 2. **结尾要 `pumpWidget(SizedBox())` 把树拆掉**：本页有 `Timer.periodic`
 ///    （进度刷新）与多个 `FocusNode`，不拆树会留下未取消的定时器。
 void main() {
@@ -107,17 +101,9 @@ void main() {
   /// 准备 5 首歌并进到播放页（当前曲目下标 = 2）。
   ///
   /// ⚠️ **建立队列这一步必须放进 [WidgetTester.runAsync]。**
-  ///
-  /// `PlaybackRepository` 的加载串行链挂在**构造期创建**的
-  /// `Future<void>.value()` 上，而构造发生在 `setUp`（root Zone）。
-  /// `_Future._addListener` 用 `this._zone` 调度微任务，因此 `.then` 的回调
-  /// 被丢进 **root Zone 的微任务队列**；而 `testWidgets` 跑在 FakeAsync 里，
-  /// `pump()` 的 `flushMicrotasks()` **只清 FakeAsync 自己的队列**，
-  /// 碰不到 root Zone 的微任务。
-  ///
-  /// 结果：引擎永远收不到加载请求，`engine.playing` 恒为 false ——
-  /// 真机上完全没有这个问题（那里只有一个真实的微任务队列）。
-  /// `runAsync` 会把回调放回真实事件循环，从而正确复现运行时行为。
+  /// （root Zone 微任务问题，详见 tv_focus_test 历史版本注释 ——
+  /// `PlaybackRepository` 的加载链挂在构造期的 `Future.value()` 上，
+  /// FakeAsync 清不到；`runAsync` 放回真实事件循环。）
   Future<void> ready(WidgetTester tester) async {
     music.catalogue = <Track>[for (int i = 0; i < 5; i++) makeTrack('g$i')];
     await tester.runAsync(() async {
@@ -128,8 +114,6 @@ void main() {
   }
 
   /// 从「播放/暂停」往右走 [steps] 步。
-  ///
-  /// 调用方必须确认此刻焦点就在「播放/暂停」上 —— 每个测试体都从那里起跑。
   Future<void> right(WidgetTester tester, int steps) async {
     for (int i = 0; i < steps; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
@@ -146,7 +130,7 @@ void main() {
   /// 当前焦点必须落在「播放/暂停」上（每个用例的起跑位置）。
   void expectAtPlay() => expect(focusedLabel(), 'player.play');
 
-  group('播放页底部操作栏焦点链', () {
+  group('播放页焦点链（V6 融合版式）', () {
     testWidgets('打开播放页后焦点直接落在「播放/暂停」上', (WidgetTester tester) async {
       await ready(tester);
       expectAtPlay();
@@ -175,18 +159,15 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('底部栏是一条 8 节点的显式闭环：→ 顺序 == 屏幕上的左右顺序',
+    testWidgets('底部控制行是 5 节点显式环：→ 顺序 == 屏幕上的左右顺序',
         (WidgetTester tester) async {
       await ready(tester);
 
-      // 从「播放/暂停」向→依次经过的 8 个控件（第 8 步回到起点）
+      // 从「播放/暂停」向→依次经过的 5 个控件（第 5 步回到起点）
       const List<String> forward = <String>[
         'player.next',
         'player.queue',
-        'player.back',
-        'player.layout',
-        'player.mode',
-        'player.fav',
+        'player.mode', // queue 右端环回 mode
         'player.prev',
         'player.play',
       ];
@@ -200,11 +181,8 @@ void main() {
       // 反向也必须是同一环
       const List<String> backward = <String>[
         'player.prev',
-        'player.fav',
         'player.mode',
-        'player.layout',
-        'player.back',
-        'player.queue',
+        'player.queue', // mode 左端环回 queue
         'player.next',
         'player.play',
       ];
@@ -217,12 +195,8 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('底部栏 8 个控件 ↑ 都进进度区，↓ 都回播放/暂停',
+    testWidgets('底部 5 键 ↑ 都进进度区，↓ 回到控制行最左（模式键）',
         (WidgetTester tester) async {
-      // ⚠️ V5 版式改动后，操作条被移到了**进度区下方**（需求：
-      //    「正文 → 进度/队列状态区 → 最底部操作条」）。
-      //    方向键必须跟着控件位置改：从操作条往上才是进度区。
-      //    只挪控件不改方向键，遥控器在这个区域就会「走不出去」。
       await ready(tester);
 
       // (需要按几次 →, 期望落点) —— 从「播放/暂停」起跑
@@ -230,11 +204,8 @@ void main() {
         <Object>[0, 'player.play'],
         <Object>[1, 'player.next'],
         <Object>[2, 'player.queue'],
-        <Object>[3, 'player.back'],
-        <Object>[4, 'player.layout'],
-        <Object>[5, 'player.mode'],
-        <Object>[6, 'player.fav'],
-        <Object>[7, 'player.prev'],
+        <Object>[3, 'player.mode'],
+        <Object>[4, 'player.prev'],
       ];
 
       for (final List<Object> c in cases) {
@@ -247,17 +218,18 @@ void main() {
         expect(focusedLabel(), 'player.seek', reason: '$label 向上应进进度区');
 
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), 'player.play',
-            reason: '进度区向下必须优先回播放/暂停（不是回刚才那个控件）');
+        expect(focusedLabel(), 'player.mode',
+            reason: '进度区向下应到控制行最左（视觉一致），不能把焦点甩丢');
 
-        // 循环结束焦点已在「播放/暂停」，下一次 right() 的起点正确
+        // 循环结束焦点在「模式」，往右走回「播放/暂停」重置起点
+        await right(tester, 2);
         expectAtPlay();
       }
 
       await tearDownTree(tester);
     });
 
-    testWidgets('D 从播放/暂停 ↑ 进进度区，↓ 回播放/暂停；连续 10 次不卡死',
+    testWidgets('D 播放/暂停 ↑ 进进度区、↓ 回控制行；连续 10 次不卡死',
         (WidgetTester tester) async {
       await ready(tester);
 
@@ -266,51 +238,53 @@ void main() {
         expect(focusedLabel(), 'player.seek', reason: '第 ${i + 1} 次向上应进入进度区');
 
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), 'player.play',
-            reason: '第 ${i + 1} 次向下应回到播放/暂停（优先回该按钮）');
+        expect(focusedLabel(), 'player.mode',
+            reason: '第 ${i + 1} 次向下应回控制行');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        expectAtPlay();
       }
 
       await tearDownTree(tester);
     });
 
-    testWidgets('歌词区不参与焦点链（方向键不会被歌词吃掉）',
+    testWidgets('进度区 ↑ 到收藏键，收藏 ↔ 返回/更多；歌词区绝不获焦',
         (WidgetTester tester) async {
       await ready(tester);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'player.seek');
 
-      // 进度区已经是**最上一层**（它上方只有不可聚焦的正文：封面 / 歌词）：
-      // 再按 ↑ 必须是「待在原地」，不能把焦点丢进歌词区（歌词只读）或干脆弄丢。
+      // 进度区再 ↑ → 信息行的收藏键（正上方）。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'player.seek',
-          reason: '进度区上方只有不可聚焦的正文，↑ 应原地不动而不是把焦点弄丢');
+      expect(focusedLabel(), 'player.fav');
 
-      // 而且随时能回去（↓ 就是操作条）
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expectAtPlay();
+      // 收藏 ↑ 已经是信息行（上方只有封面，不可聚焦）→ 原地不动，
+      // 不能把焦点甩进歌词区或弄丢。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.fav',
+          reason: '收藏上方只有不可聚焦的封面，↑ 应原地不动');
 
-      await tearDownTree(tester);
-    });
-
-    testWidgets('「返回」按 ↑ 不会把焦点甩丢（顶部控件已全部下沉到底部栏）',
-        (WidgetTester tester) async {
-      await ready(tester);
-
-      await left(tester, 5); // play ← prev ← fav ← mode ← layout ← back
+      // 收藏 ←→ 返回（左上角）；收藏 → 更多。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       expect(focusedLabel(), 'player.back');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.more');
 
-      // 操作条在进度区**下方** ⇒ 「返回」按 ↑ 应当进进度区（而不是甩丢）。
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'player.seek',
-          reason: '操作条在进度区下方，「返回」按 ↑ 必须进进度区，不能把焦点甩丢');
+      // 返回键 ↓ 同样进进度区（纵向链）。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      expect(focusedLabel(), 'player.back');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.seek');
 
-      // 到底了：操作条按 ↓ 必须原地不动 —— 留空会让框架的空间搜索把焦点甩走。
+      // 随时能回控制区。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'player.play');
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'player.play',
-          reason: '操作条是最底部，↓ 必须原地不动');
+      expect(focusedLabel(), 'player.mode');
 
       await tearDownTree(tester);
     });
@@ -381,69 +355,110 @@ void main() {
       expect(engine.seeks.last, const Duration(seconds: 40),
           reason: '← 应快退 5 秒');
 
-      // 关键：操作进度之后仍然能按 ↓ 出去（操作条就在进度区下方）
+      // 关键：操作进度之后仍然能按 ↓ 出去。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expectAtPlay();
+      expect(focusedLabel(), 'player.mode');
 
       await tearDownTree(tester);
     });
   });
 
-  group('播放页布局切换（需求「四、3」）', () {
-    testWidgets('OK 切换布局：模式改变、焦点不丢、偏好被持久化',
+  group('「更多」菜单（布局切换 / 歌词操作）', () {
+    /// 走到「更多」按钮：播放/暂停 →↑ seek →↑ fav →→ more。
+    Future<void> gotoMore(WidgetTester tester) async {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.seek');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.fav');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      expect(focusedLabel(), 'player.more');
+    }
+
+    testWidgets('OK 打开菜单：出现布局/歌词项，焦点落在第一项',
         (WidgetTester tester) async {
       await ready(tester);
-      expect(local.playerLayout, PlayerLayout.stage, reason: '默认是标准布局');
-
-      await left(tester, 4); // play ← prev ← fav ← mode ← layout
-      expect(focusedLabel(), 'player.layout');
+      await gotoMore(tester);
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
+      await tester.pump();
+
+      expect(find.text('切换布局（当前：标准）'), findsOneWidget);
+      expect(find.text('重新加载歌词'), findsOneWidget);
+      expect(focusedLabel(), 'more.layout',
+          reason: '菜单打开后焦点必须落在第一项（autofocus 不可靠，显式请求）');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('OK 切换布局：模式改变、菜单关闭、焦点回到「更多」、偏好落盘',
+        (WidgetTester tester) async {
+      await ready(tester);
+      expect(local.playerLayout, PlayerLayout.stage,
+          reason: '默认是标准（融合）布局');
+
+      await gotoMore(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+
       expect(local.playerLayout, PlayerLayout.cover,
-          reason: '选中的模式必须立刻生效');
-      expect(focusedLabel(), 'player.layout',
-          reason: '切换布局后焦点不能丢（这是最容易退化的点）');
+          reason: '选中的布局必须立刻生效');
+      expect(find.text('切换布局（当前：大封面）'), findsNothing,
+          reason: '菜单应已关闭');
+      expect(focusedLabel(), 'player.more',
+          reason: '菜单关闭后焦点必须回到「更多」按钮');
       expect(store.prefs['playerLayout'], 'cover',
           reason: '偏好必须真的落盘 —— 重新打开播放器要保留上次选择');
 
+      // 再切一次回到 stage。
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
       await tester.pump();
       expect(local.playerLayout, PlayerLayout.stage, reason: '两个模式可来回切');
       expect(store.prefs['playerLayout'], 'stage');
-      expect(focusedLabel(), 'player.layout');
+      expect(focusedLabel(), 'player.more');
 
       await tearDownTree(tester);
     });
 
-    testWidgets('切换布局后进度区与播放控制仍然可达',
+    testWidgets('切换到「大封面」布局后，进度区与播放控制仍然可达',
         (WidgetTester tester) async {
       await ready(tester);
 
-      await left(tester, 4);
-      expect(focusedLabel(), 'player.layout');
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter); // 切到「大封面」
+      await gotoMore(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
       await tester.pump();
       expect(local.playerLayout, PlayerLayout.cover);
 
-      // 布局变了以后，↑ 仍然要进进度区、↓ 仍然要回播放/暂停
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      // 大封面布局：↓ 进进度区（「更多」上方无信息行，↑ 原地不动），
+      // 再 ↓ 回控制行。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       expect(focusedLabel(), 'player.seek');
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expectAtPlay();
+      expect(focusedLabel(), 'player.mode');
 
-      // 播放控制三个键也还在链上
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      expect(focusedLabel(), 'player.prev');
+      // 播放控制三个键也还在链上。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      expect(focusedLabel(), 'player.next');
+      expect(focusedLabel(), 'player.play');
 
       await tearDownTree(tester);
     });
   });
 
-  group('播放队列面板（需求「四、4」）', () {
+  group('播放队列面板', () {
     /// 走到「队列」按钮：播放/暂停 →(→) 下一首 →(→) 队列。
     Future<void> gotoQueue(WidgetTester tester) async {
       await right(tester, 2);
