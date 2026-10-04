@@ -217,8 +217,12 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('底部栏 8 个控件 ↓ 都进进度区，↑ 都回播放/暂停',
+    testWidgets('底部栏 8 个控件 ↑ 都进进度区，↓ 都回播放/暂停',
         (WidgetTester tester) async {
+      // ⚠️ V5 版式改动后，操作条被移到了**进度区下方**（需求：
+      //    「正文 → 进度/队列状态区 → 最底部操作条」）。
+      //    方向键必须跟着控件位置改：从操作条往上才是进度区。
+      //    只挪控件不改方向键，遥控器在这个区域就会「走不出去」。
       await ready(tester);
 
       // (需要按几次 →, 期望落点) —— 从「播放/暂停」起跑
@@ -239,12 +243,12 @@ void main() {
         await right(tester, steps);
         expect(focusedLabel(), label);
 
-        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), 'player.seek', reason: '$label 向下应进进度区');
-
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), 'player.seek', reason: '$label 向上应进进度区');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
         expect(focusedLabel(), 'player.play',
-            reason: '进度区向上必须优先回播放/暂停（不是回刚才那个控件）');
+            reason: '进度区向下必须优先回播放/暂停（不是回刚才那个控件）');
 
         // 循环结束焦点已在「播放/暂停」，下一次 right() 的起点正确
         expectAtPlay();
@@ -253,17 +257,17 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('D 从播放/暂停 ↓ 进进度区，↑ 回播放/暂停；连续 10 次不卡死',
+    testWidgets('D 从播放/暂停 ↑ 进进度区，↓ 回播放/暂停；连续 10 次不卡死',
         (WidgetTester tester) async {
       await ready(tester);
 
       for (int i = 0; i < 10; i++) {
-        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-        expect(focusedLabel(), 'player.seek', reason: '第 ${i + 1} 次向下应进入进度区');
-
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        expect(focusedLabel(), 'player.seek', reason: '第 ${i + 1} 次向上应进入进度区');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
         expect(focusedLabel(), 'player.play',
-            reason: '第 ${i + 1} 次向上应回到播放/暂停（优先回该按钮）');
+            reason: '第 ${i + 1} 次向下应回到播放/暂停（优先回该按钮）');
       }
 
       await tearDownTree(tester);
@@ -273,17 +277,17 @@ void main() {
         (WidgetTester tester) async {
       await ready(tester);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'player.seek');
 
-      // 进度区已经是最下一层：再按 ↓ 必须是「待在原地」，
-      // 不能把焦点丢进歌词区（歌词只读）或干脆弄丢。
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'player.seek',
-          reason: '进度区是最下层，↓ 应原地不动而不是把焦点弄丢');
-
-      // 而且随时能回去
+      // 进度区已经是**最上一层**（它上方只有不可聚焦的正文：封面 / 歌词）：
+      // 再按 ↑ 必须是「待在原地」，不能把焦点丢进歌词区（歌词只读）或干脆弄丢。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.seek',
+          reason: '进度区上方只有不可聚焦的正文，↑ 应原地不动而不是把焦点弄丢');
+
+      // 而且随时能回去（↓ 就是操作条）
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       expectAtPlay();
 
       await tearDownTree(tester);
@@ -296,9 +300,17 @@ void main() {
       await left(tester, 5); // play ← prev ← fav ← mode ← layout ← back
       expect(focusedLabel(), 'player.back');
 
+      // 操作条在进度区**下方** ⇒ 「返回」按 ↑ 应当进进度区（而不是甩丢）。
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-      expect(focusedLabel(), 'player.back',
-          reason: '底部栏之上没有任何可聚焦控件，↑ 必须原地不动');
+      expect(focusedLabel(), 'player.seek',
+          reason: '操作条在进度区下方，「返回」按 ↑ 必须进进度区，不能把焦点甩丢');
+
+      // 到底了：操作条按 ↓ 必须原地不动 —— 留空会让框架的空间搜索把焦点甩走。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.play');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      expect(focusedLabel(), 'player.play',
+          reason: '操作条是最底部，↓ 必须原地不动');
 
       await tearDownTree(tester);
     });
@@ -352,7 +364,7 @@ void main() {
         (WidgetTester tester) async {
       await ready(tester);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       expect(focusedLabel(), 'player.seek');
 
       // 让播放位置前进到 40 秒
@@ -369,8 +381,8 @@ void main() {
       expect(engine.seeks.last, const Duration(seconds: 40),
           reason: '← 应快退 5 秒');
 
-      // 关键：操作进度之后仍然能按 ↑ 出去
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      // 关键：操作进度之后仍然能按 ↓ 出去（操作条就在进度区下方）
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       expectAtPlay();
 
       await tearDownTree(tester);
@@ -414,10 +426,10 @@ void main() {
       await tester.pump();
       expect(local.playerLayout, PlayerLayout.cover);
 
-      // 布局变了以后，↓ 仍然要进进度区、↑ 仍然要回播放/暂停
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      expect(focusedLabel(), 'player.seek');
+      // 布局变了以后，↑ 仍然要进进度区、↓ 仍然要回播放/暂停
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      expect(focusedLabel(), 'player.seek');
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       expectAtPlay();
 
       // 播放控制三个键也还在链上

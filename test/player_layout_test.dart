@@ -126,11 +126,23 @@ void main() {
     tester.view.devicePixelRatio = dpr;
     addTearDown(tester.view.reset);
 
-    await local.setPlayerLayout(layout);
-    playback.setQueue(<Track>[longTrack()], startIndex: 0);
-    // 等假引擎把"加载当前曲目"跑完，否则页面显示「尚未选择歌曲」，
-    // 这组测试就变成了空测。
-    await playback.pendingLoads;
+    // ⚠️ 建队列 + 等加载**必须放进 `runAsync`**。
+    //
+    // `PlaybackRepository` 的加载串行链挂在**构造期创建**的
+    // `Future<void>.value()` 上，而构造发生在 `setUp`（root Zone）；
+    // `_Future._addListener` 用 `this._zone` 调度回调 ⇒ 这些回调排在
+    // **root Zone 的微任务队列**里，`testWidgets` 的假时钟永远不推进它。
+    // 于是这一个 `await` 永久挂起，而 `flutter_test` 的默认超时是 10 分钟 ——
+    // CI 上表现为「flutter test 卡住一小时，且不说是哪一条」。
+    // 既有 `tv_focus_test.dart` 已经踩过同一个坑（那里写得比我早、注释更全）。
+    // `runAsync` 把回调放回真实事件循环，从而复现真实运行时的行为。
+    await tester.runAsync(() async {
+      await local.setPlayerLayout(layout);
+      playback.setQueue(<Track>[longTrack()], startIndex: 0);
+      // 等假引擎把"加载当前曲目"跑完，否则页面显示「尚未选择歌曲」，
+      // 这组测试就变成了空测。
+      await playback.pendingLoads;
+    });
 
     await tester.pumpWidget(
       MultiProvider(

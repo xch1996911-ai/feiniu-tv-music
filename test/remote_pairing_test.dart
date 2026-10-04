@@ -122,9 +122,21 @@ void main() {
       }
     });
 
-    test('J 超长地址返回 null，由调用方走「手输地址」兜底', () {
-      final QrCode? qr = QrCode.encode('x' * 200);
-      expect(qr, isNull);
+    test('J 超出「电视上还能扫得动」的版本上限 → 返回 null，走手输兜底', () {
+      // ⚠️ 版本 10（57×57）是本项目设定的上限，再大模块就小到扫不动。
+      //    纠错等级 L 下版本 10 的字节容量约 271 字节，所以 **200 字节装得下**
+      //    （库会选版本 9）—— 原来断言 `'x' * 200` 返回 null 是错的，
+      //    实测返回的是一个合法矩阵。这里改用远超上限的长度，
+      //    并顺带钉住「真实配对地址只会用到很小的版本」。
+      expect(QrCode.encode('x' * 1200), isNull,
+          reason: '超过版本 10 上限必须返回 null');
+
+      final QrCode? normal =
+          QrCode.encode('http://192.168.1.20:18080/#A1B2C3');
+      expect(normal, isNotNull, reason: '真实配对地址必须能编码');
+      expect(normal!.version, lessThanOrEqualTo(QrCode.maxVersion));
+      expect(normal.version, lessThanOrEqualTo(5),
+          reason: '约 35 字符的地址只应用到很小的版本，模块才够大');
     });
   });
 

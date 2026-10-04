@@ -181,14 +181,26 @@ void main() {
       expect(firstRowColumns(tester), expected,
           reason: '第一行列数应为 $expected（逻辑视口 $vw×$vh）');
 
-      // 卡片文字必须完整落在视口内（实机不允许被裁）。
+      // ⚠️ 只断言**第一行**完整可见。
+      //    网格是可滚动的：第二行被视口下沿裁掉是正常行为，不是布局缺陷
+      //    （最初写成「所有卡片都必须在屏内」，在 853×480 上必然误报）。
+      //    横向被切才是真 bug —— 那说明列宽算错了。
+      final List<Rect> rects = <Rect>[];
       for (int i = 1; i <= 9; i++) {
         final Finder f = find.text('专辑$i');
         if (f.evaluate().isEmpty) continue;
-        final Rect r = tester.getRect(f);
-        expect(r.left, greaterThanOrEqualTo(-0.5), reason: '专辑$i 左侧被切: $r');
-        expect(r.right, lessThanOrEqualTo(vw + 0.5), reason: '专辑$i 右侧被切: $r');
-        expect(r.bottom, lessThanOrEqualTo(vh + 0.5), reason: '专辑$i 底部被切: $r');
+        rects.add(tester.getRect(f));
+      }
+      final double top = rects.map((Rect r) => r.top).reduce(math.min);
+      final List<Rect> firstRow =
+          rects.where((Rect r) => (r.top - top).abs() < 1.0).toList();
+      expect(firstRow.length, expected, reason: '第一行应当正好有 $expected 张');
+      for (final Rect r in firstRow) {
+        expect(r.left, greaterThanOrEqualTo(-0.5), reason: '第一行卡片左侧被切: $r');
+        expect(r.right, lessThanOrEqualTo(vw + 0.5),
+            reason: '第一行卡片右侧被切: $r');
+        expect(r.bottom, lessThanOrEqualTo(vh + 0.5),
+            reason: '第一行卡片底部被切（视口高 $vh）: $r');
       }
     });
   }

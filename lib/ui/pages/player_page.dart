@@ -212,9 +212,11 @@ class _PlayerPageState extends State<PlayerPage> {
                       const SizedBox(height: 8),
                       _SeekRow(
                         playbackNode: _seekNode,
-                        // 方向键：进度条↓ 回操作条（操作条现在在它下面）
+                        // 方向键：↓ 回操作条（操作条就在它下面）；↑ 指回自身 ——
+                        // 进度区上方只有**不可聚焦**的正文（封面/歌词），
+                        // 指回自己是确定的「原地不动」，留空则会被框架的空间搜索甩走。
                         downNode: _playNode,
-                        upNode: _backNode,
+                        upNode: _seekNode,
                       ),
                       const SizedBox(height: 6),
                       const _StatusLine(),
@@ -610,7 +612,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _layoutNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _backNode,
         nextUp: _seekNode,
+
       ),
       const SizedBox(width: 12),
       _PillControl(
@@ -626,7 +631,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _modeNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _layoutNode,
         nextUp: _seekNode,
+
       ),
       const SizedBox(width: 10),
       _PillControl(
@@ -648,7 +656,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _favNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _modeNode,
         nextUp: _seekNode,
+
       ),
       const SizedBox(width: 10),
       _RoundControl(
@@ -672,7 +683,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _prevNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _favNode,
         nextUp: _seekNode,
+
       ),
       flexible ? const Spacer() : const SizedBox(width: 24),
       // ── 中组：播放控制（电视上最常用的三个，放正中间）──
@@ -691,7 +705,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _playNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _prevNode,
         nextUp: _seekNode,
+
       ),
       const SizedBox(width: 30),
       _RoundControl(
@@ -708,7 +725,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _nextNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _playNode,
         nextUp: _seekNode,
+
       ),
       const SizedBox(width: 30),
       _RoundControl(
@@ -724,7 +744,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _queueNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _nextNode,
         nextUp: _seekNode,
+
       ),
       flexible ? const Spacer() : const SizedBox(width: 24),
       // ── 右组：队列 ────────────────────────────────────
@@ -739,7 +762,10 @@ class _PlayerPageState extends State<PlayerPage> {
         nextRight: _backNode,
         // ⚠️ 操作条现在在进度条**下方**，所以「去进度条」是 ↑ 而不是 ↓。
         //    只移动控件而不改方向键，会让遥控器在这个区域"走不出去"。
+        // ⚠️ 操作条已在进度区**下方**：↑ 去进度条；↓ 到底了 ⇒ 指回自身「原地不动」。
+        nextDown: _queueNode,
         nextUp: _seekNode,
+
       ),
     ];
   }
@@ -1054,6 +1080,7 @@ class _RoundControl extends StatelessWidget {
     required this.nextLeft,
     required this.nextRight,
     this.nextUp,
+    this.nextDown,
     this.iconColor,
     this.large = false,
     this.compact = false,
@@ -1070,8 +1097,16 @@ class _RoundControl extends StatelessWidget {
   final Color? iconColor;
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
-  /// ↑ 的去处（进度区）。
+  /// ↑ 的去处（进度区）。操作条在进度区**下方**，所以「上」才是去进度条。
   final FocusNode? nextUp;
+
+  /// ↓ 的去处。操作条已是最底部 —— 传**自身节点**表示「到底了，原地不动」。
+  ///
+  /// ⚠️ 不要留空：`TvFocus` 在拿到 `null` 时会返回 `ignored`，
+  ///    于是框架退化成**空间搜索**，焦点可能被甩到同一行的别的按钮上
+  ///    （实测过：从「返回」按 ↓ 会莫名跳到「布局」）。显式指回自己才是确定的。
+  final FocusNode? nextDown;
+
   final bool large;
 
   /// 略小的圆形（返回 / 收藏这类次要动作）。
@@ -1090,6 +1125,7 @@ class _RoundControl extends StatelessWidget {
         nextLeft: nextLeft,
         nextRight: nextRight,
         nextUp: nextUp,
+        nextDown: nextDown,
         builder: (BuildContext context, TvFocusStatus s) => SizedBox(
           width: box,
           height: box,
@@ -1124,6 +1160,7 @@ class _PillControl extends StatelessWidget {
     required this.nextLeft,
     required this.nextRight,
     this.nextUp,
+    this.nextDown,
   });
 
   final FocusNode node;
@@ -1137,6 +1174,9 @@ class _PillControl extends StatelessWidget {
   /// ↑ 的去处（进度区）。
   final FocusNode? nextUp;
 
+  /// ↓ 的去处；操作条已是最底部 ⇒ 传自身节点表示「原地不动」（见 _RoundControl）。
+  final FocusNode? nextDown;
+
   @override
   Widget build(BuildContext context) {
     return Tooltip(
@@ -1148,6 +1188,7 @@ class _PillControl extends StatelessWidget {
         nextLeft: nextLeft,
         nextRight: nextRight,
         nextUp: nextUp,
+        nextDown: nextDown,
         builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
           status: s,
           radius: 24,
