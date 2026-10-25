@@ -54,6 +54,8 @@ class TvKeyboard extends StatefulWidget {
     required this.controller,
     required this.fieldLabel,
     required this.onClose,
+    this.onAdvance,
+    this.onRetreat,
     this.obscure = false,
     this.onObscureChanged,
     this.returnFocus,
@@ -67,6 +69,21 @@ class TvKeyboard extends StatefulWidget {
 
   /// 「完成 / 关闭」：调用方负责关掉键盘并把焦点还给字段。
   final VoidCallback onClose;
+
+  /// **完成并前进**：末行按 ↓ 或按「完成」键时触发。
+  ///
+  /// 这是「输入完密码出不去」那条实机 Bug 的正面解法：
+  /// 键盘是**模态**的（打开时表单被 `ExcludeFocus` 排除），用户在键盘上按 ↓
+  /// 只会在键盘内部移动，走到末行就原地不动 —— 从用户视角就是「下不去」。
+  /// 因此末行 ↓ 必须**等于「我输完了，继续往下」**，而不是「到底了」。
+  ///
+  /// 为 null 时退化为 [onClose]（保持旧行为，也让只测键盘的用例不必关心它）。
+  final VoidCallback? onAdvance;
+
+  /// **向上退出**：首行按 ↑ 时触发（回到上一个字段）。
+  ///
+  /// 与 [onAdvance] 对称：首行 ↑ 本来也是「原地不动」的死区。
+  final VoidCallback? onRetreat;
 
   /// 是否密码字段（初始是否掩码）。
   final bool obscure;
@@ -252,7 +269,7 @@ class TvKeyboardState extends State<TvKeyboard> {
         widget.onObscureChanged?.call(_obscure);
         return;
       case TvKeyAction.done:
-        _close();
+        _advance();
         return;
       case TvKeyAction.none:
         final String? ins = key.insert;
@@ -261,13 +278,25 @@ class TvKeyboardState extends State<TvKeyboard> {
     }
   }
 
-  /// 关闭键盘：**先把焦点还给调用方指定的字段节点**，再回调关闭。
+  /// 「完成」：收起键盘并**前进到下一个控件**（不是回到刚编辑的字段）。
   ///
-  /// 顺序很重要：节点在本组件卸载后仍要能被聚焦（字段仍在树上），
-  /// 若先卸载再请求焦点，焦点会掉到 FocusScope 上（方向键全失灵）。
-  void _close() {
+  /// 语义差别就是本轮 Bug 的核心 —— 用户输完密码按「完成」，期望的是
+  /// 「键盘没了、我接着去按记住密码」，而不是「键盘没了、焦点还赖在密码框上」。
+  ///
+  /// 顺序很重要：先把焦点还给调用方指定的节点再回调，因为本组件随后就会被
+  /// 卸载（`_keyboardOpen = false`），卸载后再请求焦点会掉到 FocusScope 上
+  /// （表现是「方向键全失灵」）。
+  ///
+  /// ⚠️ [widget.onAdvance] 为 null 时退化为 [widget.onClose]：单测里只关心
+  ///   「完成会关掉键盘」的场景不必额外传参。
+  void _advance() {
     widget.returnFocus?.requestFocus();
-    widget.onClose();
+    final VoidCallback? advance = widget.onAdvance;
+    if (advance == null) {
+      widget.onClose();
+      return;
+    }
+    advance();
   }
 
   // ── 渲染 ─────────────────────────────────────────────────
@@ -392,10 +421,20 @@ class TvKeyboardState extends State<TvKeyboard> {
         : key.label;
     final bool highlight = key.action == TvKeyAction.shift && _shift;
 
+    // 首行 ↑ / 末行 ↓ = 退出键盘。
+    //
+    // ⚠️ 这是**死区转出口**：原来这两个方向都被显式指回自身（「原地不动」），
+    //    用户在末行按 ↓ 什么都不会发生 —— 而这正是「输入完密码下不去」的
+    //    实机表现。键盘是模态的，不给出路就等于把焦点锁死在键盘里。
+    final bool isFirstRow = r == 0;
+    final bool isLastRow = r == _rows.length - 1;
+
     return TvFocus(
       focusNode: node,
       debugLabel: 'tvkbd.${key.id}',
       onPressed: () => _activate(key),
+      onArrowUp: isFirstRow ? widget.onRetreat : null,
+      onArrowDown: isLastRow ? widget.onAdvance : null,
       nextLeft: c > 0 ? _nodes[r][c - 1] : node,
       nextRight: c < _rows[r].length - 1 ? _nodes[r][c + 1] : node,
       nextUp: r > 0 ? _nodes[r - 1][c.clamp(0, _rows[r - 1].length - 1)] : node,

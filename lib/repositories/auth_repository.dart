@@ -35,6 +35,12 @@ class AuthRepository extends ChangeNotifier {
   /// 免登录探测上限。
   static const Duration _probeTimeout = Duration(seconds: 12);
 
+  /// 「上次成功地址」读写上限。
+  ///
+  /// 比其它存储步骤短：这两步都不影响登录本身 —— 读失败最多是地址不回填，
+  /// 写失败最多是下次还要手打。**绝不允许它们把登录页卡在空白状态**。
+  static const Duration _lastHostTimeout = Duration(seconds: 3);
+
   final SecureStore _store;
   MusicServerProvider? _provider;
   User? _currentUser;
@@ -194,6 +200,11 @@ class AuthRepository extends ChangeNotifier {
       BootLog.mark('登录·会话持久化失败（本次仍可用）');
     }
 
+    // 「上次成功地址」与上面的会话**分开写**：会话可能超时失败（上面 catch 掉了），
+    // 但地址仍然应该记住 —— 它的目的正是「下次不用再手打 IP」。
+    // 失败也不影响本次登录，因此单独尝试、单独吞掉。
+    unawaited(_rememberHost(host));
+
     Log.i('登录成功 user=${Log.redactUser(username)} remember=$rememberPassword');
     _busy = false;
     notifyListeners();
@@ -281,6 +292,58 @@ class AuthRepository extends ChangeNotifier {
   /// UI 需要显示「实际将要请求的地址」，但不能直接依赖 `servers/fnos/*`
   /// （分层约定），故在此暴露一层。
   String normalizeHost(String host) => FnosClient.normalizeBaseUrl(host);
+
+  /// 读取「最后一次成功登录用过的 NAS 地址」，供登录页回填。
+  ///
+  /// 失败 / 超时 / 从未成功过统一返回 null —— 调用方只需处理
+  /// 「有值就填进去，没值就让用户自己输」这一种分支。
+  Future<String?> readLastHost() async {
+    try {
+      final String? host = await _store.readLastHost().timeout(_lastHostTimeout);
+      if (host == null || host.trim().isEmpty) return null;
+      return host.trim();
+    } catch (e) {
+      Log.w('读取上次 NAS 地址失败/超时，登录页不回填：$e');
+      return null;
+    }
+  }
+
+  /// 记住一个**已验证可登录**的地址（失败静默：最多下次再手输一次）。
+  Future<void> _rememberHost(String host) async {
+    final String normalized = normalizeHost(host);
+    if (normalized.isEmpty) return;
+    try {
+      await _store.writeLastHost(normalized).timeout(_lastHostTimeout);
+      Log.i('已记住 NAS 地址 ${Log.redactHost(normalized)}');
+    } catch (e) {
+      Log.w('记住 NAS 地址失败/超时（不影响本次登录）：$e');
+    }
+  }
+
+  /// 校验用户输入的 NAS 地址，**合法返回 null**，非法返回给用户看的中文提示。
+  ///
+  /// 只做「明显打错」这一层的校验，不追求严格 URL 语法：
+  /// 电视遥控器输入极慢，把 `my-nas` 这种合法内网主机名拦下来
+  /// 比放过一个错别字更烦人。真正的连通性结论由 [probe] / [login] 给出。
+  String? hostFormatError(String input) {
+    final String raw = input.trim();
+    if (raw.isEmpty) return '请输入 NAS 地址';
+    final String normalized = normalizeHost(raw);
+    final Uri? uri = Uri.tryParse(normalized);
+    if (uri == null || uri.host.isEmpty) {
+      return 'NAS 地址格式不正确，例如 http://192.168.3.250:5666';
+    }
+    // 端口必须是数字（`192.168.3.250:abc` 这种在 Dio 里会抛底层异常，
+    // 用户看到的会是一串看不懂的英文）。
+    if (uri.hasPort && uri.port <= 0) {
+      return 'NAS 地址格式不正确，例如 http://192.168.3.250:5666';
+    }
+    // 主机名至少带一个点或是 localhost：单段名字（`abc`）几乎必然是漏打了 IP。
+    if (!uri.host.contains('.') && uri.host != 'localhost') {
+      return 'NAS 地址格式不正确，例如 http://192.168.3.250:5666';
+    }
+    return null;
+  }
 
   /// token 失效（Cookie 缺失/过期 → HTTP 401 + code 99999）统一入口。
   ///

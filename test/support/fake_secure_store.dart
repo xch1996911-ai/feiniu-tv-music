@@ -102,4 +102,18 @@ class FakeSecureStore extends SecureStore {
   Future<void> writePlayerLayoutKey(String value) async {
     prefs['playerLayout'] = value;
   }
+
+  // ── 上次成功登录的 NAS 地址（UI2.0-DEV2：登录页回填）──────────
+  //
+  // 必须覆盖：真实实现走 `flutter_secure_storage`，测试环境没有平台通道，
+  // 调用会抛 `MissingPluginException`。而登录页在 `initState` 就会读它，
+  // 不覆盖的话**每个登录页用例都会在启动阶段炸**。
+
+  @override
+  Future<String?> readLastHost() async => prefs['lastHost'];
+
+  @override
+  Future<void> writeLastHost(String host) async {
+    prefs['lastHost'] = host;
+  }
 }

@@ -306,7 +306,7 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('「完成」关闭键盘 → 焦点回到正在编辑的字段，且不会自动弹回',
+    testWidgets('「完成」→ 收起键盘并前进到下一个控件（UI2.0-DEV2 起不再赖在原字段）',
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpLogin(tester);
@@ -321,16 +321,44 @@ void main() {
       await tester.pump();
 
       expect(find.byType(TvKeyboard), findsNothing);
-      expect(focusedLabel(), 'login.host',
-          reason: '关闭键盘后焦点必须回到正在编辑的字段，而不是掉到 FocusScope');
+      // ⚠️ 这里原来是 `login.host`（「关掉键盘后焦点回到正在编辑的字段」）。
+      //    实机反馈证明那个语义是错的：用户输完一栏按「完成」，期望的是
+      //    「继续下一栏」，而不是「键盘没了、焦点还赖在原处、还得再按 ↓」。
+      expect(focusedLabel(), 'login.user',
+          reason: '「完成」= 收起键盘并前进，不能把焦点留在刚编辑完的字段上');
 
       expect(popCanPop(tester), isTrue, reason: '键盘已关，返回键回到正常的页面返回逻辑');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('Back 关闭键盘 → 焦点回到正在编辑的字段，且该字段不再自动弹回',
+        timeout: const Timeout(Duration(seconds: 45)),
+        (WidgetTester tester) async {
+      await pumpLogin(tester);
+      await waitForFallback(tester);
+      expect(focusedLabel(), 'tvkbd.1');
+
+      // 走真实的 PopScope 回调（等价于遥控器 Back 键）。
+      // ⚠️ 不调 `tester.binding.handlePopRoute()`：那是 @protected，
+      //    跨库调用会触发 analyzer 的 invalid_use_of_protected_member，
+      //    而本项目 analyzer 的 info 级也判失败。
+      final PopScope<dynamic> pop = tester.widget<PopScope<dynamic>>(
+        find.byWidgetPredicate((Widget w) => w is PopScope),
+      );
+      pop.onPopInvokedWithResult?.call(false, null);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(TvKeyboard), findsNothing);
+      expect(focusedLabel(), 'login.host',
+          reason: 'Back 是「我只是想关掉键盘」，焦点必须回到正在编辑的字段');
 
       // 远超探测时长：不允许自己弹回来（否则用户会觉得「关不掉」）
       await tester.pump(LoginPage.imeProbeDelay + const Duration(seconds: 2));
       await tester.pump();
       expect(find.byType(TvKeyboard), findsNothing,
-          reason: '用户手动关掉的键盘不允许自动重开');
+          reason: '用户手动关掉的键盘不允许在**同一个字段**上自动重开');
 
       await tearDownTree(tester);
     });
