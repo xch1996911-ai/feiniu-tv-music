@@ -11,6 +11,8 @@ import 'package:feiniu_tv_music/ui/pages/player_page.dart';
 import 'package:feiniu_tv_music/ui/widgets/cover_image.dart';
 import 'package:feiniu_tv_music/ui/widgets/lyric_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'
+    show RenderBox, RenderFlex, RenderObject;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
