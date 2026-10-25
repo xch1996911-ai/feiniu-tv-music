@@ -7,18 +7,22 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: deviceId 校验 拒绝长度错误 / 非 hex / 空 / null
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_ids_test.dart: toHex 逐字节补零
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 打开后焦点落在第一颗按键上（不依赖 autofocus）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 不依赖任何插件即可渲染出 FLUTTER ENGINE OK
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 方向键 + OK 能输入数字 / 字母 / 符号（IP 与端口需要的点号、冒号）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 退格 / 清空 / 完成（完成必须回调 onClose）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 大小写切换与密码显隐（顶栏显示当前编辑字段）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 不依赖任何插件即可渲染出 FLUTTER ENGINE OK
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 键盘内部方向键不越界（首行 ↑ / 末行 ↓ 原地不动）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 帧计数随首帧回调递增，并在 maxFrames 处停止
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: first frame callback 一定会被标记出来（电视端唯一判据）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: 标记会经 feiniu/boot 通道发得出去（原生落盘通道必须可用）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/engine_smoke_test.dart: DIAG_TAG 有默认值，未注入 dart-define 时也不会是空串
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 退格 / 清空 / 完成（完成必须回调 onClose）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 大小写切换与密码显隐（顶栏显示当前编辑字段）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 等待系统键盘超时 → 自动打开遥控器键盘（并给出说明文案）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 键盘打开时返回键先关键盘（PopScope.canPop == false）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 「完成」→ 收起键盘并前进到下一个控件（UI2.0-DEV2 起不再赖在原字段）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 Back 关闭键盘 → 焦点回到正在编辑的字段，且该字段不再自动弹回
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 A 纯占位符 / 符号 / 只有时间标签 → 无效
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 B 真实歌词（中文 / 英文 / 纯文本）→ 有效
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 「有效歌词」的判定 C 有信息量的字符数统计口径（符号与标点不计）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: TvKeyboard（遥控器屏幕键盘） 键盘内部方向键不越界（首行 ↑ / 末行 ↓ 原地不动）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_usability_test.dart: §六.3 NAS 占位符不再阻断在线兜底 D NAS 只回 ♪ 时判为无歌词（不提前结束）
 [FeiNiuTV] [事件] NAS 歌词判为无效（1 行 / 0 个有效字符），已转在线兜底
@@ -40,7 +44,9 @@
 [FeiNiuTV] [诊断] 歌词 = 状态=notFound · NAS=正常但无有效内容 · 在线=未启用
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 等待系统键盘超时 → 自动打开遥控器键盘（并给出说明文案）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 密码字段：键盘写入密码框控制器，且保持掩码
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 小逻辑视口（960×540）下键盘不溢出、末行按键仍在
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 4K 面板（3840×2160 / dpr 2.0 ⇒ 1920×1080 逻辑）键盘正常
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.1 统一风格集合与标签映射 A 英文/中文/大小写/连字符写法都映射到同一个统一风格
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.1 统一风格集合与标签映射 B 映射不上的**明确标签**保留原样，不丢数据也不硬塞
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.3 版本词与语言/姓名不得当风格 C Live / 现场 / Remastered / 原声版 单独出现时不算风格证据
@@ -56,19 +62,13 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 M 混合场景：风格桶 + 待分类桶，且标出「推断」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 N 全部靠推断得出的风格会被标记为 inferred
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/genre_inference_test.dart: §三.4 概览与「待分类」 O 规则版本随结果一起产出（供索引判断是否需要重算）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 键盘打开时返回键先关键盘（PopScope.canPop == false）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 「完成」→ 收起键盘并前进到下一个控件（UI2.0-DEV2 起不再赖在原字段）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 Back 关闭键盘 → 焦点回到正在编辑的字段，且该字段不再自动弹回
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 密码字段：键盘写入密码框控制器，且保持掩码
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 小逻辑视口（960×540）下键盘不溢出、末行按键仍在
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_keyboard_test.dart: LoginPage：系统键盘不可用时兜底到屏幕键盘 4K 面板（3840×2160 / dpr 2.0 ⇒ 1920×1080 逻辑）键盘正常
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 显式焦点链（↑/↓ 只走 _formChain） ↓ 依次走 地址 → 用户名 → 密码 → 记住密码 → 连接并登录 → 只测试连接
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 兜底 未注入时版本取 branding 常量（与 pubspec 同步）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 兜底 未注入时 commit / 构建时间如实显示 unknown
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 兜底 未注入通道时按编译模式推断（测试是 debug → DEV）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 展示串 versionLine 含版本、versionCode、sha、通道
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 展示串 oneLine 额外带构建时间
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/build_identity_test.dart: BuildIdentity 展示串 shortSha 只截 7 位（注入长 sha 时不溢出）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 显式焦点链（↑/↓ 只走 _formChain） ↓ 依次走 地址 → 用户名 → 密码 → 记住密码 → 连接并登录 → 只测试连接
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 显式焦点链（↑/↓ 只走 _formChain） ↑ 原路返回，从地址框再 ↑ 到「打开遥控器键盘」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 显式焦点链（↑/↓ 只走 _formChain） 左右键在按钮上不越界（不会被几何遍历甩到别的控件）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 显式焦点链（↑/↓ 只走 _formChain） 960×540 小视口下焦点链照样能走到底（且不溢出）
@@ -80,34 +80,33 @@
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 字段级校验（不许再出现笼统的「请填写…」） 用户名为空 → 「请输入用户名」+ 焦点回用户名框
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 字段级校验（不许再出现笼统的「请填写…」） 密码为空 → 「请输入密码」+ 焦点回密码框
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 字段级校验（不许再出现笼统的「请填写…」） 开始打字后字段级错误自动消失
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: OK 键必须真的有动作 「记住密码」按 OK 勾选 / 取消（有可见的勾）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: OK 键必须真的有动作 「连接并登录」字段为空时**仍然可获焦**（不是灰掉的死控件）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 有上次成功地址 → 自动回填，且初始焦点直接落在用户名
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 从未成功登录过 → 地址为空，初始焦点在地址框
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 回填不会覆盖用户已经开始输入的地址
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 优先用独立的 lastHost 键
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 没有 lastHost 时回退到会话 host（DEV1 升级上来的用户）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 两个都没有 → null
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 空 / 全空白 → 「请输入 NAS 地址」
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 合法写法全部放行
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 明显打错 → 给出可照抄的示例
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/album_grid_layout_test.dart: 1080p 面板 · dpi320 → 960×540（最常见）：列数 4，且瓦片不溢出
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 9 首（共 9 首）
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: OK 键必须真的有动作 「记住密码」按 OK 勾选 / 取消（有可见的勾）
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/album_grid_layout_test.dart: 720p 面板 · dpi240 → 853×480（最小现实视口）：列数 3，且瓦片不溢出
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 9 首（共 9 首）
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: OK 键必须真的有动作 「连接并登录」字段为空时**仍然可获焦**（不是灰掉的死控件）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/album_grid_layout_test.dart: 1080p 面板 · dpi160 → 1920×1080：列数 6，且瓦片不溢出
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 9 首（共 9 首）
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 有上次成功地址 → 自动回填，且初始焦点直接落在用户名
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/album_grid_layout_test.dart: 4K 面板 · dpi640 → 960×540：列数 4，且瓦片不溢出
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 9 首（共 9 首）
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 从未成功登录过 → 地址为空，初始焦点在地址框
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/album_grid_layout_test.dart: 4K 面板 · dpi320 → 1920×1080：列数 6，且瓦片不溢出
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -117,22 +116,15 @@
 [FeiNiuTV] [诊断] 搜索索引 = 9 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 9 首（共 9 首）
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址恢复（登录过一次就不该再手打） 回填不会覆盖用户已经开始输入的地址
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 优先用独立的 lastHost 键
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 没有 lastHost 时回退到会话 host（DEV1 升级上来的用户）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: 上次地址读取（两级回退） 两个都没有 → null
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 空 / 全空白 → 「请输入 NAS 地址」
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 合法写法全部放行
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/login_focus_chain_test.dart: NAS 地址校验（AuthRepository.hostFormatError） 明显打错 → 给出可照抄的示例
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 显示明确空态 + 「去音乐库」入口，而不是显示全曲库
 [FeiNiuTV] [诊断] 搜索索引 = 2 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 2 首（共 2 首）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 空收藏 「去音乐库」可聚焦并能触发回调
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 0 首（共 0 首）
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/paged_result_test.dart: hasMore 判断
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/favorites_page_test.dart: 只包含用户明确收藏的歌 服务端 isFavorite 播种进来的歌会显示（首次迁移）
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -176,22 +168,8 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 1080p 面板 · dpi240 → 1280×720 · stage · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 编码成功、版本在 1–5（单块结构，可被本文件的解码器处理）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 三个定位图案 + 分隔符 + 时序图案 + 暗模块
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 渲染默认静区 ≥ 4 个模块（规范值）
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 1080p 面板 · dpi240 → 1280×720 · stage · 字体 1.3x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 内容过长时返回 null（由页面走「手输地址」兜底）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:18080/#A1B2C3
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>.2:18080/#ZZ99YY
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:18080/#2345ABCDEF
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:65535/#A2B3C4
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://tv.local:18080/#QQQQQQ
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 超长 URL（版本 > 5）不做解码断言，但必须是合法矩阵
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 1080p 面板 · dpi240 → 1280×720 · cover · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
@@ -217,16 +195,25 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 720p 面板 · dpi240 → 853×480（最小现实视口） · stage · 字体 1.3x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 720p 面板 · dpi240 → 853×480（最小现实视口） · cover · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 编码成功、版本在 1–5（单块结构，可被本文件的解码器处理）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 三个定位图案 + 分隔符 + 时序图案 + 暗模块
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 渲染默认静区 ≥ 4 个模块（规范值）
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 720p 面板 · dpi240 → 853×480（最小现实视口） · cover · 字体 1.3x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 结构不变量（与编码器实现无关） 内容过长时返回 null（由页面走「手输地址」兜底）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:18080/#A1B2C3
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>.2:18080/#ZZ99YY
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:18080/#2345ABCDEF
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://<IP-REDACTED>:65535/#A2B3C4
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 解码一致：http://tv.local:18080/#QQQQQQ
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/qr_roundtrip_test.dart: 独立解码 round-trip：解出来的字节必须等于原 URL 超长 URL（版本 > 5）不做解码断言，但必须是合法矩阵
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 720p 面板 · dpi160 → 1280×720 · stage · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
@@ -245,26 +232,6 @@
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 4K 面板 · dpi640 → 960×540 · stage · 字体 1.3x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 `[00:09.71]示例歌词` → 正文干净、时间正确
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 文档级 offset/元数据标签不回归
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 同一行多个方括号时间 → 多个时间点共用同一句正文
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） `[00:09.71] 示 <00:09.95> 例 <00:10.01> 歌 <00:10.30> 词`
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） `[00:09.71]<00:09.71>示<00:09.95>例` → 不显示任何尖括号标签
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） 英文歌词的词间空格必须保留（不能被清理规则误删）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） 中文正文里的英文词：只清掉中文之间的空格
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） 逐行取出正文与**首个**尖括号时间
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） LyricDoc.isSyncable == true（旧实现这里是 false → 永远不跟随）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） `LyricDoc.parse`（在线候选解析走这条）也不带标签
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） 从 NAS JSON 契约进入时同样剥离（`text` 字段承载增强型 LRC）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 纯标签内容算 0（旧实现把标签里的数字算成歌词）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 混合标签与歌词文字时算作有效
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 只有时间标签的文档 → isUsable == false（在线兜底仍会被触发）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 含真实歌词的增强型 LRC → isUsable == true
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑤ 纯文本不回归 无任何时间标签 → time 为 null，正文原样保留
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑤ 纯文本不回归 同行混排（方括号时间 + 纯文本尾巴）仍然只算一行
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑥ 时间格式兼容 一位小数 / 两位小数 / 三位小数 / 冒号小数 都解析正确
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 4K 面板 · dpi640 → 960×540 · cover · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
@@ -299,20 +266,13 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 4K 面板 · dpi160 → 3840×2160（4K 原生） · stage · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 960×540（1080p 面板 dpr2 / 4K 面板 dpr4）→ compactTV
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 853×480（720p 面板 dpr1.5，最小现实视口）→ compactTV
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 1280×720 与 1920×1080 → standardTV
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 4K 原生 3840×2160（dpr1）→ large4KTV
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 2560×1440（4K 面板 dpr1.5）→ large4KTV
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: 字号倍率 compact / standard 不放大，large4K 温和放大
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 4K 面板 · dpi160 → 3840×2160（4K 原生） · stage · 字体 1.3x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
 ::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: 字号倍率 放大倍率上限 1.1（避免把布局撑破）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: label 与枚举一一对应（诊断页/日志不要出现两个名字）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 深色背景，保证白色诊断文案可读
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 大字号，满足客厅 3 米观看距离
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_theme_test.dart: buildTvTheme（启动引导页与主界面共用） 同一份 ThemeData 可同时被引导页与主界面使用
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 4K 面板 · dpi160 → 3840×2160（4K 原生） · cover · 字体 1.0x
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
@@ -326,6 +286,59 @@
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/player_layout_test.dart: 融合背景：换歌交叉淡化、无封面回落渐变（不抛异常）
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 `[00:09.71]示例歌词` → 正文干净、时间正确
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 文档级 offset/元数据标签不回归
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ① 标准 LRC 不回归 同一行多个方括号时间 → 多个时间点共用同一句正文
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） `[00:09.71] 示 <00:09.95> 例 <00:10.01> 歌 <00:10.30> 词`
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） `[00:09.71]<00:09.71>示<00:09.95>例` → 不显示任何尖括号标签
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） 英文歌词的词间空格必须保留（不能被清理规则误删）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ② 用户截图形态（行首方括号 + 行内逐字尖括号） 中文正文里的英文词：只清掉中文之间的空格
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） 逐行取出正文与**首个**尖括号时间
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） LyricDoc.isSyncable == true（旧实现这里是 false → 永远不跟随）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） `LyricDoc.parse`（在线候选解析走这条）也不带标签
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ③ 只有尖括号标签的增强型 LRC（要能同步，不能退化成纯文本） 从 NAS JSON 契约进入时同样剥离（`text` 字段承载增强型 LRC）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 纯标签内容算 0（旧实现把标签里的数字算成歌词）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 混合标签与歌词文字时算作有效
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 只有时间标签的文档 → isUsable == false（在线兜底仍会被触发）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ④ informativeCharCount：先剥离两类标签 含真实歌词的增强型 LRC → isUsable == true
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑤ 纯文本不回归 无任何时间标签 → time 为 null，正文原样保留
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑤ 纯文本不回归 同行混排（方括号时间 + 纯文本尾巴）仍然只算一行
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_enhanced_lrc_test.dart: ⑥ 时间格式兼容 一位小数 / 两位小数 / 三位小数 / 冒号小数 都解析正确
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: StageFocus：焦点分层与恢复 按 debugLabel 前缀分层
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: StageFocus：焦点分层与恢复 只在内容层更新「最近正文焦点」
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: StageFocus：焦点分层与恢复 已卸载 / 不存在的节点不会被聚焦（返回 false 而不是抛异常）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: StageFocus：焦点分层与恢复 切页清空记忆，避免指向上一页已销毁的节点
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: StageFocus：焦点分层与恢复 TrackRowFocus 按下标建节点：同一行始终是同一个 FocusNode
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 960×540（1080p 面板 dpr2 / 4K 面板 dpr4）→ compactTV
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 853×480（720p 面板 dpr1.5，最小现实视口）→ compactTV
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 1280×720 与 1920×1080 → standardTV
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 4K 原生 3840×2160（dpr1）→ large4KTV
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: resolve：逻辑视口优先 2560×1440（4K 面板 dpr1.5）→ large4KTV
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: 字号倍率 compact / standard 不放大，large4K 温和放大
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: 字号倍率 放大倍率上限 1.1（避免把布局撑破）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_display_test.dart: label 与枚举一一对应（诊断页/日志不要出现两个名字）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: 「最近添加」页焦点拓扑 Case A：进入页面默认焦点 = 第一首歌的整行（不是心形）
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: 「最近添加」页焦点拓扑 Case B：↓ 逐行向下，按歌曲顺序移动
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: 「最近添加」页焦点拓扑 ↑ 逐行向上；第一行 ↑ 到页头真实主入口
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: 「最近添加」页焦点拓扑 心形只有 → 才进得去，进去后 ↓ 回「下一行的整行」而不是下一个心形
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/focus_topology_test.dart: 「最近添加」页焦点拓扑 Case C：列表最后一行 ↓ 落到 Mini Player 封面
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/result_test.dart: Ok 分支
@@ -363,6 +376,21 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/app_exit_test.dart: 播放层：stopSession PlaybackRepository.stopSession 委托给引擎，音源停止
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） 读取 list / preferred，并选中 preferred 指定的歌词源
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） LRC 文本被解析成逐行歌词（时间轴升序）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） 空 list → empty（不抛异常）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 缺失时退回首条
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 越界时退回下标 0
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 是对象/字符串时也能定位
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: 非 LRC 单条歌词（time / duration / offset 单位为秒） 秒 → Duration
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 小数位 1/2/3 位都按毫秒正确换算
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 冒号做小数点也兼容（[mm:ss:ff]）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 一行多标签展开为多行（共享行尾文本）并排序
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 文档级 [offset:] 作用于所有行
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 纯元数据标签被跳过，无时间轴的裸文本保留（无时间）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 空文本返回空列表
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页焦点链（V6 融合版式） 打开播放页后焦点直接落在「播放/暂停」上
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 [FeiNiuTV] [诊断] 播放页视口 = 物理 1920×1080 · dpr 1.0 · 逻辑 1920×1080 · 字体缩放 1.0 · 安全区 l0.0/t0.0/r0.0/b0.0
@@ -376,25 +404,8 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页焦点链（V6 融合版式） 底部 5 键 ↑ 都进进度区，↓ 回到控制行最左（模式键）
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） 读取 list / preferred，并选中 preferred 指定的歌词源
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） LRC 文本被解析成逐行歌词（时间轴升序）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） 空 list → empty（不抛异常）
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页焦点链（V6 融合版式） D 播放/暂停 ↑ 进进度区、↓ 回控制行；连续 10 次不卡死
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 缺失时退回首条
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 越界时退回下标 0
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: LyricDoc.fromJson（契约 §7 结构） preferred 是对象/字符串时也能定位
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: 非 LRC 单条歌词（time / duration / offset 单位为秒） 秒 → Duration
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 小数位 1/2/3 位都按毫秒正确换算
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 冒号做小数点也兼容（[mm:ss:ff]）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 一行多标签展开为多行（共享行尾文本）并排序
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 文档级 [offset:] 作用于所有行
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 纯元数据标签被跳过，无时间轴的裸文本保留（无时间）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_lyric_test.dart: parseLrc 空文本返回空列表
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放页焦点链（V6 融合版式） 进度区 ↑ 到收藏键，收藏 ↔ 返回/更多；歌词区绝不获焦
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
@@ -405,24 +416,22 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 顶部三个键（返回 / 收藏 / 更多）—— 本次故障的回归 切到大封面布局后：顶部三键仍挂载、仍可遍历、焦点不丢
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） A 八行 LRC 全部带时间轴，乱序输入按时间排序
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） B 多标签 / 厘秒 / 毫秒 / 无小数 / 同时间多行 / 元数据
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） C `[offset:+500]` 整体偏移 500ms
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） D 纯文本（无时间轴）→ 按换行拆多行、全部无时间、顺序不变
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） E NAS 源级 offset（秒）叠加进 LRC 时间轴
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） F NAS 纯文本源 → 多行且不可同步（旧行为是挤成一行）
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 顶部三个键（返回 / 收藏 / 更多）—— 本次故障的回归 连续来回切换样式 3 轮：每轮顶部三键都可遍历，焦点始终落在有效控件上
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 顶部三个键（返回 / 收藏 / 更多）—— 本次故障的回归 长按连发方向键：顶部 ↔ 主体之间不丢焦点
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） A 八行 LRC 全部带时间轴，乱序输入按时间排序
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） B 多标签 / 厘秒 / 毫秒 / 无小数 / 同时间多行 / 元数据
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） C `[offset:+500]` 整体偏移 500ms
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） D 纯文本（无时间轴）→ 按换行拆多行、全部无时间、顺序不变
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活播放/暂停，且焦点留在原按钮上
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） E NAS 源级 offset（秒）叠加进 LRC 时间轴
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 解析（进度 → 行） F NAS 纯文本源 → 多行且不可同步（旧行为是挤成一行）
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 核心播放控制按钮可激活 OK 激活上一首 / 下一首，焦点不跳走
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
@@ -433,23 +442,10 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 「更多」菜单（布局切换 / 歌词操作） OK 打开菜单：出现布局/歌词项，焦点落在第一项
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 「更多」菜单（布局切换 / 歌词操作） OK 切换布局：模式改变、菜单关闭、焦点回到「更多」、偏好落盘
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 「更多」菜单（布局切换 / 歌词操作） 切换到「大封面」布局后，进度区与播放控制仍然可达
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 OK 打开队列：显示当前队列，焦点落在正在播放的那一行
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 队列里 ↓ 选择下一首，OK 播放它并关闭；焦点回到队列按钮
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=3 · guid=g3 · 模式=sequence
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） G 从 0 播放：第 0 句高亮
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 队列面板打开时，底下的播放页被排除出焦点树
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 「更多」菜单（布局切换 / 歌词操作） OK 切换布局：模式改变、菜单关闭、焦点回到「更多」、偏好落盘
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） H seek 到 00:45 → 立即定位第五句（40s 那句）
@@ -458,8 +454,14 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） I 拖回 00:12 → 回滚到第二句
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 「更多」菜单（布局切换 / 歌词操作） 切换到「大封面」布局后，进度区与播放控制仍然可达
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） J 活动行前进时列表真的滚动（不是只变色）
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 OK 打开队列：显示当前队列，焦点落在正在播放的那一行
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） K 暂停 / 恢复：高亮停在正确的句子，不漂移
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
@@ -467,11 +469,18 @@
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） L 切歌：旧歌词/旧高亮被清掉，新歌按当前进度定位
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=2首 · 起点=0 · guid=g1 · 模式=sequence
 ::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 队列里 ↓ 选择下一首，OK 播放它并关闭；焦点回到队列按钮
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=3 · guid=g3 · 模式=sequence
+::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） M 纯文本歌词：完整显示 + 明确标注不支持逐句同步
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_follow_test.dart: 跟随（虚拟音频进度 → 高亮与滚动） N 滚动控制器晚 attach：切布局后仍按当前进度定位
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=1首 · 起点=0 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/tv_focus_test.dart: 播放队列面板 队列面板打开时，底下的播放页被排除出焦点树
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=5首 · 起点=2 · guid=g2 · 模式=sequence
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/local_library_test.dart: 最近播放（本机记录，飞牛无 play-history 接口） 记录后新的在前，重复播放会把它前移到首位
@@ -635,15 +644,6 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: jsonUnixSeconds 秒 → DateTime；疑似毫秒自动收敛
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_models_test.dart: jsonUnixSeconds 0 / 负数 / null / 非数字返回 null
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 mark 记录到内存且不抛异常
-[FeiNiuTV] 契约测试-唯一标记-A
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 每行都带 HH:mm:ss.SSS 时间戳前缀
-[FeiNiuTV] 契约测试-时间戳
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 日志会同步发往原生（电视端取证通道）
-[FeiNiuTV] 契约测试-落盘
-::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 A 第一页加载成功：拿到 50 首、hasMore=true
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
@@ -664,17 +664,87 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 [FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
 ::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 mark 记录到内存且不抛异常
+[FeiNiuTV] 契约测试-唯一标记-A
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 每行都带 HH:mm:ss.SSS 时间戳前缀
+[FeiNiuTV] 契约测试-时间戳
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 E 分页数据按 guid 去重（服务端返回重复项也不重复入库）
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 [FeiNiuTV] [诊断] 搜索索引 = 75 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 75 首（共 75 首）
 ::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 日志会同步发往原生（电视端取证通道）
+[FeiNiuTV] 契约测试-落盘
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 D 补充 loadFirst 在已有数据时不重复请求（返回页面不重头再来）
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 [FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 error 状态可 retry 恢复
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 F 第 30 首播完能进入第 31 首（队列已含后续歌曲）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=100首 · 起点=29 · guid=g29 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列接近末尾时触发预加载
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=50首 · 起点=0 · guid=g0 · 模式=sequence
+[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列中间位置不触发预加载（避免无谓请求）
+[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=50首 · 起点=0 · guid=g0 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 H appendToQueue 不移动 currentIndex（不打断正在播放的歌）
+[FeiNiuTV] [诊断] 搜索索引 = 30 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=30首 · 起点=5 · guid=g5 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 Q 顺序播放：最后一首自然结束 → 停止，不回第一首
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 R 列表循环：最后一首自然结束 → 回第一首
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=repeat_all
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 S 单曲循环：自然结束 → 当前曲重播（不换歌）
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=repeat_one
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 T 播放模式切换生效且状态同步
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 列表循环下手动 next 到队尾会回绕
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=repeat_all
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 顺序播放下手动 next 到队尾不动
+[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 随机播放：连续自然结束不会崩溃且不重复当前曲
+[FeiNiuTV] [诊断] 搜索索引 = 10 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 10 首（共 10 首）
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=10首 · 起点=0 · guid=g0 · 模式=shuffle
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 内存日志 缓冲有上限，长时间运行不会无限增长且保留最近日志
 [FeiNiuTV] 压力行 0
@@ -1378,72 +1448,11 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 [FeiNiuTV] 压力行 698
 [FeiNiuTV] 压力行 699
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: A-E 曲库分页 error 状态可 retry 恢复
-[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 安全模式 原生返回 0 次启动时，不进入安全模式
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 安全模式 安全模式阈值语义固定为「连续 2 次启动未走完」
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 安全模式 未调用 start() 时 synced 也能直接 await（不会挂起）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/boot_log_test.dart: BootLog 安全模式 原生通道可用时 nativeDeviceId 返回原生值
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 F 第 30 首播完能进入第 31 首（队列已含后续歌曲）
-[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=100首 · 起点=29 · guid=g29 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列接近末尾时触发预加载
-[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=50首 · 起点=0 · guid=g0 · 模式=sequence
-[FeiNiuTV] [诊断] 搜索索引 = 100 首可搜（复用缓存 50 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 100 首（共 100 首）
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 G 队列中间位置不触发预加载（避免无谓请求）
-[FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=50首 · 起点=0 · guid=g0 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: F-H 播放队列突破分页边界 H appendToQueue 不移动 currentIndex（不打断正在播放的歌）
-[FeiNiuTV] [诊断] 搜索索引 = 30 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 30 首（共 30 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=30首 · 起点=5 · guid=g5 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 Q 顺序播放：最后一首自然结束 → 停止，不回第一首
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 R 列表循环：最后一首自然结束 → 回第一首
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=repeat_all
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 S 单曲循环：自然结束 → 当前曲重播（不换歌）
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=repeat_one
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 T 播放模式切换生效且状态同步
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 列表循环下手动 next 到队尾会回绕
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=repeat_all
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 顺序播放下手动 next 到队尾不动
-[FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=2 · guid=g2 · 模式=sequence
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: Q-S 播放模式 随机播放：连续自然结束不会崩溃且不重复当前曲
-[FeiNiuTV] [诊断] 搜索索引 = 10 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 10 首（共 10 首）
-[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=10首 · 起点=0 · guid=g0 · 模式=shuffle
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/library_pagination_test.dart: 搜索（本地已加载数据） U 搜索匹配歌名
 [FeiNiuTV] [诊断] 搜索索引 = 5 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -1586,24 +1595,24 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 歌词请求有硬超时（Dio 的 receiveTimeout 只约束包间隔）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P docEpoch 在内容被替换时自增（UI 靠它决定是否把歌词弹回顶部）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 同一首切回来命中缓存，不再发第二次请求
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P force=true 时忽略缓存重新请求（用于手动重试）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: buildStreamUrl 使用 guid 参数（实测支持 Range 206）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: buildCoverUrl 使用 coverId 完整值（含前缀）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 换歌加载时，请求发出前就已清空上一首歌词
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: buildCoverUrl 支持自定义 size，size<=0 时不带该参数
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 快速连续切歌：过期请求的结果被丢弃，不覆盖当前首
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: coverId 前缀不被拆分，特殊字符被转义
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P docEpoch 在内容被替换时自增（UI 靠它决定是否把歌词弹回顶部）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） 纯 host:port 自动补 http://
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 T 模式可切换并写回状态快照
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） 已带 scheme 的不改写
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 PlayMode 持久化键稳定（不依赖 enum 顺序）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P 同一首切回来命中缓存，不再发第二次请求
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） 去掉尾斜杠（否则会拼出 //music/api/v1）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 未知持久化值降级为顺序播放（不抛异常）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 歌词 P force=true 时忽略缓存重新请求（用于手动重试）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） IP 里的冒号不会被误判成 scheme
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） 空串原样返回（由调用方决定如何提示）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_client_url_test.dart: normalizeBaseUrl（用户漏写 scheme 必须被兜住） 构造时即归一化，URL 拼接结果正确
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 T 模式可切换并写回状态快照
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 PlayMode 持久化键稳定（不依赖 enum 顺序）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/lyric_and_control_test.dart: 播放模式 未知持久化值降级为顺序播放（不抛异常）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/auth_repository_probe_test.dart: AuthRepository.probe 漏写 http:// 时仍发出带 scheme 的绝对 URL（回归）
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/auth_repository_probe_test.dart: AuthRepository.probe 已带 scheme 的地址不被二次改写；尾斜杠被去掉
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/auth_repository_probe_test.dart: AuthRepository.probe 探测失败时返回 Result.err 而不是抛异常（界面才有东西可显示）
@@ -1707,6 +1716,64 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 [FeiNiuTV] [诊断] 搜索索引 = 50 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 50 首（共 50 首）
 ::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 E 半成品不覆盖上一次的完整索引
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [事件] 用户手动触发重建索引
+[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：网络不可达；当前显示 137 首（完整=true）
+[FeiNiuTV] [事件] 曲库整理中断：网络不可达
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 F 重启后直接读本地索引即可拿到全部分类
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-25 16:14:46.000）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
+[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：断网；当前显示 137 首（完整=true）
+[FeiNiuTV] [事件] 曲库整理中断：断网
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
+In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
+If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 G 索引按身份分文件：切换账户不串数据，也不互相覆盖
+[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
+[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
+The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 H 曲库新增曲目后，再次整理能增量核对出来
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 I 索引进度文案同时给出「已索引」与「全库总数」，不混为一谈
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-B 索引持久化的健壮性 J 损坏的索引文件按「无缓存」处理，不阻断启动
+::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/remote_pairing_test.dart: §七.7 配对与会话 A 配对码是 6 位、取自无歧义字符集（去掉 0/O/1/I/L）
 [FeiNiuTV] [诊断] 手机遥控 = 等待配对（配对码 5 分钟内有效）
 ::endgroup::
@@ -1720,6 +1787,9 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 [FeiNiuTV] [事件] 遥控配对失败：配对码不匹配
 [FeiNiuTV] [诊断] 手机遥控 = 已配对：手机
 [FeiNiuTV] [事件] 遥控配对失败：配对码已过期或未生成
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-B 索引持久化的健壮性 K 手动风格覆盖与索引分离，重建索引不会清掉用户确认
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/remote_pairing_test.dart: §七.7 配对与会话 D 配对码过期后不可用
 [FeiNiuTV] [诊断] 手机遥控 = 等待配对（配对码 0 分钟内有效）
@@ -1746,68 +1816,7 @@ If ServicesBinding is a custom binding mixin, there must also be a custom bindin
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/remote_pairing_test.dart: §七.1 二维码内容不含任何凭据 I 只包含地址与配对码，绝不包含账号/密码/长期令牌
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 E 半成品不覆盖上一次的完整索引
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] [事件] 用户手动触发重建索引
-[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：网络不可达；当前显示 137 首（完整=true）
-[FeiNiuTV] [事件] 曲库整理中断：网络不可达
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-::endgroup::
-::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/remote_pairing_test.dart: §七.1 二维码内容不含任何凭据 J 超出「电视上还能扫得动」的版本上限 → 返回 null，走手输兜底
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 F 重启后直接读本地索引即可拿到全部分类
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] [诊断] 曲库索引 = 已从本地索引恢复 137 首（完整=true，保存于 2026-10-25 15:23:03.000）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-[FeiNiuTV] [诊断] 搜索索引 = 137 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
-[FeiNiuTV] [诊断] 曲库索引 = 本次在线核对未完成（第 Instance of '_ScanResult'.pages 页失败）：断网；当前显示 137 首（完整=true）
-[FeiNiuTV] [事件] 曲库整理中断：断网
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-Typically, this is done by calling "WidgetsFlutterBinding.ensureInitialized()" or "runApp()" (the latter calls the former). Typically this call is done in the "void main()" method. The "ensureInitialized" method is idempotent; calling it multiple times is not harmful. After calling that method, the "instance" getter will return the binding.
-In a test, one can call "TestWidgetsFlutterBinding.ensureInitialized()" as the first line in the test's "main()" method to initialize the binding.
-If ServicesBinding is a custom binding mixin, there must also be a custom binding class, like WidgetsFlutterBinding, but that mixes in the selected binding, and that is the class that must be constructed before using the "instance" getter.
-::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 G 索引按身份分文件：切换账户不串数据，也不互相覆盖
-[FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 137 首（共 137 首）
-[FeiNiuTV] 数据目录不可用：Binding has not yet been initialized.
-The "instance" getter on the ServicesBinding binding mixin is only available once that binding has been initialized.
-::endgroup::
-::group::✅ Passing tests
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 H 曲库新增曲目后，再次整理能增量核对出来
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-A 全曲库分页索引 I 索引进度文案同时给出「已索引」与「全库总数」，不混为一谈
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-B 索引持久化的健壮性 J 损坏的索引文件按「无缓存」处理，不阻断启动
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/catalogue_index_test.dart: §三-B 索引持久化的健壮性 K 手动风格覆盖与索引分离，重建索引不会清掉用户确认
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/pinyin_search_test.dart: §二 匹配规则 ① 中文原文搜索继续可用
 [FeiNiuTV] [诊断] 搜索索引 = 8 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -1920,7 +1929,16 @@ The "instance" getter on the ServicesBinding binding mixin is only available onc
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 封面按 OK = 打开完整播放页，且焦点不丢
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=sequence
 ::endgroup::
-::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 队列按钮按 OK = 打开当前播放队列（不是整张音乐库）
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 队列/更多 按 OK = 展开次级菜单；再按 OK 才打开队列
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 主链五个键上的 ↑ 一律回正文，绝不展开次级栏
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 次级菜单没打开时，收藏/模式/队列节点不在焦点树上
+[FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=sequence
+::endgroup::
+::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 次级菜单 ↓ 收起，焦点回到打开它的那个主键
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=library · 队列=3首 · 起点=1 · guid=g1 · 模式=sequence
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 封面与队列按钮的动作 上一首 / 下一首 / 播放暂停 都能激活，且焦点不跳走
@@ -1928,11 +1946,6 @@ The "instance" getter on the ServicesBinding binding mixin is only available onc
 ::endgroup::
 ::group::✅ Passing tests
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/mini_player_test.dart: 没有当前曲目时不渲染 未播放任何歌曲 → 迷你播放器不占位
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: sha256("password") 与公开值一致
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 恒为 64 位小写 hex（服务端按此格式校验）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 同样输入得到同样哈希（幂等，可用于 token 失效后静默重登）
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 不同密码产生不同哈希
-✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 空字符串可计算
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 概览只画统计，不展开曲目
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -1945,6 +1958,13 @@ The "instance" getter on the ServicesBinding binding mixin is only available onc
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 进详情后焦点落在「返回」上（不会平白消失）
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] [诊断] 风格归纳 = 规则版本 1：有结论 0 首，待分类 3 首（共 3 首）
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: sha256("password") 与公开值一致
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 恒为 64 位小写 hex（服务端按此格式校验）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 同样输入得到同样哈希（幂等，可用于 token 失效后静默重登）
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 不同密码产生不同哈希
+✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/fnos_auth_test.dart: 空字符串可计算
 ::endgroup::
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/overview_page_test.dart: 歌手：概览 → 详情（需求「一、1」） 从详情返回 → 回到概览，且焦点回到原来那一行
 [FeiNiuTV] [诊断] 搜索索引 = 3 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
@@ -2162,6 +2182,7 @@ The "instance" getter on the ServicesBinding binding mixin is only available onc
 [FeiNiuTV] [诊断] 搜索索引 = 60 首可搜（复用缓存 0 条）· 拼音库 v1 · 归一化 v1
 [FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 ::endgroup::
+[FeiNiuTV] 数据目录不可用：MissingPluginException(No implementation found for method dataDir on channel feiniu/boot)
 ::group::✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/search_play_test.dart: 搜索结果 → 全局播放控制器（仓储层） A 点搜索结果：引擎加载的就是被点那首，并立即开始播放
 [FeiNiuTV] [诊断] 最近播放请求 = 来源=search · 队列=3首 · 起点=1 · guid=s2 · 模式=sequence
 ::endgroup::
@@ -2291,4 +2312,4 @@ The "instance" getter on the ServicesBinding binding mixin is only available onc
 ✅ /home/runner/work/feiniu-tv-music/feiniu-tv-music/test/auth_repository_restore_test.dart: AuthRepository 存储路径限时（回归） 清除会话永不回应时，logout() 仍应清空内存登录态
 ::endgroup::
 
-🎉 615 tests passed.
+🎉 628 tests passed.
