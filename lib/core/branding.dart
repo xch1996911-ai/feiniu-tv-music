@@ -29,11 +29,17 @@ const String kAppName = 'XX音乐';
 
 /// 版本号。
 ///
-/// ⚠️ **必须与 `pubspec.yaml` 的 `version:` 保持一致**（形如 `0.2.0+2`，
+/// ⚠️ **必须与 `pubspec.yaml` 的 `version:` 保持一致**（形如 `0.3.0+3`，
 /// `+` 前是 versionName、后是 versionCode）。这里手工同步而不用
 /// `package_info_plus`，是为了不引入新依赖 —— 诊断页需要展示它，
 /// 而它只在诊断页出现，手工同步的成本低于多一个原生插件的风险。
-const String kAppVersion = '0.2.0+2';
+///
+/// UI 2.0 起版本号由 `--dart-define=APP_VERSION` 覆盖（见
+/// `core/build_identity.dart`），这里的值只是**未注入时的兜底**。
+const String kAppVersion = '0.3.0';
+
+/// versionCode，必须与 `pubspec.yaml` 的 `+N` 一致。
+const int kAppVersionCode = 3;
 
 /// 启动页/侧栏的副标题（描述性，非品牌名）。
 const String kAppTagline = '客厅音乐播放器';

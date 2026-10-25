@@ -6,6 +6,7 @@ import '../app/app.dart';
 import '../app/theme.dart';
 import '../core/boot_log.dart';
 import '../core/branding.dart';
+import '../core/build_identity.dart';
 import '../core/diagnostics.dart';
 import '../core/log.dart';
 import '../playback/media_session_service.dart';
@@ -458,6 +459,23 @@ class _SplashPage extends StatelessWidget {
                     ],
                   ],
                 ),
+              ),
+            ),
+          ),
+          // UI 2.0：左下角常驻构建指纹。
+          //
+          // 目的是消灭「装的还是旧包」这类争论：一眼能看到 channel / 版本 /
+          // commit。字号 12、`textFaint`，正常观看完全不起眼。
+          Positioned(
+            left: 24,
+            bottom: 26,
+            child: Text(
+              BuildIdentity.versionLine,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.2,
+                color: TvColors.textFaint,
+                letterSpacing: 0.4,
               ),
             ),
           ),

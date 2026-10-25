@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../core/build_identity.dart';
 import '../../core/diagnostics.dart';
 import '../../core/log.dart';
 import '../../domain/track.dart';
@@ -28,6 +29,7 @@ import '../widgets/queue_sheet.dart';
 import '../../services/app_exit.dart';
 import '../../services/remote/remote_server.dart';
 import '../pages/remote_control_page.dart';
+import '../tv_display.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
 import 'shell_stage.dart';
@@ -226,6 +228,13 @@ class _AppShellState extends State<AppShell> {
     //    （播种只做一次，之后本机集合即唯一数据源）。
     await _local.seedFavoritesIfNeeded(_library.tracks);
     if (!mounted) return;
+    // UI 2.0：把真实视口档位与构建身份登记进诊断页 —— 85 英寸真机校准
+    // 与「装的是不是这一版」都靠这两条记录，而不是靠猜。
+    TvDisplay.note(context);
+    Diagnostics.note(
+      '构建身份',
+      '${BuildIdentity.versionLine} · 构建时间 ${BuildIdentity.buildTime}',
+    );
     _navNodes[_navIndex].requestFocus();
   }
 
@@ -613,7 +622,7 @@ class _AppShellState extends State<AppShell> {
         CatalogueSyncStatus>((LibraryRepository l) => l.syncStatus);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 10, 22, 4),
+      padding: const EdgeInsets.fromLTRB(TvSpacing.pageH, 12, TvSpacing.pageH, 6),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -623,12 +632,12 @@ class _AppShellState extends State<AppShell> {
               onPressed: () => _goStage(ShellStage.search),
               builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
                 status: s,
-                radius: 22,
+                radius: TvRadii.pill,
                 padding: EdgeInsets.zero,
                 child: TvGlass(
-                  radius: 22,
+                  radius: TvRadii.pill,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                      horizontal: 18, vertical: 12),
                   child: Row(
                     children: <Widget>[
                       const Icon(Icons.search, size: 20, color: TvColors.textDim),
@@ -639,13 +648,17 @@ class _AppShellState extends State<AppShell> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontSize: 17, color: TvColors.textFaint),
+                            fontSize: 17,
+                            height: 1.2,
+                            color: TvColors.textFaint,
+                          ),
                         ),
                       ),
                       Text(
                         '按 OK 进入搜索',
                         style: TextStyle(
                           fontSize: 13,
+                          height: 1.2,
                           color: TvColors.textFaint.withValues(alpha: 0.8),
                         ),
                       ),

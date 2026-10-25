@@ -96,19 +96,18 @@ class NavRail extends StatelessWidget {
         blur: false,
         showBorder: false,
         shadow: false,
-        tint: TvColors.sidebar.withValues(alpha: 0.82),
+        tint: TvColors.sidebar.withValues(alpha: 0.86),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const _RailLogo(),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Expanded(
               child: ListView.builder(
-                // ⚠️ V5：底部留 10px。焦点环是 `TvFocusRing` 画的
-                //    **3px 描边 + 14px 外发光**，它们绘制在控件自身 bounds
-                //    之外；视图口贴着最后一项时，外发光会被裁掉一半，
-                //    实机（图6）看起来就是「最近这一项的焦点框被下面切了」。
-                //    留出边距后，滚到最底时整个焦点环都在可视区内。
+                // ⚠️ 焦点环是 `TvFocusRing` 画的 **2.5px 描边 + 8px 外发光**，
+                //    它们绘制在控件自身 bounds 之外；视口贴着最后一项时，
+                //    外发光会被裁掉一半（实机看起来就是「最近这一项被切了」）。
+                //    留出 10px 后，滚到最底时整个焦点环都在可视区内。
                 padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
                 itemCount: items.length,
                 itemBuilder: (BuildContext context, int i) => _NavTile(
@@ -132,7 +131,7 @@ class NavRail extends StatelessWidget {
                     node: logoutNode,
                     onLogout: onLogout,
                     // 焦点链：底部固定区自上而下为
-                    // 退出登录 → 手机遥控 → 诊断与帮助（首尾相接）。
+                    // 退出登录 → 手机遥控 → 诊断与帮助 → 返回桌面（首尾相接）。
                     nextDown: remoteNode,
                     nextUp: items.isNotEmpty ? nodes[items.length - 1] : null,
                   ),
@@ -172,7 +171,7 @@ class _RailLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         children: <Widget>[
           Container(
@@ -185,12 +184,35 @@ class _RailLogo extends StatelessWidget {
             child: const Icon(Icons.music_note, size: 18, color: Colors.white),
           ),
           const SizedBox(width: 10),
-          const Text(
-            kAppName,
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: TvColors.text,
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  kAppName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 19,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: TvColors.text,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  kAppTagline,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.2,
+                    color: TvColors.textFaint,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -199,7 +221,12 @@ class _RailLogo extends StatelessWidget {
   }
 }
 
-/// 单个导航项。
+/// 单个导航项（UI 2.0：选中项 = 深底胶囊 + 左侧强调条）。
+///
+/// ## 为什么选中态不用整块高亮色
+/// 参考图里选中项只是一块略亮的胶囊；整块高饱和会被误读成「焦点在这里」。
+/// 焦点另有 [TvFocusRing] 的冷白描边，两者必须一眼可分：
+/// **底色 = 你在哪一页，描边 = 遥控器现在在哪一项**。
 class _NavTile extends StatelessWidget {
   const _NavTile({
     required this.item,
@@ -229,19 +256,33 @@ class _NavTile extends StatelessWidget {
         nextDown: nextDown,
         builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
           status: s,
-          radius: 10,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          // 选中项用底色区分（与参考图一致），焦点另有描边，两者互不干扰。
+          radius: TvRadii.tile,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
           baseColor: selected ? TvColors.panelHi : Colors.transparent,
+          // 选中项本身已有底色，焦点填充再压一层会看不出层次
+          focusColor: selected
+              ? const Color(0x332F4A78)
+              : TvColors.focusFill,
           child: Row(
             children: <Widget>[
+              // 左侧强调条：选中时出现，高度与文字行齐平。
+              AnimatedContainer(
+                duration: TvMotion.focus,
+                width: 3,
+                height: 18,
+                margin: const EdgeInsets.only(right: 9),
+                decoration: BoxDecoration(
+                  color: selected ? TvColors.accent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               Icon(
                 item.icon,
                 size: 20,
                 // 选中项图标用强调色，一眼看出「现在在哪一页」
                 color: selected ? TvColors.accent : TvColors.textDim,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   item.label,
@@ -319,7 +360,7 @@ class _LogoutTile extends StatelessWidget {
       nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
-        radius: 10,
+        radius: TvRadii.tile,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: const Row(
           children: <Widget>[
@@ -368,7 +409,7 @@ class _RemoteTile extends StatelessWidget {
       nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
-        radius: 10,
+        radius: TvRadii.tile,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: const Row(
           children: <Widget>[
@@ -415,7 +456,7 @@ class _ExitTile extends StatelessWidget {
       nextUp: nextUp,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
-        radius: 10,
+        radius: TvRadii.tile,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: const Row(
           children: <Widget>[
@@ -465,7 +506,7 @@ class _DiagnosticsTile extends StatelessWidget {
       nextDown: nextDown,
       builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
         status: s,
-        radius: 10,
+        radius: TvRadii.tile,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: const Row(
           children: <Widget>[

@@ -35,7 +35,7 @@ class TvGlass extends StatelessWidget {
   const TvGlass({
     super.key,
     required this.child,
-    this.radius = 16,
+    this.radius = TvRadii.glass,
     this.padding = EdgeInsets.zero,
     this.tint,
     this.borderColor,
@@ -59,8 +59,14 @@ class TvGlass extends StatelessWidget {
   /// 是否启用背景模糊（且 [TvGlass.blurEnabled] 为 true 时才真正生效）。
   final bool blur;
 
-  /// 模糊强度。电视上不要超过 24，否则边缘会出现明显的「涂抹感」。
+  /// 模糊强度。**上限 [maxBlurSigma]**：再高只会糊成一片灰，不掉帧也换不来观感。
   final double blurSigma;
+
+  /// 单块玻璃面的模糊上限。
+  ///
+  /// 电视 GPU 上 `BackdropFilter` 的开销随 sigma 与面积同时增长；
+  /// 超过 24 之后肉眼已分不出差别，纯属浪费帧预算。
+  static const double maxBlurSigma = 24;
 
   final bool showBorder;
   final bool shadow;
@@ -94,6 +100,7 @@ class TvGlass extends StatelessWidget {
     );
 
     final bool useBlur = blur && blurEnabled;
+    final double sigma = blurSigma.clamp(0.0, maxBlurSigma);
 
     final Widget clipped = ClipRRect(
       // ⚠️ 必须裁剪：不裁的话 BackdropFilter 的模糊会溢出到圆角之外，
@@ -102,8 +109,8 @@ class TvGlass extends StatelessWidget {
       child: useBlur
           ? BackdropFilter(
               filter: ui.ImageFilter.blur(
-                sigmaX: blurSigma,
-                sigmaY: blurSigma,
+                sigmaX: sigma,
+                sigmaY: sigma,
               ),
               child: inner,
             )

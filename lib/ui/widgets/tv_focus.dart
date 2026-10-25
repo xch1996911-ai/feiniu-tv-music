@@ -121,7 +121,7 @@ class _TvFocusState extends State<TvFocus> {
   /// 只靠 KeyUp 复位会让按钮永久停在「按下」的样子。
   Timer? _pressTimer;
 
-  static const Duration _pressVisualHold = Duration(milliseconds: 240);
+  static const Duration _pressVisualHold = TvMotion.pressedHold;
 
   /// 触发「激活」的按键。
   ///
@@ -282,13 +282,17 @@ class _TvFocusState extends State<TvFocus> {
 /// 必然出现「这个页面 2px、那个页面 4px」「这里用 hover 色、那里用 pressed 色」
 /// 的不一致。
 ///
-/// ## 为什么不用 scale 放大
+/// ## 为什么不用 scale 放大（列表）
 /// `Transform.scale` 会**溢出父容器**，被 `ListView` / `ClipRRect` 裁掉一半，
-/// 或者把相邻控件挤变形（真实踩坑）。这里改用「描边 + 底色 + 轻微外发光」：
-/// 描边由 `BoxDecoration.border` 绘制，**完全落在自身 bounds 内**，
-/// 任何父级裁切都不会吃掉它。
+/// 或者把相邻控件挤变形（真实踩坑）。因此**列表行/导航项/控制键**一律
+/// `lift = 1.0`（默认值，绝不放大），只有四周有留白的大卡片才允许
+/// 轻微浮起（见 [TvLift]）。
 ///
-/// 未聚焦时也保留同宽度的透明描边，避免聚焦/失焦时布局跳动。
+/// ## UI 2.0 参数
+/// - 描边 **2.5px**（3px 在 85 英寸近看太粗，且会吃掉内容 1px）；
+/// - 过渡 **160ms**（原 110ms 在 60Hz 面板上只有 6 帧，显得生硬）；
+/// - 光环默认 **alpha 0.18 / blur 8**（原 0.30/14 糊成一团蓝雾）；
+///   主操作键可传 `strongHalo: true` 保留更强的光晕。
 class TvFocusRing extends StatelessWidget {
   const TvFocusRing({
     super.key,
@@ -302,7 +306,9 @@ class TvFocusRing extends StatelessWidget {
     this.focusColor = TvColors.focusFill,
     this.pressedColor = TvColors.pressedFill,
     this.ringColor = TvColors.focusRing,
-    this.ringWidth = 3,
+    this.ringWidth = 2.5,
+    this.lift = TvLift.none,
+    this.strongHalo = false,
   });
 
   final TvFocusStatus status;
@@ -326,6 +332,12 @@ class TvFocusRing extends StatelessWidget {
   final Color ringColor;
   final double ringWidth;
 
+  /// 获焦时的放大倍率。**列表必须保持 1.0**（见类注释）。
+  final double lift;
+
+  /// 是否使用强光环（只给播放/暂停这类主操作键）。
+  final bool strongHalo;
+
   @override
   Widget build(BuildContext context) {
     final focused = status.focused;
@@ -335,8 +347,11 @@ class TvFocusRing extends StatelessWidget {
         ? pressedColor
         : (focused ? focusColor : baseColor);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 110),
+    final double haloAlpha = strongHalo ? TvHalo.strongAlpha : TvHalo.alpha;
+    final double haloBlur = strongHalo ? TvHalo.strongBlur : TvHalo.blur;
+
+    final Widget ring = AnimatedContainer(
+      duration: TvMotion.focus,
       curve: Curves.easeOut,
       width: width,
       height: height,
@@ -351,14 +366,25 @@ class TvFocusRing extends StatelessWidget {
         boxShadow: focused
             ? <BoxShadow>[
                 BoxShadow(
-                  color: ringColor.withValues(alpha: 0.30),
-                  blurRadius: 14,
+                  color: ringColor.withValues(alpha: haloAlpha),
+                  blurRadius: haloBlur,
                   spreadRadius: 0,
                 ),
               ]
             : null,
       ),
       child: child,
+    );
+
+    if (lift == TvLift.none) return ring;
+
+    // 卡片浮起：用 AnimatedScale（不改布局尺寸，只是绘制时放大）。
+    // ⚠️ 调用方必须保证卡片四周有 ≥8px 留白，否则会压到相邻卡片。
+    return AnimatedScale(
+      scale: focused ? lift : 1.0,
+      duration: TvMotion.cardLift,
+      curve: Curves.easeOut,
+      child: ring,
     );
   }
 }

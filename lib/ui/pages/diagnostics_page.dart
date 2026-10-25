@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/boot_log.dart';
 import '../../core/branding.dart';
+import '../../core/build_identity.dart';
 import '../../core/diagnostics.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
@@ -113,10 +114,13 @@ class _DiagnosticsBody extends StatelessWidget {
           const SizedBox(height: 24),
         ],
         _Section(
-          title: '应用',
+          title: '应用与构建身份',
           rows: <String, String>{
             '显示名称': kAppName,
-            '版本': kAppVersion,
+            '版本': '${BuildIdentity.appVersion}+${BuildIdentity.versionCode}',
+            '通道': BuildIdentity.channel,
+            'Git commit': BuildIdentity.gitSha,
+            '构建时间': BuildIdentity.buildTime,
             '本次启动尝试': '${BootLog.bootAttempts} 次'
                 '${BootLog.safeMode ? '（已达安全模式阈值）' : ''}',
           },

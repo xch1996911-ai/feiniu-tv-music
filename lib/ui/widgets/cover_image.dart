@@ -27,6 +27,16 @@ class CoverImage extends StatelessWidget {
   /// 占位符图标大小。
   final double iconScale;
 
+  /// 向服务端请求的封面边长（像素）。
+  ///
+  /// 服务端默认只给 **200px** 的缩略图 —— 在小列表里够用，但放大到
+  /// 85 英寸的播放页主封面就是一团糊。这里按「控件逻辑尺寸 × dpr」
+  /// 自动反推请求尺寸（夹在 200–1600），大图请求大图、小图标仍请求小图，
+  /// 不会出现「迷你播放条也去拉 1400px」的浪费。
+  ///
+  /// 传了就用传的值（播放页主封面显式要 1200–1600）。
+  final int? imageSize;
+
   const CoverImage({
     super.key,
     required this.music,
@@ -34,7 +44,17 @@ class CoverImage extends StatelessWidget {
     required this.size,
     this.radius = 6,
     this.iconScale = 0.4,
+    this.imageSize,
   });
+
+  /// 按控件尺寸与 dpr 反推服务端请求尺寸（向上取整到 100，夹 200–1600）。
+  int _autoRequestSize(BuildContext context) {
+    final double dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+    final double want = size * dpr;
+    if (!want.isFinite || want <= 0) return 200;
+    final int rounded = (want / 100).ceil() * 100;
+    return rounded.clamp(200, 1600);
+  }
 
   /// 同一张封面失败只记一次日志。
   ///
@@ -50,7 +70,8 @@ class CoverImage extends StatelessWidget {
       return SizedBox(width: size, height: size, child: placeholder);
     }
 
-    final url = music.buildCoverUrl(id);
+    final int request = imageSize ?? _autoRequestSize(context);
+    final url = music.buildCoverUrl(id, size: request);
     final headers = music.authHeaders;
 
     return ClipRRect(
@@ -63,6 +84,9 @@ class CoverImage extends StatelessWidget {
           url,
           headers: headers.isEmpty ? null : headers,
           fit: BoxFit.cover,
+          // 解码到「实际显示所需的物理像素」即可：再大是纯浪费内存
+          // （电视盒子显存本来就紧张，十几张 1400px 封面足以 OOM）。
+          cacheWidth: request,
           gaplessPlayback: true, // 换歌时保留旧图，避免闪白
           errorBuilder: (context, err, stack) {
             if (_loggedFailures.add(id)) {

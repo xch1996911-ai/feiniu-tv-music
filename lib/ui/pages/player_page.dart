@@ -17,6 +17,7 @@ import '../../repositories/music_repository.dart';
 import '../../repositories/playback_repository.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/lyric_view.dart';
+import '../tv_display.dart';
 import '../widgets/queue_sheet.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
@@ -282,6 +283,9 @@ class _PlayerPageState extends State<PlayerPage> {
       (LocalLibraryRepository l) => song != null && l.isFavorite(song.guid),
     );
     final MusicRepository music = context.read<MusicRepository>();
+    // UI 2.0：85 英寸大屏档位下字号略微放大（真机照片校准前先给合理区间）。
+    final TvDisplayProfile profile = TvDisplay.of(context);
+    final double titleScaleFactor = TvDisplay.titleScale(profile);
     final bool overlayOpen = _queueOpen || _menuOpen;
 
     // ⚠️ 切换播放页样式后的**焦点兜底恢复**。
@@ -333,7 +337,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     const SizedBox(height: 6),
                     Expanded(
                       child: layout == PlayerLayout.stage
-                          ? _buildStageBody(song)
+                          ? _buildStageBody(song, titleScaleFactor)
                           : _buildCoverBody(song),
                     ),
                   ],
@@ -357,7 +361,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   /// V6 融合布局（默认）：左区 = 封面渐隐融合 + 信息 + 进度 + 五键控制；
   /// 右区 = 独立整高的同步歌词。
-  Widget _buildStageBody(Track? song) {
+  Widget _buildStageBody(Track? song, double titleScale) {
     if (song == null) {
       return const Center(
         child: Text('尚未选择歌曲',
@@ -368,17 +372,17 @@ class _PlayerPageState extends State<PlayerPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Expanded(
-          flex: 47, // 左区约 47%（其余 53% 给歌词），按逻辑视口比例分配
+          // UI 2.0：左 44% / 右 56%（参考图的构图重心在封面与歌词之间）
+          flex: 44,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Expanded(child: _FusedCover(song: song)),
-              const SizedBox(height: 12),
-              // 信息行只放「歌名 + 歌手」；收藏/更多已上移到常驻顶部行，
-              // 避免同一功能在两处各挂一个焦点节点（也消除「切换样式后
-              // 图标消失、按不到」的隐患）。
-              _InfoRow(song: song),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              // 信息行只放「歌名 + 歌手·专辑 + 音质」；收藏/更多已上移到
+              // 常驻顶部行，避免同一功能在两处各挂一个焦点节点。
+              _InfoRow(song: song, scale: titleScale),
+              const SizedBox(height: 10),
               _SeekRow(
                 playbackNode: _seekNode,
                 // ↑ 回信息行的收藏键（正上方）；↓ 去控制区最左（模式键）。
@@ -401,9 +405,9 @@ class _PlayerPageState extends State<PlayerPage> {
             ],
           ),
         ),
-        const SizedBox(width: 24),
+        const SizedBox(width: 28),
         // 右区：独立整高的歌词视口（内部已做居中滚动与状态呈现）。
-        const Expanded(flex: 53, child: LyricView()),
+        const Expanded(flex: 56, child: LyricView()),
       ],
     );
   }
@@ -664,19 +668,27 @@ class _FusionBackground extends StatelessWidget {
           // 裁掉边缘，避免四周出现暗框。
           child: Transform.scale(
             scale: 1.15,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Image.network(
-                url,
-                headers: headers.isEmpty ? null : headers,
-                cacheWidth: 64,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                gaplessPlayback: true,
-                // 加载失败/无网 → 露出底层渐变，绝不能抛错拖垮播放页。
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                loadingBuilder: (_, Widget child, ImageChunkEvent? ___) =>
-                    child,
+            // ⚠️ RepaintBoundary 是这层的性能关键：
+            //    ImageFiltered 的高斯模糊会被缓存成一张图层，只有封面变化
+            //    （换歌）时才重新栅格化；否则播放进度每 400ms 的局部重绘
+            //    都可能带着这块全屏模糊一起重算 —— 电视上直接掉帧。
+            child: RepaintBoundary(
+              child: ImageFiltered(
+                // 背景用 **192px 缩略图** 做模糊源：4K 全尺寸实时模糊在
+                // 电视 GPU 上不可接受，缩略图放大后的模糊观感几乎一致。
+                imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: Image.network(
+                  url,
+                  headers: headers.isEmpty ? null : headers,
+                  cacheWidth: 192,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  gaplessPlayback: true,
+                  // 加载失败/无网 → 露出底层渐变，绝不能抛错拖垮播放页。
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  loadingBuilder: (_, Widget child, ImageChunkEvent? ___) =>
+                      child,
+                ),
               ),
             ),
           ),
@@ -738,11 +750,18 @@ class _FusedCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final MusicRepository music = context.read<MusicRepository>();
+    // dpr 在 LayoutBuilder 之外读：builder 跑在 layout 阶段，反复建立
+    // MediaQuery 依赖会触发无谓的重建。
+    final double dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints c) {
         final double w = c.maxWidth.isFinite ? c.maxWidth : 300;
         final double h = c.maxHeight.isFinite ? c.maxHeight : 300;
         final double size = max(0.0, min(w, h) - 2);
+        // 前景必须锐利：按实际物理像素请求，最少 600、最多 1600
+        //（服务端 cover 接口支持 size 参数；再大对电视没有意义）。
+        final int request =
+            (size * dpr).round().clamp(600, 1600);
         return Align(
           alignment: Alignment.topCenter,
           child: ShaderMask(
@@ -767,6 +786,7 @@ class _FusedCover extends StatelessWidget {
                 size: size,
                 radius: 0,
                 iconScale: 0.28,
+                imageSize: request,
               ),
             ),
           ),
@@ -879,17 +899,31 @@ class _TopControls extends StatelessWidget {
   }
 }
 
-/// 歌曲信息行：歌名（可两行）+ 歌手。
+/// 歌曲信息行：歌名（最多两行）+ 歌手·专辑 + 音质胶囊。
 ///
 /// 收藏 / 更多不在这里（见 [_TopControls]）：它们在顶部常驻，
 /// 本行因此没有任何可聚焦控件，方向键不会停在这里（上方非焦点区）。
+///
+/// ⚠️ 行高预算（540 逻辑高时最紧）：
+/// 歌名 2 行 = ceil(27×1.2)×2 = 66、间距 5、meta 行 21 ⇒ 92。
+/// 每个 `Text` 都显式写 `height`，否则 M3 默认 1.43 会多占 10px 并溢出。
 class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.song, this.scale = 1.0});
+
   final Track song;
 
-  const _InfoRow({required this.song});
+  /// 显示档位字号倍率（85 英寸 4K 档略放大）。
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
+    // 夹在 24–30：太小在 4K 上读不清，太大会把两行标题顶到封面区域。
+    final double titleSize = (27 * scale).clamp(24.0, 30.0);
+    final String meta = song.artistNames.isEmpty
+        ? song.album.name
+        : '${song.artistNames} · ${song.album.name}';
+    final String spec = song.audioSpec.display;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -898,25 +932,67 @@ class _InfoRow extends StatelessWidget {
           song.title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 26,
-            height: 1.2, // 26×1.2≈32/行，固定预算（见文件头说明）
+          style: TextStyle(
+            fontSize: titleSize,
+            height: 1.2, // 27×1.2=32.4→33/行，固定预算
             fontWeight: FontWeight.w700,
             color: TvColors.text,
+            letterSpacing: 0.2,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          song.artistNames.isEmpty ? song.album.name : song.artistNames,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 16,
-            height: 1.2,
-            color: TvColors.textDim,
-          ),
+        const SizedBox(height: 5),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                meta,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15 * scale,
+                  height: 1.2,
+                  color: TvColors.textDim,
+                ),
+              ),
+            ),
+            if (spec.isNotEmpty) ...<Widget>[
+              const SizedBox(width: 10),
+              _QualityTag(text: spec),
+            ],
+          ],
         ),
       ],
+    );
+  }
+}
+
+/// 音质标签（FLAC 96kHz/24bit · 立体声）。
+///
+/// 刻意做成**无边框的小胶囊**：它在信息行右侧，边框会和焦点环抢视觉。
+class _QualityTag extends StatelessWidget {
+  const _QualityTag({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0x26FFFFFF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 12,
+          height: 1.2,
+          color: Color(0xCCFFFFFF),
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
@@ -1357,6 +1433,7 @@ class _TransportControls extends StatelessWidget {
           icon: playing ? Icons.pause : Icons.play_arrow,
           iconSize: 38,
           size: 76,
+          strongHalo: true,
           tooltip: playing ? '暂停' : '播放',
           onPressed: () {
             Log.i('PLAY_TOGGLE (player) → ${playing ? '暂停' : '播放'}');
@@ -1434,6 +1511,7 @@ class _RoundControl extends StatelessWidget {
     this.iconColor,
     this.size = 60,
     this.iconSize = 30,
+    this.strongHalo = false,
   });
 
   final FocusNode node;
@@ -1454,6 +1532,9 @@ class _RoundControl extends StatelessWidget {
   final double size;
   final double iconSize;
 
+  /// 主操作键（播放/暂停）用更强的光环，其余键保持低亮。
+  final bool strongHalo;
+
   @override
   Widget build(BuildContext context) {
     return Tooltip(
@@ -1473,6 +1554,7 @@ class _RoundControl extends StatelessWidget {
           padding: EdgeInsets.zero,
           width: size,
           height: size,
+          strongHalo: strongHalo,
           focusColor: const Color(0x2EFFFFFF),
           child: Icon(
             icon,

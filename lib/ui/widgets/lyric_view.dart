@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 // scrollCacheExtent 的类型在 rendering 库（material 不导出），show 受限导入避免全量污染
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
 import '../../domain/lyric.dart';
 import '../../repositories/lyric_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../tv_display.dart';
 
 /// 歌词显示区：当前行高亮 + **自动居中滚动**。
 ///
@@ -79,11 +81,20 @@ class _LyricViewState extends State<LyricView> {
 
   /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
   ///
-  /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 25 × 行高 1.25 × **最多 2 行**
-  ///    = 62.5。旧值 58 会把活动行内容顶出自身边界 —— debug 里是
-  ///    RenderFlex 溢出异常，release 里是**静默裁掉第二行**，
-  ///    表现就是「正在唱的那句显示不全」。64 留 1.5px 余量。
-  static const double _lineExtent = 64;
+  /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 26 × 行高 1.25 × **最多 2 行**
+  ///    = 65；大屏档位 26×1.08=28.1 ⇒ 70.2。72 留 1.8px 余量。
+  ///    值太小会把活动行顶出自身边界 —— debug 是 RenderFlex 溢出异常，
+  ///    release 是**静默裁掉第二行**（「正在唱的那句显示不全」）。
+  ///
+  /// 公开为常量是为了让测试直接引用，避免「改了行高、测试还按旧值算」。
+  @visibleForTesting
+  static const double lineExtent = 72;
+
+  /// 视口内最多显示几行（参考图约 5–7 行）。
+  ///
+  /// 不限制的话，1920×1080 逻辑视口会一次铺 13 行 —— 远看是一墙文字，
+  /// 「正在唱哪一句」反而不突出。限制后上下留白，当前句更靠近视觉中心。
+  static const int maxVisibleLines = 7;
 
   /// 滚动动画时长。太短会显得跳，太长会跟不上快进。
   static const Duration _scrollDuration = Duration(milliseconds: 280);
@@ -150,7 +161,7 @@ class _LyricViewState extends State<LyricView> {
     final ScrollPosition pos = _scroll.position;
     if (!pos.hasViewportDimension || !pos.hasContentDimensions) return;
 
-    final double target = _activeIndex * _lineExtent;
+    final double target = _activeIndex * lineExtent;
     final double clamped = target.clamp(0.0, pos.maxScrollExtent);
     _lastScrollTarget = clamped;
     // 已经在位就不要再动：每 400ms 反复 animate 会让整块歌词抖。
@@ -223,6 +234,9 @@ class _LyricViewState extends State<LyricView> {
     //    （`activeLineIndex` 恒为 -1）。必须把这一点明说，
     //    而不是让用户以为「歌词坏了」—— 正文照常显示与上下浏览。
     final bool syncable = lyrics.doc.isSyncable;
+    // 每行都调用 TvDisplay.of(context) 会重复建 MediaQuery 依赖，
+    // 这里算一次传下去。
+    final double lyricScale = TvDisplay.lyricScale(TvDisplay.of(context));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -238,14 +252,24 @@ class _LyricViewState extends State<LyricView> {
         Expanded(
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints c) {
-              final double viewport = c.maxHeight;
-              final double pad = ((viewport - _lineExtent) / 2).clamp(
+              // 只让歌词占「最多 7 行」的高度，并垂直居中：
+              // 大视口下上下留白，当前句更靠近视觉中心（参考图构图）。
+              final double viewport = c.maxHeight.isFinite
+                  ? c.maxHeight
+                  : lineExtent * maxVisibleLines;
+              final double lyricHeight = viewport < lineExtent * maxVisibleLines
+                  ? viewport
+                  : lineExtent * maxVisibleLines;
+              final double pad = ((lyricHeight - lineExtent) / 2).clamp(
                 0.0,
                 double.infinity,
               );
-              return ListView.builder(
+              return Center(
+                child: SizedBox(
+                  height: lyricHeight,
+                  child: ListView.builder(
                 controller: _scroll,
-                itemExtent: _lineExtent,
+                itemExtent: lineExtent,
                 physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.symmetric(vertical: pad),
                 // ⚠️ 必须显式给 cacheExtent：测试绑定下默认缓存视口为 0，
@@ -261,8 +285,11 @@ class _LyricViewState extends State<LyricView> {
                     text: lines[i].text,
                     hasAnyText: hasAnyText,
                     distance: _activeIndex < 0 ? -1 : (i - _activeIndex),
+                    scale: lyricScale,
                   );
                 },
+                  ),
+                ),
               );
             },
           ),
@@ -281,6 +308,7 @@ class _LyricLineRow extends StatelessWidget {
     required this.text,
     required this.hasAnyText,
     required this.distance,
+    this.scale = 1.0,
   });
 
   final String text;
@@ -295,12 +323,19 @@ class _LyricLineRow extends StatelessWidget {
   /// 与当前高亮行的距离；-1 表示当前没有高亮行。
   final int distance;
 
+  /// 显示档位的字号倍率（85 英寸 4K 档略放大）。
+  final double scale;
+
   @override
   Widget build(BuildContext context) {
     final bool active = distance == 0;
     final int d = distance < 0 ? 3 : distance;
 
-    final double alpha = active ? 1.0 : (0.62 - 0.09 * d).clamp(0.16, 0.62);
+    // 距离越远越淡：1 → 0.56，2 → 0.34，3 及更远 → 0.18。
+    // 低亮是为了让「当前句」在 3 米外依然是最亮、最大的那个。
+    final double alpha = active ? 1.0 : (0.56 - 0.18 * (d - 1)).clamp(0.18, 0.56);
+    final double fontActive = 26 * scale;
+    final double fontIdle = 20 * scale;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -325,10 +360,11 @@ class _LyricLineRow extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: active ? 25 : 21,
+              fontSize: active ? fontActive : fontIdle,
               height: 1.25,
               color: TvColors.text.withValues(alpha: alpha),
               fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+              letterSpacing: active ? 0.2 : 0.0,
             ),
           ),
         ),

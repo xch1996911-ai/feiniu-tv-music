@@ -230,7 +230,8 @@ void main() {
       final dynamic st = tester.state(find.byType(LyricView));
       expect(st.debugActiveIndex, 4,
           reason: '45 秒落在 40–50s 的句子里，必须立即定位该句，不必等播放自然走到');
-      expect(st.debugLastScrollTarget, closeTo(4 * 64, 0.5),
+      expect(st.debugLastScrollTarget,
+          closeTo(4 * LyricView.lineExtent, 0.5),
           reason: '必须同时发出「把第 4 行滚到视口中部」的滚动指令');
     });
 
@@ -257,7 +258,8 @@ void main() {
       await tester.pump();
       final dynamic st = tester.state(find.byType(LyricView));
       expect(st.debugActiveIndex, 1, reason: 'seek 回 12 秒必须回滚到第二句（10s 那句）');
-      expect(st.debugLastScrollTarget, closeTo(1 * 64, 0.5),
+      expect(st.debugLastScrollTarget,
+          closeTo(1 * LyricView.lineExtent, 0.5),
           reason: '回滚也必须伴随正确的滚动指令');
     });
 
@@ -275,7 +277,7 @@ void main() {
       await tester.pump();
 
       // 跳到最后一行：必须发出「滚到第 7 行」的指令，且活动行确实前进了
-      //（7×64=448 clamp 后仍 ≥ 400，证明不是停在开头）。
+      //（7×72=504 clamp 后仍 > 200，证明不是停在开头）。
       // ⚠️ 断言分层说明见 H：测试绑定下 cacheExtent 不生效，
       //    视口外的行不构建，`find.text` 断言会拿到 Count=0，
       //    所以滚动断的是「指令目标」而不是渲染后的矩形/像素。
@@ -285,7 +287,7 @@ void main() {
       final dynamic st = tester.state(find.byType(LyricView));
       expect(st.debugActiveIndex, 7, reason: '75 秒应对应第八句（70s 那句）');
       expect(st.debugLastScrollTarget, greaterThan(200),
-          reason: '活动行前进后必须发出真实的滚动指令（目标 ≈ 448），而不是停在开头');
+          reason: '活动行前进后必须发出真实的滚动指令，而不是停在开头');
     });
 
     testWidgets('K 暂停 / 恢复：高亮停在正确的句子，不漂移',
