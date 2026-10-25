@@ -123,7 +123,7 @@ class _HomePageState extends State<HomePage> {
         final int cols =
             (((width + TvSpacing.sm) / (_minTile + TvSpacing.sm)).floor())
                 .clamp(3, 8);
-        final double gap = TvSpacing.sm;
+        const double gap = TvSpacing.sm;
         final double tileW = (width - (cols - 1) * gap) / cols;
         // 系统字体缩放（Android「字体大小」）会整体放大文字。
         // 格子的 mainAxisExtent 必须把它算进去 —— 否则 1.3 倍时

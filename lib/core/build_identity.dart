@@ -70,7 +70,7 @@ class BuildIdentity {
 
   /// 单行指纹，用于启动页角落与诊断页。
   static String get oneLine =>
-      '${kAppName} ${channel} · v$appVersion+$versionCode · $shortSha · $buildTime';
+      '$kAppName $channel · v$appVersion+$versionCode · $shortSha · $buildTime';
 
   /// 版本号一行（不含构建时间），用于空间紧张处。
   static String get versionLine =>

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 // scrollCacheExtent 的类型在 rendering 库（material 不导出），show 受限导入避免全量污染
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
@@ -35,6 +34,22 @@ import '../tv_display.dart';
 ///   （这是「播着播着按钮就选不中了」的根因之一）。
 class LyricView extends StatefulWidget {
   const LyricView({super.key});
+
+  /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
+  ///
+  /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 26 × 行高 1.25 × **最多 2 行**
+  ///    = 65；大屏档位 26×1.08=28.1 ⇒ 70.2。72 留 1.8px 余量。
+  ///    值太小会把活动行顶出自身边界 —— debug 是 RenderFlex 溢出异常，
+  ///    release 是**静默裁掉第二行**（「正在唱的那句显示不全」）。
+  ///
+  /// 公开为 widget 类常量是为了让测试直接引用，避免「改了行高、测试还按旧值算」。
+  static const double lineExtent = 72;
+
+  /// 视口内最多显示几行（参考图约 5–7 行）。
+  ///
+  /// 不限制的话，1920×1080 逻辑视口会一次铺 13 行 —— 远看是一墙文字，
+  /// 「正在唱哪一句」反而不突出。限制后上下留白，当前句更靠近视觉中心。
+  static const int maxVisibleLines = 7;
 
   @override
   State<LyricView> createState() => _LyricViewState();
@@ -78,23 +93,6 @@ class _LyricViewState extends State<LyricView> {
   @visibleForTesting
   double? get debugLastScrollTarget => _lastScrollTarget;
   double? _lastScrollTarget;
-
-  /// 单行高度（固定值 → 滚动定位可精确计算，不需要 GlobalKey 测量）。
-  ///
-  /// ⚠️ 必须 ≥ 活动行的真实内容高：活动行字号 26 × 行高 1.25 × **最多 2 行**
-  ///    = 65；大屏档位 26×1.08=28.1 ⇒ 70.2。72 留 1.8px 余量。
-  ///    值太小会把活动行顶出自身边界 —— debug 是 RenderFlex 溢出异常，
-  ///    release 是**静默裁掉第二行**（「正在唱的那句显示不全」）。
-  ///
-  /// 公开为常量是为了让测试直接引用，避免「改了行高、测试还按旧值算」。
-  @visibleForTesting
-  static const double lineExtent = 72;
-
-  /// 视口内最多显示几行（参考图约 5–7 行）。
-  ///
-  /// 不限制的话，1920×1080 逻辑视口会一次铺 13 行 —— 远看是一墙文字，
-  /// 「正在唱哪一句」反而不突出。限制后上下留白，当前句更靠近视觉中心。
-  static const int maxVisibleLines = 7;
 
   /// 滚动动画时长。太短会显得跳，太长会跟不上快进。
   static const Duration _scrollDuration = Duration(milliseconds: 280);
@@ -161,7 +159,7 @@ class _LyricViewState extends State<LyricView> {
     final ScrollPosition pos = _scroll.position;
     if (!pos.hasViewportDimension || !pos.hasContentDimensions) return;
 
-    final double target = _activeIndex * lineExtent;
+    final double target = _activeIndex * LyricView.lineExtent;
     final double clamped = target.clamp(0.0, pos.maxScrollExtent);
     _lastScrollTarget = clamped;
     // 已经在位就不要再动：每 400ms 反复 animate 会让整块歌词抖。
@@ -254,13 +252,14 @@ class _LyricViewState extends State<LyricView> {
             builder: (BuildContext context, BoxConstraints c) {
               // 只让歌词占「最多 7 行」的高度，并垂直居中：
               // 大视口下上下留白，当前句更靠近视觉中心（参考图构图）。
+              const double maxHeight =
+                  LyricView.lineExtent * LyricView.maxVisibleLines;
               final double viewport = c.maxHeight.isFinite
                   ? c.maxHeight
-                  : lineExtent * maxVisibleLines;
-              final double lyricHeight = viewport < lineExtent * maxVisibleLines
-                  ? viewport
-                  : lineExtent * maxVisibleLines;
-              final double pad = ((lyricHeight - lineExtent) / 2).clamp(
+                  : maxHeight;
+              final double lyricHeight =
+                  viewport < maxHeight ? viewport : maxHeight;
+              final double pad = ((lyricHeight - LyricView.lineExtent) / 2).clamp(
                 0.0,
                 double.infinity,
               );
@@ -269,7 +268,7 @@ class _LyricViewState extends State<LyricView> {
                   height: lyricHeight,
                   child: ListView.builder(
                 controller: _scroll,
-                itemExtent: lineExtent,
+                itemExtent: LyricView.lineExtent,
                 physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.symmetric(vertical: pad),
                 // ⚠️ 必须显式给 cacheExtent：测试绑定下默认缓存视口为 0，

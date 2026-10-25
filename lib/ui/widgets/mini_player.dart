@@ -113,7 +113,9 @@ class _MiniPlayerState extends State<MiniPlayer> {
   /// 收起次级层并把焦点还给进入前的那个主键。
   void _closeExtra() {
     if (!_extraOpen) return;
-    final FocusNode? back = _returnNode ?? widget.playNode;
+    // `_returnNode` 为 null（从未展开过）时退回播放键 —— 恒非空，
+    // 所以这里不需要判空：`playNode` 是 final FocusNode。
+    final FocusNode back = _returnNode ?? widget.playNode;
     setState(() {
       _extraOpen = false;
       _returnNode = null;
@@ -457,7 +459,7 @@ class _ExtraBar extends StatelessWidget {
                 onPressed: () {
                   final PlayMode nextMode = mode.next;
                   Log.i('PLAY_MODE_CHANGE UI ${mode.storageKey} → '
-                      '${nextMode.standardKey} (mini extra)');
+                      '${nextMode.storageKey} (mini extra)');
                   unawaited(context.read<PlaybackRepository>().setMode(nextMode));
                 },
               ),
