@@ -209,6 +209,7 @@ void main() {
                 'seek=${seekRect?.toString()} back=${backRect?.toString()} '
                 'play=${playRect?.toString()} '
                 'cover=${coverFinder.evaluate().isEmpty ? '—' : tester.getRect(coverFinder.first)}');
+            _dumpOverflowingRows(tester);
           }
           expect(layoutError, isNull,
               reason: '出现布局溢出（release 下会静默裁掉内容）');
@@ -307,8 +308,12 @@ void main() {
     );
     final Rect native4k = _rectOf(tester, 'player.play')!;
 
-    expect(native4k.size.width, closeTo(common.size.width, 0.01),
-        reason: '两处的**逻辑**尺寸相同 —— 说明按固定逻辑尺寸设计，未按视口缩放');
+    expect(native4k.size.width,
+        closeTo(common.size.width, common.size.width * 0.03),
+        reason: '两处的**逻辑**尺寸基本相同 —— 控件按固定逻辑尺寸设计。'
+            'UI 2.0 起 large4K 档只放大**文字**（1.06 字号倍率）与歌词（1.08），'
+            '按钮本身仍是 76；1080p 下控制行放不整时 FittedBox 会微缩约 0.1%。'
+            '若这里差距变大（>3%），说明有人又引入了按视口缩放的系数。');
 
     // 占屏幕高度的比例：960×540 下约 14%，4K 原生下约 3.5%。
     expect(common.size.height / 540, greaterThan(0.13),
@@ -341,4 +346,40 @@ Rect? _rectOf(WidgetTester tester, String label) {
     return tester.getRect(find.byWidget(w));
   }
   return null;
+}
+
+/// 把「子项宽度之和 > 自身宽」的横向 Row 全打出来。
+///
+/// `RenderFlex overflowed by N pixels` 这句话**不说是哪一个 Row** ——
+/// 播放页现在有七八个横排行，光看溢出量根本定位不到。
+/// 这里遍历渲染树做一次算术核对，直接给出溢出者与它的每个子项宽度。
+///
+/// 只在已经捕获到溢出异常时调用（正常路径零开销）。
+void _dumpOverflowingRows(WidgetTester tester) {
+  void report(RenderObject o) {
+    if (o is RenderFlex && o.direction == Axis.horizontal && o.hasSize) {
+      double sum = 0;
+      final List<String> kids = <String>[];
+      o.visitChildren((RenderObject ch) {
+        if (ch is RenderBox && ch.hasSize) {
+          sum += ch.size.width;
+          kids.add('${ch.runtimeType}(w=${ch.size.width.toStringAsFixed(1)})');
+        }
+      });
+      if (sum > o.size.width + 0.5) {
+        debugPrint('FLEX_ROW_OVERFLOW >>> rowW=${o.size.width.toStringAsFixed(1)} '
+            'childrenSum=${sum.toStringAsFixed(1)} '
+            'excess=${(sum - o.size.width).toStringAsFixed(1)} '
+            'constraints=${o.constraints}');
+        debugPrint('  CREATOR >>> ${o.debugCreator}');
+        for (final String k in kids) {
+          debugPrint('  CHILD >>> $k');
+        }
+      }
+    }
+    o.visitChildren(report);
+  }
+
+  final RenderObject? root = tester.binding.rootElement?.renderObject;
+  root?.visitChildren(report);
 }
