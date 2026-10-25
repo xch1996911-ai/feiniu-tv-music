@@ -941,25 +941,40 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                meta,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15 * scale,
-                  height: 1.2,
-                  color: TvColors.textDim,
+        // 音质标签必须**限宽**：它的自然宽随内容与系统字体缩放一起涨
+        // （`FLAC · 16bit / 44kHz · 1050kbps` 在 1.3 倍字体下约 334px），
+        // 在 853×480 视口的左栏（331px）里会把歌名/歌手挤成 0 宽并溢出。
+        // 上限 42% 保证 meta 永远有位置；`_QualityTag` 自带 ellipsis，
+        // 截断从尾部开始 —— 先丢的正是最不重要的码率。
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints c) {
+            final double w = c.maxWidth.isFinite ? c.maxWidth : 600;
+            final double byRatio = w * 0.42;
+            final double tagMax = byRatio < 420 ? byRatio : 420;
+            return Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15 * scale,
+                      height: 1.2,
+                      color: TvColors.textDim,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            if (spec.isNotEmpty) ...<Widget>[
-              const SizedBox(width: 10),
-              _QualityTag(text: spec),
-            ],
-          ],
+                if (spec.isNotEmpty) ...<Widget>[
+                  const SizedBox(width: 10),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: tagMax),
+                    child: _QualityTag(text: spec),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ],
     );
