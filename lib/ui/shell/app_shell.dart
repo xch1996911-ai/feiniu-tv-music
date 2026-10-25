@@ -28,6 +28,7 @@ import '../widgets/nav_rail.dart';
 import '../widgets/queue_sheet.dart';
 import '../../services/app_exit.dart';
 import '../../services/remote/remote_server.dart';
+import '../focus/stage_focus.dart';
 import '../pages/remote_control_page.dart';
 import '../tv_display.dart';
 import '../widgets/tv_focus.dart';
@@ -142,6 +143,12 @@ class _AppShellState extends State<AppShell> {
   final FocusNode _miniNext = FocusNode(debugLabel: 'mini.next');
   final FocusNode _miniQueue = FocusNode(debugLabel: 'mini.queue');
 
+  /// 舞台焦点记忆：Mini ↑ 回正文、切页默认焦点都靠它。
+  final StageFocus _stageFocus = StageFocus();
+
+  /// 让 BACK 能关掉迷你播放器的次级菜单（菜单开没开只有它自己知道）。
+  final GlobalKey<MiniPlayerState> _miniKey = GlobalKey<MiniPlayerState>();
+
   late final LibraryRepository _library;
   late final PlaybackRepository _playback;
   late final LocalLibraryRepository _local;
@@ -166,6 +173,9 @@ class _AppShellState extends State<AppShell> {
 
     _playback.addListener(_onPlaybackChanged);
     _library.addListener(_onLibraryChanged);
+    // 全局焦点监听：记录「正文里最后获得焦点的那一个节点」。
+    // 这是 Mini Player ↑ 能精确回到原来那一项的唯一依据（见 `StageFocus`）。
+    FocusManager.instance.addListener(_onGlobalFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((Duration _) => _bootstrap());
 
     // 15 秒存一次播放点：太频繁会反复写安全存储，太稀疏则「看到一半关机」丢得多。
@@ -177,6 +187,8 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    FocusManager.instance.removeListener(_onGlobalFocusChanged);
+    _stageFocus.dispose();
     _restoreTimer?.cancel();
     _playback.removeListener(_onPlaybackChanged);
     _library.removeListener(_onLibraryChanged);
@@ -194,6 +206,26 @@ class _AppShellState extends State<AppShell> {
     _miniNext.dispose();
     _miniQueue.dispose();
     super.dispose();
+  }
+
+  /// 全局焦点变化 → 记下正文层最后焦点。
+  ///
+  /// 只记内容层（`StageFocus.layerOf`）：
+  /// 导航栏、底部条、覆盖层都不该成为「Mini ↑ 回正文」的目标。
+  void _onGlobalFocusChanged() {
+    _stageFocus.note(FocusManager.instance.primaryFocus);
+  }
+
+  /// Mini Player 上按 ↑：回到正文。
+  ///
+  /// 三级兜底，保证**一定**有落点（绝不出现「按了没反应」）：
+  /// 1. 正文里进入底部条之前的那一个节点（最精确）；
+  /// 2. 当前页面登记的默认首焦点；
+  /// 3. 左侧导航当前项。
+  void _returnFromMini() {
+    if (_stageFocus.focusLastContent()) return;
+    if (_stageFocus.focusStageDefault()) return;
+    _navNodes[_navIndex].requestFocus();
   }
 
   /// 首屏引导：拉第一页曲库 → 建立播放队列（不自动播放）→ 定位上次播放点
@@ -235,7 +267,11 @@ class _AppShellState extends State<AppShell> {
       '构建身份',
       '${BuildIdentity.versionLine} · 构建时间 ${BuildIdentity.buildTime}',
     );
-    _navNodes[_navIndex].requestFocus();
+    // 首焦点：优先用首页自己登记的「第一焦点」（漫游卡），
+    // 拿不到才退到导航栏 —— 打开电视就落在「首页」两个字上没有任何用。
+    if (!_stageFocus.focusStageDefault()) {
+      _navNodes[_navIndex].requestFocus();
+    }
   }
 
   /// 曲库整理推进 → 把新索引到的曲目**追加**进队列（不移动 currentIndex）。
@@ -268,8 +304,20 @@ class _AppShellState extends State<AppShell> {
     _local.recordPlayed(t.guid);
   }
 
+  /// 每个舞台「离开时正文焦点在哪」的标签记忆。
+  ///
+  /// 页面 State 会随切页销毁，节点对象换了新的；但**标签不变**。
+  /// 记标签 + 回来时按标签回查，才能做到「从最近添加 BACK 回首页，
+  /// 焦点还在那张『最近添加』卡上」。
+  final Map<ShellStage, String> _stageLastLabel = <ShellStage, String>{};
+
   void _goStage(ShellStage s) {
     if (_stage == s) return;
+    // 先记下「离开这一页时正文焦点在哪」，供下次回到这一页时恢复。
+    final String? leaving = _stageFocus.debugLastContent?.debugLabel;
+    if (leaving != null && leaving.isNotEmpty) {
+      _stageLastLabel[_stage] = leaving;
+    }
     setState(() {
       _stage = s;
       // 换页必然离开原来的概览详情。
@@ -279,8 +327,18 @@ class _AppShellState extends State<AppShell> {
     // 必须补一个明确去处，否则遥控器会「静默失效」到下一次触碰为止。
     // 进入搜索页则不做（那里由输入框 autofocus 接管）。
     if (s == ShellStage.search) return;
+    // 上一页的焦点节点马上会被销毁，先清掉记忆，避免 ↑ / 恢复时指向死节点。
+    _stageFocus.clearStage();
     WidgetsBinding.instance.addPostFrameCallback((Duration _) {
       if (!mounted) return;
+      // 回到这一页 → 优先还给它上次所在的控件（按标签回查）。
+      final String? wanted = _stageLastLabel[s];
+      if (wanted != null && _stageFocus.focusLabel(wanted)) return;
+      // **页面自己说了算**：新页面在 build 里登记的默认首焦点优先。
+      // 例如「最近添加」登记第一首歌的整行 —— 实机 Bug 就是这里落到了
+      // 左侧导航/收藏上，用户按 OK 不会播放任何东西。
+      // 页面没登记（或登记节点已失效）才退到导航栏。
+      if (_stageFocus.focusStageDefault()) return;
       _navNodes[_navIndex].requestFocus();
     });
   }
@@ -440,6 +498,10 @@ class _AppShellState extends State<AppShell> {
           _closeQueue();
         } else if (_playerOpen) {
           _closePlayer();
+        } else if (_miniKey.currentState?.isExtraOpen ?? false) {
+          // 迷你播放器的次级菜单（队列 / 收藏 / 模式）：
+          // BACK 先收菜单并**恢复打开前的那个主键**，不直接退页面。
+          _miniKey.currentState?.closeExtra();
         } else if (_openOverview != null) {
           _closeDetail();
         } else if (_stage != ShellStage.home) {
@@ -493,11 +555,22 @@ class _AppShellState extends State<AppShell> {
                         child: Column(
                           children: <Widget>[
                             if (_stage != ShellStage.search) _buildTopBar(),
-                            Expanded(child: _buildStage()),
+                            Expanded(
+                              // 页面靠这个 scope 做两件事：
+                              // 登记本页默认首焦点；最后一行 ↓ 落到 Mini Player。
+                              child: StageFocusScope(
+                                stage: _stageFocus,
+                                miniCover: _miniCover,
+                                miniPlay: _miniPlay,
+                                child: _buildStage(),
+                              ),
+                            ),
                             if (_hasSong)
                               MiniPlayer(
+                                key: _miniKey,
                                 onOpenPlayer: _openPlayer,
                                 onOpenQueue: _openQueue,
+                                onReturnToContent: _returnFromMini,
                                 coverNode: _miniCover,
                                 prevNode: _miniPrev,
                                 playNode: _miniPlay,

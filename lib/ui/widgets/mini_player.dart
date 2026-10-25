@@ -31,9 +31,17 @@ import 'tv_glass.dart';
 /// 参考图里底部条有 8–9 个按钮。若照抄，用户从封面按到队列要按 8 下 ——
 /// 电视上这是灾难。因此：
 /// - 主链**仍然只有 5 段**；
-/// - 收藏与播放模式放进一个 ↑ 唤出的次级操作条（`extra.*` 节点），
-///   按 ↓ 立即回到原来的主键，焦点不会迷路；
+/// - 收藏 / 播放模式 / 播放队列收进一个**毛玻璃小菜单**，
+///   入口是主链最后一格「队列/更多」按 OK；
 /// - 系统音量交给电视遥控器，不新增软件音量。
+///
+/// ## ⚠️ UP 就是 UP
+/// 实机 Bug：Mini Player 上按 ↑ 会弹出「收藏 / 模式」条。
+/// 方向键是**空间导航键**，不能兼任「展开菜单」——
+/// 否则用户永远无法预测这一下 ↑ 是移动焦点还是打开面板。
+/// 现在五个主键的 ↑ **一律**回正文（[onReturnToContent]），
+/// ↓ 到底（没有更低层）就留在原地，不触发任何面板。
+/// 次级菜单只由 OK 打开、由 BACK 关闭，与方向键彻底解耦。
 ///
 /// ## 为什么进度条不进焦点链
 /// 进度条是**只读展示**。一旦可聚焦，用户按左右键会期待 seek，
@@ -44,7 +52,7 @@ import 'tv_glass.dart';
 /// 五个主 `FocusNode` **由 AppShell 创建并释放**（不在这里建）：
 /// 关闭全屏播放页后要把焦点**恢复**到底部播放条上，
 /// 而 Shell 是唯一知道「播放页刚被关掉」的地方。
-/// 次级层的两个节点由本 State 自己创建并释放（只在展开时存在）。
+/// 次级菜单的三个节点由本 State 自己创建并释放。
 ///
 /// ⚠️ 这是**固定高度行**，里面的每个 `Text` 都必须显式写 `height`：
 /// M3 主题的 `DefaultTextStyle` 行高是 **1.43**（不是 1.0），
@@ -60,6 +68,7 @@ class MiniPlayer extends StatefulWidget {
     super.key,
     required this.onOpenPlayer,
     required this.onOpenQueue,
+    required this.onReturnToContent,
     required this.coverNode,
     required this.prevNode,
     required this.playNode,
@@ -70,6 +79,12 @@ class MiniPlayer extends StatefulWidget {
   final VoidCallback onOpenPlayer;
   final VoidCallback onOpenQueue;
 
+  /// ↑ 的去处：回到正文里**进入底部条之前**的那个焦点。
+  ///
+  /// 由 Shell 提供 —— 只有它知道当前舞台是哪个页面、
+  /// 以及正文里最后获得焦点的是哪一项（见 `StageFocus`）。
+  final VoidCallback onReturnToContent;
+
   final FocusNode coverNode;
   final FocusNode prevNode;
   final FocusNode playNode;
@@ -77,45 +92,55 @@ class MiniPlayer extends StatefulWidget {
   final FocusNode queueNode;
 
   @override
-  State<MiniPlayer> createState() => _MiniPlayerState();
+  State<MiniPlayer> createState() => MiniPlayerState();
 }
 
-class _MiniPlayerState extends State<MiniPlayer> {
-  /// 次级操作条是否展开（收藏 / 播放模式）。
+/// 公开（不是 `_MiniPlayerState`）是为了让 Shell 能用 `GlobalKey` 调
+/// [closeExtra]：BACK 键由 Shell 的 `PopScope` 统一裁决，
+/// 而「次级菜单开着没开」只有这里知道。
+class MiniPlayerState extends State<MiniPlayer> {
+  /// 次级菜单是否展开（播放队列 / 收藏 / 播放模式）。
   bool _extraOpen = false;
 
-  /// 展开前焦点所在的节点 —— 关闭次级层时按 ↓ 回到这里。
+  /// 展开前焦点所在的节点 —— 关闭菜单时回到这里。
   FocusNode? _returnNode;
 
-  /// 次级层的两个节点（只在展开期间存在）。
+  /// 次级菜单的三个节点（只在展开期间挂到树上）。
+  final FocusNode _extraQueueNode = FocusNode(debugLabel: 'extra.queue');
   final FocusNode _extraFavNode = FocusNode(debugLabel: 'extra.fav');
   final FocusNode _extraModeNode = FocusNode(debugLabel: 'extra.mode');
 
+  /// 次级菜单是否开着（Shell 的 BACK 裁决要用）。
+  bool get isExtraOpen => _extraOpen;
+
   @override
   void dispose() {
+    _extraQueueNode.dispose();
     _extraFavNode.dispose();
     _extraModeNode.dispose();
     super.dispose();
   }
 
-  void _openExtra(FocusNode from) {
+  /// 打开次级菜单。**只允许由 OK 触发**（在「队列/更多」键上）。
+  void openExtra([FocusNode? from]) {
     if (_extraOpen) return;
     setState(() {
       _extraOpen = true;
       _returnNode = from;
     });
-    Log.i('UI 迷你播放器展开次级操作条（收藏 / 播放模式）');
+    Log.i('UI 迷你播放器打开次级菜单（队列 / 收藏 / 播放模式）');
     WidgetsBinding.instance.addPostFrameCallback((Duration _) {
-      if (mounted && _extraOpen) _extraFavNode.requestFocus();
+      if (mounted && _extraOpen) _extraQueueNode.requestFocus();
     });
   }
 
-  /// 收起次级层并把焦点还给进入前的那个主键。
-  void _closeExtra() {
+  /// 收起次级菜单并把焦点还给进入前的那个主键。
+  ///
+  /// ⚠️ 焦点必须**先**确定、再 setState 卸载菜单：
+  /// 菜单节点在卸载后就没了，倒过来做会掉到 FocusScope（方向键全失灵）。
+  void closeExtra() {
     if (!_extraOpen) return;
-    // `_returnNode` 为 null（从未展开过）时退回播放键 —— 恒非空，
-    // 所以这里不需要判空：`playNode` 是 final FocusNode。
-    final FocusNode back = _returnNode ?? widget.playNode;
+    final FocusNode back = _returnNode ?? widget.queueNode;
     setState(() {
       _extraOpen = false;
       _returnNode = null;
@@ -149,13 +174,18 @@ class _MiniPlayerState extends State<MiniPlayer> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        // ── 次级操作条（↑ 唤出，↓ 收起）──────────────────────
+        // ── 次级菜单（只在 OK 打开时存在；BACK / ↓ 收起）────────
         if (_extraOpen)
           _ExtraBar(
             song: song,
+            queueNode: _extraQueueNode,
             favNode: _extraFavNode,
             modeNode: _extraModeNode,
-            onClose: _closeExtra,
+            onOpenQueue: () {
+              closeExtra();
+              widget.onOpenQueue();
+            },
+            onClose: closeExtra,
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
@@ -179,9 +209,12 @@ class _MiniPlayerState extends State<MiniPlayer> {
                               Log.i('UI 打开完整播放页 (mini 封面)');
                               widget.onOpenPlayer();
                             },
+                            // 左右只在 5 段主链里走：到头指回自身，不外溢。
+                            nextLeft: widget.coverNode,
                             nextRight: widget.prevNode,
-                            // ↑ 展开次级层；↓ 已在最底部，原地不动。
-                            onArrowUp: () => _openExtra(widget.coverNode),
+                            // ↑ 回正文；↓ 已经是底部，原地不动。
+                            onArrowUp: widget.onReturnToContent,
+                            nextDown: widget.coverNode,
                             builder: (BuildContext context, TvFocusStatus s) =>
                                 TvFocusRing(
                               status: s,
@@ -239,7 +272,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
                             enabled: canPrevious,
                             nextLeft: widget.coverNode,
                             nextRight: widget.playNode,
-                            onArrowUp: () => _openExtra(widget.prevNode),
+                            nextDown: widget.prevNode,
+                            onArrowUp: widget.onReturnToContent,
                             onPressed: () {
                               Log.i('SKIP_PREVIOUS (mini player)');
                               context.read<PlaybackRepository>().previous();
@@ -255,7 +289,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
                             strongHalo: true,
                             nextLeft: widget.prevNode,
                             nextRight: widget.nextNode,
-                            onArrowUp: () => _openExtra(widget.playNode),
+                            nextDown: widget.playNode,
+                            onArrowUp: widget.onReturnToContent,
                             onPressed: () {
                               Log.i('PLAY_TOGGLE ${playing ? '暂停' : '播放'} '
                                   '(mini player)');
@@ -270,26 +305,28 @@ class _MiniPlayerState extends State<MiniPlayer> {
                             tooltip: '下一首',
                             nextLeft: widget.playNode,
                             nextRight: widget.queueNode,
-                            onArrowUp: () => _openExtra(widget.nextNode),
+                            nextDown: widget.nextNode,
+                            onArrowUp: widget.onReturnToContent,
                             onPressed: () {
                               Log.i('SKIP_NEXT (mini player)');
                               context.read<PlaybackRepository>().next();
                             },
                           ),
                           const SizedBox(width: 8),
-                          // 队列按钮：与播放页里的是**同一份**队列
+                          // ── 队列 / 更多：OK 打开次级菜单 ──────────
+                          // 这是**唯一**的次级入口。短按就展开，
+                          // 不需要长按、不需要 ↑，因为方向键不做命令。
                           _MiniButton(
                             node: widget.queueNode,
                             debugLabel: 'mini.queue',
                             icon: Icons.queue_music,
-                            tooltip: '播放队列',
+                            tooltip: '队列 / 更多',
                             nextLeft: widget.nextNode,
-                            nextRight: null,
-                            onArrowUp: () => _openExtra(widget.queueNode),
-                            onPressed: () {
-                              Log.i('UI 打开播放队列 (mini player)');
-                              widget.onOpenQueue();
-                            },
+                            // 右边界：指回自身，不允许甩到侧栏。
+                            nextRight: widget.queueNode,
+                            nextDown: widget.queueNode,
+                            onArrowUp: widget.onReturnToContent,
+                            onPressed: () => openExtra(widget.queueNode),
                           ),
                           const SizedBox(width: 8),
                           // ── 当前播放模式（**不可聚焦**，只做状态同步）──
@@ -389,24 +426,33 @@ class _MiniProgressState extends State<_MiniProgress> {
   }
 }
 
-/// 次级操作条：收藏 + 播放模式。
+/// 次级菜单：播放队列 / 收藏 / 播放模式。
 ///
 /// ## 为什么单独一个组件
 /// 它内部要读 `LocalLibraryRepository`（是否已收藏）。放在主 build 里的话，
 /// **默认状态**下迷你播放器就依赖了这个仓储 —— 一处提供不到就是
 /// `ProviderNotFoundException`，而收藏在默认视觉里根本不显示。
-/// 收敛到这里后：只有按 ↑ 展开时才建立依赖，收起即释放。
+/// 收敛到这里后：只有按 OK 展开时才建立依赖，收起即释放。
+///
+/// ## 为什么是横向三个胶囊而不是竖排菜单
+/// 竖排菜单会盖住整个内容区（底部条只有 76px 高，菜单要往上长）。
+/// 三个胶囊横向排在播放条正上方，只占一行，不遮正文；
+/// 遥控器左右扫一次就能看全，比竖排菜单少按几次。
 class _ExtraBar extends StatelessWidget {
   const _ExtraBar({
     required this.song,
+    required this.queueNode,
     required this.favNode,
     required this.modeNode,
+    required this.onOpenQueue,
     required this.onClose,
   });
 
   final Track song;
+  final FocusNode queueNode;
   final FocusNode favNode;
   final FocusNode modeNode;
+  final VoidCallback onOpenQueue;
   final VoidCallback onClose;
 
   @override
@@ -431,11 +477,21 @@ class _ExtraBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               _ExtraChip(
+                node: queueNode,
+                icon: Icons.queue_music,
+                label: '播放队列',
+                nextLeft: queueNode,
+                nextRight: favNode,
+                onExit: onClose,
+                onPressed: onOpenQueue,
+              ),
+              const SizedBox(width: 6),
+              _ExtraChip(
                 node: favNode,
                 icon: fav ? Icons.favorite : Icons.favorite_border,
                 iconColor: fav ? TvColors.brand : TvColors.text,
                 label: fav ? '取消收藏' : '收藏',
-                nextLeft: favNode,
+                nextLeft: queueNode,
                 nextRight: modeNode,
                 onExit: onClose,
                 onPressed: () {
@@ -463,9 +519,9 @@ class _ExtraBar extends StatelessWidget {
                   unawaited(context.read<PlaybackRepository>().setMode(nextMode));
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               const Text(
-                '↓ 返回',
+                'BACK 关闭',
                 style: TextStyle(
                   fontSize: 12,
                   height: _textHeight,
@@ -541,6 +597,9 @@ class _ExtraChip extends StatelessWidget {
 }
 
 /// 迷你播放栏右端的模式徽标（只读）。
+///
+/// 切换入口在「队列/更多」打开的次级菜单里 —— 这里只做状态同步，
+/// **不可聚焦**（需求：四处 UI 的模式显示必须一致，但不是四处都能改）。
 class _ModeChip extends StatelessWidget {
   const _ModeChip({required this.mode});
 
@@ -549,7 +608,7 @@ class _ModeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '${mode.label}（↑ 可切换）',
+      message: '${mode.label}（在队列/更多里切换）',
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
@@ -581,6 +640,7 @@ class _MiniButton extends StatelessWidget {
     required this.onPressed,
     required this.nextLeft,
     required this.nextRight,
+    this.nextDown,
     this.onArrowUp,
     this.large = false,
     this.enabled = true,
@@ -602,7 +662,11 @@ class _MiniButton extends StatelessWidget {
   final FocusNode? nextLeft;
   final FocusNode? nextRight;
 
-  /// ↑ = 展开次级操作条（收藏 / 模式）。
+  /// ↓ 的去处。底部条已经是最下层：**一律指回自身**，
+  /// 不让框架把焦点甩到侧栏或内容区（那会表现得像「按 ↓ 跳走了」）。
+  final FocusNode? nextDown;
+
+  /// ↑ = 回正文（由 Shell 提供）。**绝不**在这里展开任何面板。
   final VoidCallback? onArrowUp;
 
   final bool large;
@@ -628,6 +692,7 @@ class _MiniButton extends StatelessWidget {
         onArrowUp: onArrowUp,
         nextLeft: nextLeft,
         nextRight: nextRight,
+        nextDown: nextDown,
         builder: (BuildContext context, TvFocusStatus s) => SizedBox(
           width: box,
           height: box,

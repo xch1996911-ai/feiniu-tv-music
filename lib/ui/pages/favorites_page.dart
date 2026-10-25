@@ -10,6 +10,7 @@ import '../../playback/playback_control.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../focus/stage_focus.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
 import '../widgets/tv_glass.dart';
@@ -52,11 +53,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
   final FocusNode _shuffleNode = FocusNode(debugLabel: 'fav.shuffle');
   final FocusNode _browseNode = FocusNode(debugLabel: 'fav.browse');
 
+  /// 行焦点池。
+  final TrackRowFocus _rows = TrackRowFocus('fav.row');
+
   @override
   void dispose() {
     _playNode.dispose();
     _shuffleNode.dispose();
     _browseNode.dispose();
+    _rows.dispose();
     super.dispose();
   }
 
@@ -80,6 +85,12 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
 
     final List<Track> tracks = local.favoriteTracks(library.tracks);
+
+    // 默认首焦点 = 收藏主题卡的「播放」（本页第一动作）；
+    // 空收藏时退到「去音乐库」。
+    StageFocusScope.maybeOf(context)
+        ?.stage
+        .registerDefault(tracks.isEmpty ? _browseNode : _playNode);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,6 +123,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 return TrackRow(
                   track: t,
                   isCurrent: t.guid == currentGuid,
+                  focusNode: _rows.at(i),
+                  rowAbove: _rows.above(i),
+                  rowBelow: _rows.below(i, tracks.length),
                   onPressed: () {
                     Log.i('FAVORITE_PLAY index=$i guid=${t.guid}');
                     context.read<PlaybackRepository>().playQueue(

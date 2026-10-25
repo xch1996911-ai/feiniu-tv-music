@@ -1,5 +1,6 @@
 import 'package:feiniu_tv_music/app/theme.dart';
 import 'package:feiniu_tv_music/domain/track.dart';
+import 'package:feiniu_tv_music/repositories/local_library_repository.dart';
 import 'package:feiniu_tv_music/repositories/music_repository.dart';
 import 'package:feiniu_tv_music/repositories/playback_repository.dart';
 import 'package:feiniu_tv_music/ui/widgets/mini_player.dart';
@@ -11,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'support/fake_music_repository.dart';
 import 'support/fake_playback_engine.dart';
+import 'support/fake_secure_store.dart';
 
 /// 首页底部**迷你播放器**的焦点顺序与行为（对应 V4 验收「六、4」）。
 ///
@@ -48,23 +50,30 @@ void main() {
   late FakeMusicRepository music;
   late FakePlaybackEngine engine;
   late PlaybackRepository playback;
+  late LocalLibraryRepository local;
   late _MiniNodes nodes;
 
   var openPlayerCalls = 0;
   var openQueueCalls = 0;
+  var returnToContentCalls = 0;
 
   setUp(() {
     music = FakeMusicRepository();
     engine = FakePlaybackEngine();
     playback = PlaybackRepository(music: music, handler: engine);
+    // 次级菜单（队列/收藏/模式）里有收藏项 → 需要这个仓储。
+    // 默认视觉不订阅它，只有展开菜单时才读（见 `_ExtraBar` 注释）。
+    local = LocalLibraryRepository(store: FakeSecureStore());
     nodes = _MiniNodes();
     openPlayerCalls = 0;
     openQueueCalls = 0;
+    returnToContentCalls = 0;
   });
 
   tearDown(() async {
     nodes.dispose();
     playback.dispose();
+    local.dispose();
     await engine.close();
   });
 
@@ -88,6 +97,7 @@ void main() {
         providers: [
           ChangeNotifierProvider<PlaybackRepository>.value(value: playback),
           ChangeNotifierProvider<MusicRepository>.value(value: music),
+          ChangeNotifierProvider<LocalLibraryRepository>.value(value: local),
         ],
         child: MaterialApp(
           theme: buildTvTheme(),
@@ -100,6 +110,7 @@ void main() {
                 MiniPlayer(
                   onOpenPlayer: () => openPlayerCalls++,
                   onOpenQueue: () => openQueueCalls++,
+                  onReturnToContent: () => returnToContentCalls++,
                   coverNode: nodes.cover,
                   prevNode: nodes.prev,
                   playNode: nodes.play,
@@ -219,7 +230,7 @@ void main() {
       await tearDownTree(tester);
     });
 
-    testWidgets('队列按钮按 OK = 打开当前播放队列（不是整张音乐库）',
+    testWidgets('队列/更多 按 OK = 展开次级菜单；再按 OK 才打开队列',
         (WidgetTester tester) async {
       await ready(tester);
       await pumpMini(tester);
@@ -232,8 +243,91 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
+      await tester.pump();
+
+      // 菜单展开：焦点在「播放队列」上，队列面板**还没**打开。
+      expect(focusedLabel(), 'extra.queue');
+      expect(openQueueCalls, 0,
+          reason: 'OK 先展开菜单，不能直接弹面板（否则 BACK 一次退两层）');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
       expect(openQueueCalls, 1);
-      expect(focusedLabel(), 'mini.queue');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('主链五个键上的 ↑ 一律回正文，绝不展开次级栏',
+        (WidgetTester tester) async {
+      await ready(tester);
+      await pumpMini(tester);
+      await focusCover(tester);
+
+      const List<String> chain = <String>[
+        'mini.cover',
+        'mini.prev',
+        'mini.play',
+        'mini.next',
+        'mini.queue',
+      ];
+      for (int i = 0; i < chain.length; i++) {
+        if (i > 0) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+        }
+        expect(focusedLabel(), chain[i]);
+
+        final int before = returnToContentCalls;
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+        await tester.pump();
+
+        expect(returnToContentCalls, before + 1,
+            reason: '${chain[i]} 上的 ↑ 必须是「回正文」，不是展开菜单');
+        expect(focusedLabel(), chain[i], reason: '本用例里回正文由 Shell 负责，'
+            '组件自身不该擅自移动焦点');
+        // 实机 Bug 的失败条件：↑ 之后出现「收藏 / 模式」一栏
+        expect(find.text('模式：顺序'), findsNothing);
+        expect(find.text('收藏'), findsNothing);
+      }
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('次级菜单没打开时，收藏/模式/队列节点不在焦点树上',
+        (WidgetTester tester) async {
+      await ready(tester);
+      await pumpMini(tester);
+      await focusCover(tester);
+
+      final List<String> labels = tester
+          .widgetList<Focus>(find.byType(Focus))
+          .map((Focus f) => f.focusNode?.debugLabel ?? '')
+          .toList();
+      expect(labels.where((String l) => l.startsWith('extra.')), isEmpty,
+          reason: '隐藏的次级控件必须完全不在树上 —— 只要节点还在，'
+              '框架的方向遍历就可能把焦点送进去（「看不见的焦点」）');
+
+      await tearDownTree(tester);
+    });
+
+    testWidgets('次级菜单 ↓ 收起，焦点回到打开它的那个主键',
+        (WidgetTester tester) async {
+      await ready(tester);
+      await pumpMini(tester);
+      await focusCover(tester);
+      for (int i = 0; i < 4; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump();
+      expect(focusedLabel(), 'extra.queue');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(focusedLabel(), 'mini.queue',
+          reason: '收起菜单必须回到「队列/更多」，不能掉到 FocusScope 或首页');
+      expect(find.text('收藏'), findsNothing);
 
       await tearDownTree(tester);
     });

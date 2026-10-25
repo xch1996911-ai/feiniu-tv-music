@@ -36,10 +36,10 @@ const String kAppName = 'XX音乐';
 ///
 /// UI 2.0 起版本号由 `--dart-define=APP_VERSION` 覆盖（见
 /// `core/build_identity.dart`），这里的值只是**未注入时的兜底**。
-const String kAppVersion = '0.3.1';
+const String kAppVersion = '0.3.2';
 
 /// versionCode，必须与 `pubspec.yaml` 的 `+N` 一致。
-const int kAppVersionCode = 4;
+const int kAppVersionCode = 5;
 
 /// 启动页/侧栏的副标题（描述性，非品牌名）。
 const String kAppTagline = '客厅音乐播放器';

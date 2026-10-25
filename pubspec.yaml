@@ -1,7 +1,7 @@
 name: feiniu_tv_music
 description: XX音乐 —— 飞牛 fnOS NAS 专用 Android TV 客厅音乐播放器
 publish_to: 'none'
-version: 0.3.1+4
+version: 0.3.2+5
 
 environment:
   # 目标运行环境：用户本机现代 Flutter（Flutter >= 3.10 / Dart >= 3.0 即可）。

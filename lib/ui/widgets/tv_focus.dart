@@ -247,11 +247,16 @@ class _TvFocusState extends State<TvFocus> {
     }
     final t = target;
     if (t != null) {
-      if (t.canRequestFocus) {
+      // ⚠️ `context == null` = 这个节点所在的 Widget **当帧不在树上**。
+      // 典型场景：列表下一行还没被 ListView 构建（在缓存区之外），
+      // 或页面刚切换、旧节点已被卸载。此时 requestFocus() 是**空操作**，
+      // 若返回 handled 就等于「按了 ↓ 没反应」。
+      // 交回框架，让方向遍历自己去找能聚焦的目标（并触发滚动）。
+      if (t.canRequestFocus && t.context != null) {
         t.requestFocus();
         return KeyEventResult.handled;
       }
-      // 目标此刻不可获焦（例如被 ExcludeFocus 挡住）→ 交回框架兜底，
+      // 目标此刻不可获焦（例如被 ExcludeFocus 挡住 / 已卸载）→ 交回框架兜底，
       // **绝不允许**「按键被吃掉但没有反应」这种死区。
       return KeyEventResult.ignored;
     }

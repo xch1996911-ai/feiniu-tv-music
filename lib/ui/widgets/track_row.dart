@@ -11,6 +11,55 @@ import 'empty_state.dart';
 import 'tv_focus.dart';
 import 'tv_glass.dart';
 
+/// 曲目列表的**行焦点池**。
+///
+/// ## 为什么要有池
+/// [TrackRow] 的上下键必须知道「上一行 / 下一行的整行节点」。
+/// 行自己建节点的话彼此不可见，只能交回框架的就近搜索 ——
+/// 在滚动中的列表里那是不可靠的（见 [TrackRow] 类注释）。
+///
+/// 池由**页面**持有：页面知道总共有多少行、哪一行是第一行，
+/// 也只有页面能在 `dispose` 时统一释放（节点不能在 build 里循环创建后泄漏）。
+///
+/// ## 用下标而不是 guid
+/// 「最近添加」按入库时间排序，用户停留在第 3 行时列表可能因为同步推进
+/// 而插入新歌。用 guid 做键会让焦点跟着歌跑（用户视角是「焦点自己跳了」）；
+/// 用下标则焦点留在**同一屏位置**，符合遥控器的空间直觉。
+class TrackRowFocus {
+  TrackRowFocus(this.prefix);
+
+  /// 节点标签前缀，形如 `list.row` → `list.row.0` / `list.row.1` …
+  ///
+  /// 只用于排障与测试断言，不参与焦点逻辑。
+  final String prefix;
+
+  final List<FocusNode> _nodes = <FocusNode>[];
+
+  /// 第 i 行的节点（按需创建，重复调用返回同一个）。
+  FocusNode at(int i) {
+    while (_nodes.length <= i) {
+      _nodes.add(FocusNode(debugLabel: '$prefix.${_nodes.length}'));
+    }
+    return _nodes[i];
+  }
+
+  /// 上一行的整行节点；第一行返回 null（交给页面决定去哪）。
+  FocusNode? above(int i) => i > 0 ? at(i - 1) : null;
+
+  /// 下一行的整行节点；最后一行返回 null（交给页面决定去哪）。
+  FocusNode? below(int i, int count) => i + 1 < count ? at(i + 1) : null;
+
+  @visibleForTesting
+  int get debugLength => _nodes.length;
+
+  void dispose() {
+    for (final FocusNode n in _nodes) {
+      n.dispose();
+    }
+    _nodes.clear();
+  }
+}
+
 /// 曲目列表项 —— **全项目唯一**的一份实现。
 ///
 /// ## 为什么要统一
@@ -18,13 +67,22 @@ import 'tv_glass.dart';
 /// 于是焦点描边、当前播放高亮、字号在三处各不相同，改一处漏两处。
 /// 现在所有列表（首页 / 音乐库 / 搜索 / 收藏 / 最近 / 概览详情）都用这一个。
 ///
-/// ## 焦点：行内**两个**节点，左右链显式指定
-/// - 行本身 = 播放（OK）
-/// - 右侧心形 = 收藏 / 取消收藏
+/// ## 焦点：**整行是唯一主焦点**
+/// - 行本身 = 播放（OK），页面进入时默认焦点必须落在**第一行的整行**；
+/// - 右侧心形是**次级**控件：只有用户主动按 → 才进得去，
+///   进去后 ← 回整行、上下回到**相邻行的整行**。
 ///
-/// `行 →(右)→ 心形`、`心形 →(左)→ 行` 都是**显式**指定的；
-/// 心形再按右键交回框架（去往侧栏等）。
-/// 上下方向交回框架 —— 列表长度不定、位置还在滚动，框架比写死节点更稳。
+/// ### 为什么心形的上下必须显式指到相邻行
+/// 心形在每一行的同一个 x 上，框架的「就近搜索」会把 `心形 N ↓`
+/// 接到 `心形 N+1`（同 x、垂直最近）。结果就是：用户往下按，
+/// 焦点在右侧一条**心形纵列**里一路滑到底，永远回不到歌名 ——
+/// 实机反馈的「主操作和收藏操作混在一起」正是这个机制造成的。
+/// 显式指定后，心形只是「这一行的一个附属按钮」，不是独立一列。
+///
+/// ### 为什么上下在行与行之间也不交给框架
+/// 列表随时在滚动，框架用的是**当前 rect**；刚滚动过、布局还没稳定的那一帧
+/// 会算出错误的落点（「有时能跳下一行，有时跳到上上行」）。
+/// 页面把相邻行的节点直接传进来（[rowAbove] / [rowBelow]）就没有这个不确定性。
 ///
 /// ## 收藏为什么在这里读仓储
 /// 收藏状态是**每首歌一份**的，只有行自己知道该订阅哪一首。
@@ -38,6 +96,8 @@ class TrackRow extends StatefulWidget {
     required this.onPressed,
     this.trailingText,
     this.focusNode,
+    this.rowAbove,
+    this.rowBelow,
     this.showFavorite = true,
   });
 
@@ -55,7 +115,19 @@ class TrackRow extends StatefulWidget {
   /// 外部焦点节点（一般不需要传）。
   final FocusNode? focusNode;
 
-  /// 是否显示可聚焦的「收藏」按钮。
+  /// ↑ 要去的地方：通常是**上一行的整行节点**；第一行交给页面传
+  /// 「页头的主操作」（如「加入播放队列」）。
+  ///
+  /// null = 交回框架兜底。
+  final FocusNode? rowAbove;
+
+  /// ↓ 要去的地方：**下一行的整行节点**；最后一行由页面传 Mini Player。
+  final FocusNode? rowBelow;
+
+  /// 是否显示「收藏」按钮。
+  ///
+  /// ⚠️ 即便显示，它也是**次级**控件：只有 → 才进得去，
+  /// 页面进入时绝不聚焦它（否则用户会以为整页的主操作是收藏）。
   final bool showFavorite;
 
   static String formatDuration(Duration d) {
@@ -119,6 +191,9 @@ class _TrackRowState extends State<TrackRow> {
       focusNode: _rowNode,
       debugLabel: 'track.${widget.track.guid}',
       onPressed: widget.onPressed,
+      // 上下显式串到相邻行的整行节点（见类注释）。
+      nextUp: widget.rowAbove,
+      nextDown: widget.rowBelow,
       nextRight: widget.showFavorite ? _favNode : null,
       builder: (BuildContext context, TvFocusStatus s) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -193,6 +268,11 @@ class _TrackRowState extends State<TrackRow> {
                       debugLabel: 'track.fav.${widget.track.guid}',
                       onPressed: _toggleFavorite,
                       nextLeft: _rowNode,
+                      // → 到这里已经是右边界：指回自身，别让框架甩到侧栏。
+                      nextRight: _favNode,
+                      // ⚠️ 上下回**相邻行的整行**，不留在心形列（见类注释）。
+                      nextUp: widget.rowAbove,
+                      nextDown: widget.rowBelow,
                       builder: (BuildContext context, TvFocusStatus fs) =>
                           SizedBox(
                         width: 40,

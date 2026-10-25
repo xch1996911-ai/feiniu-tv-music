@@ -11,6 +11,7 @@ import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/music_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../focus/stage_focus.dart';
 import '../shell/shell_stage.dart';
 import '../widgets/cover_image.dart';
 import '../widgets/track_row.dart';
@@ -109,6 +110,22 @@ class _HomePageState extends State<HomePage> {
 
     final List<Track> recent = local.recentTracks(library.tracks);
     final List<Track> shown = recent.take(_maxRecentOnHome).toList();
+
+    // 首页默认首焦点 = **漫游卡**（第一张 Bento 卡）。
+    //
+    // 为什么不是搜索框、也不是导航栏「首页」：打开电视第一下 OK 应该
+    // 直接放歌。落在搜索框上会弹出输入法，落在导航上没有任何动作。
+    final StageFocus? stage = StageFocusScope.maybeOf(context)?.stage;
+    if (stage != null) {
+      // 四张卡都按标签登记：从「最近添加」页 BACK 回来时，
+      // 焦点要回到那张卡上，而不是跳回漫游卡或左上角。
+      stage
+        ..register(_roamNode)
+        ..register(_favNode)
+        ..register(_recentNode)
+        ..register(_addedNode)
+        ..registerDefault(_roamNode);
+    }
 
     // 真实统计（都是 O(n) 的轻量计算，不做排序）。
     final int favCount = local.favoriteTracks(library.tracks).length;

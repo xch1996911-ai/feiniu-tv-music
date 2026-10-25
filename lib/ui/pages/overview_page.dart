@@ -168,6 +168,9 @@ class _OverviewPageState extends State<OverviewPage> {
   /// 那样 `autofocus` 就不生效了（遥控器会「失灵一次」）。
   final FocusNode _restoreNode = FocusNode(debugLabel: 'ov.restore');
 
+  /// 详情里曲目行的焦点池（上下键显式串到相邻整行）。
+  final TrackRowFocus _rows = TrackRowFocus('ovdetail.row');
+
   /// 进入详情前的滚动位置。
   double _savedOffset = 0;
 
@@ -255,6 +258,7 @@ class _OverviewPageState extends State<OverviewPage> {
     _scroll.dispose();
     _detailBackNode.dispose();
     _restoreNode.dispose();
+    _rows.dispose();
     super.dispose();
   }
 
@@ -499,6 +503,9 @@ class _OverviewPageState extends State<OverviewPage> {
               return TrackRow(
                 track: t,
                 isCurrent: t.guid == currentGuid,
+                focusNode: _rows.at(i),
+                rowAbove: i == 0 ? _detailBackNode : _rows.at(i - 1),
+                rowBelow: _rows.below(i, o.tracks.length),
                 onPressed: () {
                   Log.i('OVERVIEW_DETAIL_PLAY index=$i guid=${t.guid}');
                   context.read<PlaybackRepository>().playQueue(

@@ -8,6 +8,7 @@ import '../../playback/playback_control.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/local_library_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../focus/stage_focus.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/track_row.dart';
 import '../widgets/tv_focus.dart';
@@ -64,10 +65,18 @@ class _TrackListPageState extends State<TrackListPage> {
   final FocusNode _appendNode = FocusNode(debugLabel: 'list.append');
   final FocusNode _emptyActionNode = FocusNode(debugLabel: 'list.emptyaction');
 
+  /// 行焦点池：让每一行的 ↑/↓ 精确指到相邻的**整行**。
+  ///
+  /// ⚠️ 不能用「每行自己建节点 + 框架就近搜索」：
+  /// 行右侧的心形与下一行的心形同 x，框架会把 ↓ 接到下一行的心形，
+  /// 于是焦点顺着右侧一列心形滑到底（实机反馈的「收藏按钮抢焦点」）。
+  final TrackRowFocus _rows = TrackRowFocus('list.row');
+
   @override
   void dispose() {
     _appendNode.dispose();
     _emptyActionNode.dispose();
+    _rows.dispose();
     super.dispose();
   }
 
@@ -84,18 +93,33 @@ class _TrackListPageState extends State<TrackListPage> {
       TrackListSource.recentlyAdded =>
         LocalLibraryRepository.recentlyAdded(library.tracks),
     };
+    final int count = tracks.length;
+    final StageFocusScope? scope = StageFocusScope.maybeOf(context);
+
+    // 本页默认首焦点 = **第一首歌的整行**。
+    //
+    // 实机 Bug：从首页「最近添加」卡进来后焦点落在左侧导航/收藏上，
+    // 用户按 OK 什么都不会播放。现在由页面自己登记，Shell 切页时直接用
+    // （见 `StageFocus.registerDefault`），不再一律跳导航第一项。
+    if (count > 0) {
+      scope?.stage.registerDefault(_rows.at(0));
+    } else if (widget.onEmptyAction != null) {
+      scope?.stage.registerDefault(_emptyActionNode);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         _Header(
           title: widget.title,
-          subtitle: _subtitleOf(tracks.length),
+          subtitle: _subtitleOf(count),
           appendNode: _appendNode,
-          canAppend: tracks.isNotEmpty,
+          // 从「加入播放队列」按 ↓ 直接进第一首歌，不交给框架猜。
+          firstRowNode: count > 0 ? _rows.at(0) : null,
+          canAppend: count > 0,
           onAppend: () => _appendAll(tracks),
         ),
-        if (tracks.isEmpty)
+        if (count == 0)
           Expanded(
             child: _EmptyBlock(
               icon: widget.emptyIcon,
@@ -109,12 +133,17 @@ class _TrackListPageState extends State<TrackListPage> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-              itemCount: tracks.length,
+              itemCount: count,
               itemBuilder: (BuildContext context, int i) {
                 final Track t = tracks[i];
                 return TrackRow(
                   track: t,
                   isCurrent: t.guid == currentGuid,
+                  focusNode: _rows.at(i),
+                  // 第一行 ↑ = 页头主操作（真实存在的入口），不是导航栏。
+                  rowAbove: i == 0 ? _appendNode : _rows.at(i - 1),
+                  // 最后一行 ↓ = 迷你播放器封面（列表到底就是播放条）。
+                  rowBelow: _rows.below(i, count) ?? scope?.miniCoverIfAlive,
                   onPressed: () {
                     Log.i('LIST_PLAY ${widget.source.name} index=$i guid=${t.guid}');
                     // 从**该条记录**开始播放，队列 = 这份列表，
@@ -154,6 +183,7 @@ class _Header extends StatelessWidget {
     required this.appendNode,
     required this.canAppend,
     required this.onAppend,
+    this.firstRowNode,
   });
 
   final String title;
@@ -161,6 +191,9 @@ class _Header extends StatelessWidget {
   final FocusNode appendNode;
   final bool canAppend;
   final VoidCallback onAppend;
+
+  /// 列表第一行的整行节点（↓ 的落点）。
+  final FocusNode? firstRowNode;
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +225,9 @@ class _Header extends StatelessWidget {
               focusNode: appendNode,
               debugLabel: 'list.append',
               onPressed: onAppend,
+              nextDown: firstRowNode,
+              // 页头只有这一个可获焦控件：↑ 到顶，指回自身避免被甩走。
+              nextUp: appendNode,
               builder: (BuildContext context, TvFocusStatus s) => TvFocusRing(
                 status: s,
                 radius: 22,

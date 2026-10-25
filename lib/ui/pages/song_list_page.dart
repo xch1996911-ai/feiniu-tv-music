@@ -6,6 +6,7 @@ import '../../core/log.dart';
 import '../../domain/track.dart';
 import '../../repositories/library_repository.dart';
 import '../../repositories/playback_repository.dart';
+import '../focus/stage_focus.dart';
 import '../widgets/track_row.dart';
 
 /// 音乐库：**完整曲库**（全部歌曲）。
@@ -36,6 +37,9 @@ class _SongListPageState extends State<SongListPage> {
   /// 距底部还有多少像素就开始预加载（提前量，避免用户看到空白）。
   static const double _prefetchExtent = 600;
 
+  /// 行焦点池（相邻行显式串联，见 [TrackRowFocus]）。
+  final TrackRowFocus _rows = TrackRowFocus('library.row');
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,7 @@ class _SongListPageState extends State<SongListPage> {
     // ⚠️ ScrollController 必须释放。
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
+    _rows.dispose();
     super.dispose();
   }
 
@@ -103,6 +108,11 @@ class _SongListPageState extends State<SongListPage> {
       return const TrackListEmpty(text: '暂无歌曲');
     }
 
+    // 默认首焦点 = 第一首歌的整行（不再落到导航栏）。
+    if (library.tracks.isNotEmpty) {
+      StageFocusScope.maybeOf(context)?.stage.registerDefault(_rows.at(0));
+    }
+
     // 底部多一条用于显示「加载更多 / 没有更多了」
     return ListView.builder(
       controller: _scroll,
@@ -116,6 +126,9 @@ class _SongListPageState extends State<SongListPage> {
         return TrackRow(
           track: track,
           isCurrent: track.guid == currentGuid,
+          focusNode: _rows.at(i),
+          rowAbove: _rows.above(i),
+          rowBelow: _rows.below(i, library.tracks.length),
           onPressed: () => _play(library.tracks, i),
         );
       },
