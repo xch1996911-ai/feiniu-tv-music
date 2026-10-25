@@ -25,6 +25,14 @@ import 'support/fake_secure_store.dart';
 void main() {
   String? focusedLabel() => FocusManager.instance.primaryFocus?.debugLabel;
 
+  /// 地址框里**真正的内容**。
+  ///
+  /// ⚠️ 不用 `find.text(...)` 断言：`TextField` 的 hint / EditableText
+  ///    可能让同一段文字命中多个 widget（hint 曾经恰好等于回填值，
+  ///    直接导致 findsOneWidget 变 findsNWidgets(2)）。
+  String hostText(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text;
+
   Future<void> press(
     WidgetTester tester,
     LogicalKeyboardKey key, [
@@ -116,7 +124,8 @@ void main() {
         (WidgetTester tester) async {
       await pumpLogin(tester);
 
-      await press(tester, LogicalKeyboardKey.arrowDown, 5);
+      // host 到 submit 是 4 格：user → pass → remember → submit
+      await press(tester, LogicalKeyboardKey.arrowDown, 4);
       expect(focusedLabel(), 'login.submit');
 
       await press(tester, LogicalKeyboardKey.arrowUp);
@@ -139,7 +148,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpLogin(tester);
-      await press(tester, LogicalKeyboardKey.arrowDown, 5);
+      await press(tester, LogicalKeyboardKey.arrowDown, 4);
       expect(focusedLabel(), 'login.submit');
 
       await press(tester, LogicalKeyboardKey.arrowLeft);
@@ -342,7 +351,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpLogin(tester);
-      await press(tester, LogicalKeyboardKey.arrowDown, 4);
+      await press(tester, LogicalKeyboardKey.arrowDown, 3);
       expect(focusedLabel(), 'login.remember');
 
       expect(find.byIcon(Icons.check), findsNothing, reason: '默认不勾');
@@ -358,7 +367,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpLogin(tester);
-      await press(tester, LogicalKeyboardKey.arrowDown, 5);
+      await press(tester, LogicalKeyboardKey.arrowDown, 4);
       expect(focusedLabel(), 'login.submit',
           reason: '字段为空也不许把按钮变成遥控器够不到的 Disabled 控件');
 
@@ -379,7 +388,7 @@ void main() {
         (WidgetTester tester) async {
       await pumpLogin(tester, lastHost: 'http://192.168.3.250:5666');
 
-      expect(find.text('http://192.168.3.250:5666'), findsOneWidget,
+      expect(hostText(tester), 'http://192.168.3.250:5666',
           reason: '地址不是密码，可以明文保存；电视遥控器打 IP 太痛苦');
       expect(focusedLabel(), 'login.user',
           reason: '地址已就绪 → 初始焦点应跳过地址框');
@@ -391,7 +400,7 @@ void main() {
         timeout: const Timeout(Duration(seconds: 45)),
         (WidgetTester tester) async {
       await pumpLogin(tester);
-      expect(find.text('http://192.168.3.250:5666'), findsNothing);
+      expect(hostText(tester), isEmpty);
       expect(focusedLabel(), 'login.host');
 
       await tearDownTree(tester);
@@ -406,9 +415,8 @@ void main() {
       await tester.pump();
       await tester.pump(LoginPage.imeProbeDelay);
 
-      expect(find.text('10.0.0.9:5666'), findsOneWidget,
+      expect(hostText(tester), '10.0.0.9:5666',
           reason: '用户输入的值必须留得住（回填只允许发生在「地址框还空着」时）');
-      expect(find.text('http://192.168.3.250:5666'), findsNothing);
 
       await tearDownTree(tester);
     });

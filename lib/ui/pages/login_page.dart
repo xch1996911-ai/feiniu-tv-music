@@ -870,7 +870,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                 controller: _host,
                 focusNode: _hostFocus,
                 label: 'NAS 地址（含端口）',
-                hint: 'http://192.168.3.250:5666',
+                hint: '192.168.1.10:5666',
                 helper: '漏写 http:// 也没关系，会自动补上',
                 keyboardType: TextInputType.url,
               ),
