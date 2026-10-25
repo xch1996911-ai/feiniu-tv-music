@@ -478,7 +478,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   /// 「键盘没了、焦点到记住密码」，而不是「键盘没了、焦点还赖在密码框」。
   void _advanceFromKeyboard() {
     final _Field current = _editing ?? _Field.host;
-    final FocusNode? next = _nextNodeOf(_focusOf(current)) ??
+    final FocusNode next = _nextNodeOf(_focusOf(current)) ??
         _nextNodeOf(_hostFocus) ??
         _rememberFocus;
     _closeKeyboard(thenFocus: next);
@@ -499,7 +499,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   void _advanceFromField(FocusNode from) {
     _userTouchedFocus = true;
     unawaited(TextInputBridge.hideSoftKeyboard());
-    final FocusNode? next = _nextNodeOf(from) ?? _rememberFocus;
+    final FocusNode next = _nextNodeOf(from) ?? _rememberFocus;
     _focusAndReveal(next);
   }
 
@@ -561,7 +561,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   ({_Field field, String message})? _validate() {
     final AuthRepository auth = context.read<AuthRepository>();
 
-    final String hostError = auth.hostFormatError(_host.text);
+    final String? hostError = auth.hostFormatError(_host.text);
     if (hostError != null) {
       return (field: _Field.host, message: hostError);
     }
@@ -672,7 +672,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   Future<void> _probe() async {
     if (_busy) return;
     final AuthRepository auth = context.read<AuthRepository>();
-    final String hostError = auth.hostFormatError(_host.text);
+    final String? hostError = auth.hostFormatError(_host.text);
     if (hostError != null) {
       _showFieldError(_Field.host, hostError);
       return;
