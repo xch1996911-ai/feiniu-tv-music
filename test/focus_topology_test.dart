@@ -126,6 +126,26 @@ void main() {
       n.dispose();
       stage.dispose();
     });
+
+    test('TrackRowFocus 按下标建节点：同一行始终是同一个 FocusNode', () {
+      final TrackRowFocus rows = TrackRowFocus('list.row');
+
+      // 列表因为同步推进而在头部插入新歌时，节点跟着**下标**走，
+      // 而不是跟着歌曲 guid 走 —— 否则焦点会随歌跑掉。
+      expect(rows.at(0), same(rows.at(0)));
+      expect(rows.at(1), isNot(same(rows.at(0))));
+      expect(rows.at(0).debugLabel, 'list.row.0');
+      expect(rows.at(2).debugLabel, 'list.row.2');
+
+      // 行的上下邻居必须显式给出，且到边界返回 null（由调用方决定接到哪）。
+      expect(rows.above(0), isNull);
+      expect(rows.above(2), same(rows.at(1)));
+      expect(rows.below(2, 3), isNull, reason: '最后一行 ↓ 归调用方接 Mini');
+      expect(rows.below(0, 3), same(rows.at(1)));
+
+      rows.dispose();
+      expect(rows.debugLength, 0);
+    });
   });
 
   // ── 二、最近添加页的焦点拓扑（实机 Case A / B / C）─────────────
