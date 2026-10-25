@@ -162,6 +162,13 @@ class SecureStore {
   /// 能用的地址（否则用户会「越改越错」）。
   Future<void> writeLastHost(String host) => _write(_kLastHost, host);
 
+  /// 只读会话里记的 host，**不要求 token 存在**。
+  ///
+  /// 用途：升级兼容。UI2.0-DEV1 及更早的版本没有 [_kLastHost] 这个键，
+  /// 只在 [saveSession] 时把 host 写进会话。若不回退读这一份，
+  /// 「已经在本机成功登录过」的用户升级后仍会看到空地址框 —— 这是最没道理的一种。
+  Future<String?> readSessionHost() => _read(_kHost);
+
   // ================================================================
   //  播放偏好（非机密）
   //

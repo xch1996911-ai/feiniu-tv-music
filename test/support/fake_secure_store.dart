@@ -116,4 +116,8 @@ class FakeSecureStore extends SecureStore {
   Future<void> writeLastHost(String host) async {
     prefs['lastHost'] = host;
   }
+
+  /// DEV1 只写过会话里的 host（`feiniu.host`）。回填的两级回退要靠它。
+  @override
+  Future<String?> readSessionHost() async => prefs['sessionHost'];
 }

@@ -386,6 +386,23 @@ class TvKeyboardState extends State<TvKeyboard> {
             ),
           ),
         ),
+        // 「↓ 继续」：末行 ↓ 能退出键盘这件事**必须写在脸上**。
+        //
+        // 用户在键盘上按到末行发现 ↓ 没反应，会直接断定「按键坏了」；
+        // 而这条出口本身是隐藏交互（键盘是模态的，没有别的地方能看到它）。
+        if (widget.onAdvance != null)
+          const Padding(
+            padding: EdgeInsets.only(left: 10),
+            child: Text(
+              '↓ 继续',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.2,
+                fontWeight: FontWeight.w600,
+                color: TvColors.focusRing,
+              ),
+            ),
+          ),
         Text(
           _shift ? '大写' : '小写',
           style: const TextStyle(

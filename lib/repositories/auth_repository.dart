@@ -297,11 +297,26 @@ class AuthRepository extends ChangeNotifier {
   ///
   /// 失败 / 超时 / 从未成功过统一返回 null —— 调用方只需处理
   /// 「有值就填进去，没值就让用户自己输」这一种分支。
+  ///
+  /// ## 两级回退
+  /// 1. 首选独立的 [_kLastHost]（UI2.0-DEV2 起写入，`clearSession()` 不清）；
+  /// 2. 读不到就回退到**会话里的 host** —— DEV1 及更早只写过这一个键。
+  ///    不回退的话，「明明在本机成功登录过、升级后地址却空了」这种体验
+  ///    会把上一版积累的好感全部抵消掉。
   Future<String?> readLastHost() async {
     try {
-      final String? host = await _store.readLastHost().timeout(_lastHostTimeout);
-      if (host == null || host.trim().isEmpty) return null;
-      return host.trim();
+      final String? direct =
+          await _store.readLastHost().timeout(_lastHostTimeout);
+      if (direct != null && direct.trim().isNotEmpty) return direct.trim();
+
+      final String? legacy =
+          await _store.readSessionHost().timeout(_lastHostTimeout);
+      if (legacy != null && legacy.trim().isNotEmpty) {
+        // 顺手补写新键，下次走快路径（失败无所谓，下次还会走回退）。
+        unawaited(_rememberHost(legacy));
+        return legacy.trim();
+      }
+      return null;
     } catch (e) {
       Log.w('读取上次 NAS 地址失败/超时，登录页不回填：$e');
       return null;

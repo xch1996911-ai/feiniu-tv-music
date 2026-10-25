@@ -424,6 +424,35 @@ void main() {
 
   // ── 六、地址校验（纯逻辑）──────────────────────────────────
 
+  group('上次地址读取（两级回退）', () {
+    test('优先用独立的 lastHost 键', () async {
+      final store = FakeSecureStore()
+        ..prefs['lastHost'] = 'http://10.1.1.1:5666'
+        ..prefs['sessionHost'] = 'http://10.2.2.2:5666';
+      final auth = AuthRepository(store: store);
+
+      expect(await auth.readLastHost(), 'http://10.1.1.1:5666');
+    });
+
+    test('没有 lastHost 时回退到会话 host（DEV1 升级上来的用户）', () async {
+      final store = FakeSecureStore()
+        ..prefs['sessionHost'] = 'http://192.168.3.250:5666';
+      final auth = AuthRepository(store: store);
+
+      expect(await auth.readLastHost(), 'http://192.168.3.250:5666',
+          reason: '上一版只写过会话里的 host，升级后不该逼用户重新手打地址');
+
+      // 回退命中时会顺手补写新键（下次走快路径）
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(store.prefs['lastHost'], 'http://192.168.3.250:5666');
+    });
+
+    test('两个都没有 → null', () async {
+      final auth = AuthRepository(store: FakeSecureStore());
+      expect(await auth.readLastHost(), isNull);
+    });
+  });
+
   group('NAS 地址校验（AuthRepository.hostFormatError）', () {
     final auth = AuthRepository(store: FakeSecureStore());
 
