@@ -161,12 +161,16 @@ void main() {
 
     /// 按**树序**返回列表行的焦点节点（第 0 个 = 列表第一行）。
     ///
-    /// ⚠️ 行节点的 `debugLabel` 统一是 `track.row`（由 `TrackRow` 自己创建），
-    ///    它传进 `TvFocus(debugLabel: 'track.<guid>')` 时**不会**被改写 ——
-    ///    所以不能按 guid 找节点，只能按树序取（列表顺序 = 构建顺序）。
+    /// ⚠️ 不要按 `debugLabel` 找：UI 2.0-DEV3 起行的焦点节点由页面的
+    ///    `TrackRowFocus` 行池按下标创建（`list.row.0/1/…`），
+    ///    `TrackRow` 再把 `TvFocus(debugLabel: 'track.row.<guid>')` 盖在上面，
+    ///    节点自身的 label 与 TvFocus 的 label 是**两回事**。
+    ///    唯一稳定的口径是「`TrackRow` 组件拿到的那个 `focusNode`」。
     List<FocusNode> rowNodes(WidgetTester tester) => <FocusNode>[
-          for (final Focus f in tester.widgetList<Focus>(find.byType(Focus)))
-            if (f.focusNode?.debugLabel == 'track.row') f.focusNode!,
+          for (final TrackRow r in tester.widgetList<TrackRow>(
+            find.byType(TrackRow),
+          ))
+            if (r.focusNode != null) r.focusNode!,
         ];
 
     Future<void> pumpRecentAdded(
@@ -272,7 +276,8 @@ void main() {
       expect(rows.length, 2, reason: '两首歌必须都是可聚焦的列表行');
       rows[1].requestFocus();
       await tester.pump();
-      expect(FocusManager.instance.primaryFocus?.debugLabel, 'track.row');
+      expect(FocusManager.instance.primaryFocus, same(rows[1]),
+          reason: '焦点必须真的落在第二行，而不是被次级控件抢走');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
