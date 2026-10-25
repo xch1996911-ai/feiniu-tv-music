@@ -16,8 +16,6 @@ void main() {
     test('未注入时版本取 branding 常量（与 pubspec 同步）', () {
       expect(BuildIdentity.appVersion, kAppVersion);
       expect(BuildIdentity.versionCode, kAppVersionCode);
-      expect(BuildIdentity.appVersion, '0.3.0');
-      expect(BuildIdentity.versionCode, 3);
     });
 
     test('未注入时 commit / 构建时间如实显示 unknown', () {
@@ -34,8 +32,8 @@ void main() {
   group('BuildIdentity 展示串', () {
     test('versionLine 含版本、versionCode、sha、通道', () {
       final String line = BuildIdentity.versionLine;
-      expect(line, contains('v0.3.0'));
-      expect(line, contains('(3)'));
+      expect(line, contains('v$kAppVersion'));
+      expect(line, contains('($kAppVersionCode)'));
       expect(line, contains('unknown'));
       expect(line, contains('DEV'));
     });

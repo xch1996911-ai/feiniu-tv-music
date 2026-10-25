@@ -16,7 +16,7 @@ import 'branding.dart';
 ///
 /// ```sh
 /// flutter build apk --release \
-///   --dart-define=APP_VERSION=0.3.0 \
+///   --dart-define=APP_VERSION=0.3.1 \
 ///   --dart-define=APP_VERSION_CODE=3 \
 ///   --dart-define=BUILD_SHA=$(git rev-parse --short=7 HEAD) \
 ///   --dart-define=BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
